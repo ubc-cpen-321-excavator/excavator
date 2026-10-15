@@ -1,3 +1,7 @@
+# direnv
+**/.direnv
+**/.cache
+
 # Node / TypeScript
 # These are repeated in backend/.gitignore, but are needed here too: the moment
 # anyone adds a second Node project (an e2e/ suite, a scripts/ folder), its
