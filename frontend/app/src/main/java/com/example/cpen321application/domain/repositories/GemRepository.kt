@@ -1,7 +1,7 @@
 package com.example.cpen321application.domain.repositories
 
 
-import com.example.cpen321application.domain.entities.Gem
+import com.example.cpen321application.data.entities.Gem
 import kotlinx.coroutines.flow.Flow
 
 interface GemRepository {
