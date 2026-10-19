@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">CPEN321 Application</string>
+    <string name="discovery_map_description">Map of nearby gems</string>
+    <string name="discovery_location_denied">Location access is off, so the map is showing UBC. You can turn it on in Settings.</string>
 </resources>

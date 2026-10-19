@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.example.cpen321application.ui.discovery.DiscoveryScreen
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 import java.net.HttpURLConnection
 import java.net.URL
@@ -28,10 +28,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CPEN321ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        apiBaseUrl = BuildConfig.API_BASE_URL,
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    DiscoveryScreen(contentPadding = innerPadding)
                 }
             }
         }

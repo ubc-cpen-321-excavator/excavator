@@ -26,6 +26,12 @@ lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
 composeBom = "2025.06.01"
 
+# Google Maps for Compose + fused location. maps-compose 6.6.0 is the newest
+# release built against core-ktx 1.16 / Kotlin 2.1 like the pins above (6.7+
+# moves to Kotlin 2.2, later 6.x to core-ktx 1.17, which needs compileSdk 36).
+mapsCompose = "6.6.0"
+playServicesLocation = "21.3.0"
+
 # Test
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -46,6 +52,8 @@ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "u
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

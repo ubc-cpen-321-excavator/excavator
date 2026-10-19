@@ -42,6 +42,10 @@ android {
             "GOOGLE_CLIENT_ID",
             "\"${localProperty("GOOGLE_CLIENT_ID")}\""
         )
+
+        // Google Maps API key, injected into AndroidManifest.xml. The Maps SDK crashes on launch if the
+        // manifest has no key at all, so fall back to a placeholder: the app still runs, the map is just grey.
+        manifestPlaceholders["MAPS_API_KEY"] = localProperty("MAPS_API_KEY").ifBlank { "MISSING_MAPS_API_KEY" }
     }
 
     buildTypes {
@@ -79,6 +83,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

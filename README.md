@@ -27,6 +27,7 @@ Install the following before the frontend or backend setup steps:
 4. **Set up emulator/device**:
    - Create a new AVD (Android Virtual Device) by selecting Pixel 9 as the device and Android Baklava (API level 36) as the system image.
    - Alternatively, connect a physical Android device running Android 16 (API level 36).
+   - The discovery map needs Google Play services, so pick a system image labelled **Google APIs** or **Google Play**.
 5. **Setup app config**: Copy the example file, then fill in local values:
    ```bash
    cp frontend/local.properties.example frontend/local.properties
@@ -34,6 +35,7 @@ Install the following before the frontend or backend setup steps:
    Set at least:
    - `sdk.dir`: path to your Android SDK. Android Studio usually writes this the first time you open `frontend/`. On Mac it is often `sdk.dir=/Users/<username>/Library/Android/sdk`.
    - `API_BASE_URL`: backend URL baked into the APK. Use `http://10.0.2.2:3000` for the emulator (`10.0.2.2` is the host machine). For a physical device on the same Wi-Fi, use `http://<your-lan-ip>:3000`.
+   - `MAPS_API_KEY`: Google Maps key for the discovery map (from the team's secrets doc). Without it the app still runs but the map stays grey. The key only works on machines whose debug SHA-1 has been added to it in Google Cloud Console; print yours with `cd frontend && ./gradlew signingReport`.
 
 
 ### Build and Run
