@@ -26,6 +26,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.cpen321application.data.entities.Gem
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 import com.example.cpen321application.viewmodels.GemViewModel
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 import dagger.hilt.android.AndroidEntryPoint
 import java.net.HttpURLConnection
 import java.net.URL
@@ -38,10 +44,29 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val coord = LatLng(1.35,103.87)
+
         setContent {
             CPEN321ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     GemList(modifier = Modifier.padding(innerPadding))
+
+                    // To be refactored, simply here to try out the google maps features
+                    GoogleMap(
+                        modifier=Modifier.fillMaxSize(),
+                        cameraPositionState = rememberCameraPositionState {
+                            position= CameraPosition.fromLatLngZoom(coord, 10f)
+                        }
+                    ){
+                        Marker(
+                            state= rememberUpdatedMarkerState(position= coord),
+                            title="THIS IS A TITLE",
+                            snippet = "THIS IS A SNIPPET"
+                        )
+                    }
+
+
 //                    Greeting(
 //                        apiBaseUrl = BuildConfig.API_BASE_URL,
 //                        modifier = Modifier.padding(innerPadding)
