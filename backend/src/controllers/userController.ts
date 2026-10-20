@@ -6,7 +6,7 @@ export const userRouter = express.Router();
 export const userService = new UserService();
 
 userRouter.post('/auth/google', async (req, res) => {
-  const { code: idToken } = req.body;
+  const { idToken } = req.body;
   if (!idToken || typeof (idToken) !== 'string') {
     console.log(`Wrong OAuth idToken: ${idToken}`);
     res.status(400).json({ message: `Wrong OAuth idToken.` });
