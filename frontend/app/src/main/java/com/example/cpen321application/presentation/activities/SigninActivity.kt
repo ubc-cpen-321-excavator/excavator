@@ -31,51 +31,84 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.example.cpen321application.R
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
+import com.example.cpen321application.utils.AuthAPIService
 import com.example.cpen321application.utils.AuthUtil
+import com.example.cpen321application.utils.GoogleSigninRequest
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import dagger.hilt.android.AndroidEntryPoint
 import java.security.SecureRandom
 import java.util.Base64
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.net.ConnectException
+import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
+@AndroidEntryPoint
 class SigninActivity : ComponentActivity() {
+
+    @Inject lateinit var authAPIService: AuthAPIService
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val webClientID = BuildConfig.GOOGLE_CLIENT_ID
-
         setContent {
 
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                ButtonUI(webClientID)
+                ButtonUI(authAPIService)
             }
 
         }
     }
 }
 
-
 @Composable
-fun ButtonUI(webClientId: String) {
+fun ButtonUI(authAPIService: AuthAPIService) {
+
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     val onClick: () -> Unit = {
-        val signInWithGoogleOption: GetSignInWithGoogleOption = GetSignInWithGoogleOption
-            .Builder(serverClientId = webClientId)
-            .setNonce(AuthUtil.generateSecureRandomNonce())
-            .build()
 
-        val request: GetCredentialRequest = GetCredentialRequest.Builder()
-            .addCredentialOption(signInWithGoogleOption)
-            .build()
+        val authUtil = AuthUtil()
 
         coroutineScope.launch {
-            AuthUtil.signIn(request, context)
+
+
+            authUtil.signIn(context)
+
+            if (authUtil.idToken != null) {
+
+                var displayMessage: String
+
+                // TODO: The following block should be moved out into an OkHttp3 interceptor
+                // For more details see section 3.3 of: https://blog.codersee.com/retrofit-with-kotlin-the-ultimate-guide/
+                // Also note that the OKHttp3 Interceptor will have to be set up in the RetrofitModule singleton
+                try {
+                    val tokenResponse = authAPIService.googleSignin(
+                        GoogleSigninRequest(authUtil.idToken!!)
+                    )
+
+                    displayMessage = if (tokenResponse.isSuccessful) {
+                        // Can always expect a non-null body since server response is a placeholder value
+                        tokenResponse.body()!!
+                    } else {
+                        "Error: Code ${tokenResponse.code()}"
+                    }
+
+                    Toast.makeText(context, displayMessage, Toast.LENGTH_LONG).show()
+
+                }  catch (e: ConnectException) {
+                    Toast.makeText(context,
+                        "Failed to connect to server. Please try again later",
+                        Toast.LENGTH_SHORT)
+                        .show()
+                }
+
+            } // Signin error conditions are handled in AuthUtil
         }
     }
     Image(
