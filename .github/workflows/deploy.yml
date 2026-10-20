@@ -2,7 +2,7 @@ name: Deploy to GCE
 
 on:
   push:
-    branches: [main, bren-cicd]
+    branches: [main, develop, bren-cicd]
   workflow_dispatch:
 
 concurrency:
