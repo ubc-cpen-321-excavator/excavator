@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">CPEN321 Application</string>
+    <string name="title_activity_signin">SigninActivity</string>
 </resources>

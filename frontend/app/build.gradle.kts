@@ -107,4 +107,6 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     implementation(libs.maps.compose)
+
+    implementation(libs.googleid)
 }
