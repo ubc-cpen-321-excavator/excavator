@@ -1,5 +1,6 @@
 import { OAuth2Client } from "google-auth-library";
 import { env } from '../config/env'
+import { alphnumOnly } from "../utils/trust";
 
 interface Name {
   readonly full: string;
@@ -51,13 +52,13 @@ class UserService {
 
   private async getGoogleUser(idToken: string): Promise<User> {
     const ticket = await this.ggClient.verifyIdToken({
-      idToken: idToken,
+      idToken,
       audience: env.google_client_id
     }).catch(err => {
-      console.log(`idToken rejected: ${err}`);
+      console.log(`idToken rejected: ${alphnumOnly(err)}`);
     });
 
-    const payload = ticket!.getPayload();
+    const payload = ticket?.getPayload();
     if (!payload) {
       throw new Error(`Invalid Google Account info.`);
     }
