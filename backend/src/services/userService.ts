@@ -1,6 +1,6 @@
 import { OAuth2Client } from "google-auth-library";
 import { env } from '../config/env'
-import { alphnumOnly } from "../utils/trust";
+import { alphnumDashOnly } from "../utils/trust";
 
 interface Name {
   readonly full: string;
@@ -35,15 +35,15 @@ class UserService {
     clientSecret: env.google_client_secret,
   });
 
+  // TODO Use JWT later
   private genSessionId(_seed: number): string {
-    // TODO Maybe use JWT
     return crypto.randomUUID();
   }
 
   private getUserBySessionId(sessionId: string): User {
     const user = this.sessions.get(sessionId)?.value
     if (!user) {
-      throw new Error(`Invalid session: ${sessionId}`);
+      throw new Error(`Invalid session: ${alphnumDashOnly(sessionId)}`);
     }
 
     return user;
@@ -55,7 +55,7 @@ class UserService {
       idToken,
       audience: env.google_client_id
     }).catch(err => {
-      console.log(`idToken rejected: ${alphnumOnly(err)}`);
+      console.log(`idToken rejected: ${alphnumDashOnly(err)}`);
     });
 
     const payload = ticket?.getPayload();
@@ -64,9 +64,9 @@ class UserService {
     }
 
     return {
-      id: payload.sub, // req. 'openid' in scope
+      id: payload.sub, // requires 'openid' in client req. scope
       name: {
-        full: payload.name as string, // req. 'profile' in scope
+        full: payload.name as string, // requires 'profile' in client req. scope
         family: payload.family_name,
         given: payload.given_name,
       }
@@ -91,6 +91,7 @@ class UserService {
     this.sessions.get(sessionId)?.heartbeat();
   }
 
+  // TODO Review after JWT
   sweep(olderThan: number): void {
     const now = Date.now();
     const elders = [...this.sessions].filter(([_sid, en]) => (en.time + olderThan) < now).map(([sid, _en]) => sid)
@@ -120,10 +121,10 @@ class UserService {
   }
 }
 
-// HACK Move to user repo.
+// HACK Stub for actual user repo.
 class UserDB {
-  // TODO The whole thing. Stub for now.
 
+  // HACK Stub.
   create(id: string, name: Name, displayName?: string): User {
     return {
       id,
@@ -132,14 +133,17 @@ class UserDB {
     };
   }
 
+  // HACK Stub.
   get(id: string): User | undefined {
-    return this.create(id, { full: 'nadeok sengoku' });
+    return this.create(id, { full: 'nadeko sengoku' });
   }
 
+  // HACK Stub.
   getOrCreate(id: string, name: Name, displayName?: string): User {
     return this.get(id) ?? this.create(id, name, displayName);
   }
 
+  // HACK Stub.
   set(_id: string, _user: User): boolean {
     return true;
   }
