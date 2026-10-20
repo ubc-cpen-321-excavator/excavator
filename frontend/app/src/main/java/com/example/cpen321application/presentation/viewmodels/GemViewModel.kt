@@ -1,4 +1,4 @@
-package com.example.cpen321application.viewmodels
+package com.example.cpen321application.presentation.viewmodels
 
 import com.example.cpen321application.data.entities.Gem
 import com.example.cpen321application.domain.usecases.GetGemsUseCase

@@ -1,4 +1,4 @@
-package com.example.cpen321application.viewmodels
+package com.example.cpen321application.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
