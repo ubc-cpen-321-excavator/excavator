@@ -27,7 +27,7 @@ class TimedEntry<T> {
 }
 
 class UserService {
-  private sessions: Map<string, TimedEntry<User>> = new Map<string, TimedEntry<User>>;
+  private sessions: Map<string, TimedEntry<User>> = new Map<string, TimedEntry<User>>();
   private db: UserDB = new UserDB();
   private ggClient = new OAuth2Client({
     clientId: env.google_client_id,
@@ -42,7 +42,7 @@ class UserService {
   private getUserBySessionId(sessionId: string): User {
     const user = this.sessions.get(sessionId)?.value
     if (!user) {
-      throw `Invalid session: ${sessionId}`;
+      throw new Error(`Invalid session: ${sessionId}`);
     }
 
     return user;
@@ -52,7 +52,7 @@ class UserService {
   private async getGoogleUser(code: string): Promise<User> {
     const { tokens } = await this.ggClient.getToken(code);
     if (!tokens.id_token) {
-      throw `Invalid Google OAuth ID token.`
+      throw new Error(`Invalid Google OAuth ID token.`);
     }
 
     const ticket = await this.ggClient.verifyIdToken({
@@ -62,7 +62,7 @@ class UserService {
 
     const payload = ticket.getPayload();
     if (!payload) {
-      throw `Invalid Google Account info.`
+      throw new Error(`Invalid Google Account info.`);
     }
 
     return {
@@ -118,7 +118,7 @@ class UserService {
   setDisplayName(sessionId: string, displayName: string): void {
     const user = this.getUserBySessionId(sessionId);
 
-    this.db.set(user.id, { ...user, displayName: displayName });
+    this.db.set(user.id, { ...user, displayName });
   }
 }
 
@@ -128,9 +128,9 @@ class UserDB {
 
   create(id: string, name: Name, displayName?: string): User {
     return {
-      id: id,
-      name: name,
-      displayName: displayName
+      id,
+      name,
+      displayName
     };
   }
 
