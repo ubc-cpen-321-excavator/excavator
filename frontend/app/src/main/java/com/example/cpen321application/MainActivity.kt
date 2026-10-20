@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.cpen321application.data.entities.Gem
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
-import com.example.cpen321application.viewmodels.GemViewModel
+import com.example.cpen321application.presentation.viewmodels.GemViewModel
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
