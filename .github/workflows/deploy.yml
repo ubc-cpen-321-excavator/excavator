@@ -43,6 +43,8 @@ jobs:
             cat > backend/.env <<'EOF'
             PORT=${{ secrets.PROD_PORT }}
             NODE_ENV=production
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             EOF
             chmod 600 backend/.env
 
