@@ -5,14 +5,14 @@ export const userRouter = express.Router();
 
 export const userService = new UserService();
 
-userRouter.get('/login', async (req, res) => {
-  const { code } = req.query;
-  if (!code || typeof (code) !== 'string') {
-    console.log(`Wrong OAuth code: ${code}`);
-    res.status(400).json({ message: `Wrong OAuth code.` });
+userRouter.post('/auth/google', async (req, res) => {
+  const { code: idToken } = req.body;
+  if (!idToken || typeof (idToken) !== 'string') {
+    console.log(`Wrong OAuth idToken: ${idToken}`);
+    res.status(400).json({ message: `Wrong OAuth idToken.` });
   }
 
-  userService.login(code as string)
+  userService.login(idToken!)
     .then(sessionId => res.json({ sessionId: sessionId }))
     .catch(err => {
       console.log(`Login failed: ${err}`);

@@ -35,6 +35,7 @@ class UserService {
   });
 
   private genSessionId(_seed: number): string {
+    // TODO Maybe use JWT
     return crypto.randomUUID();
   }
 
@@ -48,18 +49,15 @@ class UserService {
 
   }
 
-  private async getGoogleUser(code: string): Promise<User> {
-    const { tokens } = await this.ggClient.getToken(code);
-    if (!tokens.id_token) {
-      throw new Error(`Invalid Google OAuth ID token.`);
-    }
-
+  private async getGoogleUser(idToken: string): Promise<User> {
     const ticket = await this.ggClient.verifyIdToken({
-      idToken: tokens.id_token,
+      idToken: idToken,
       audience: env.google_client_id
+    }).catch(err => {
+      console.log(`idToken rejected: ${err}`);
     });
 
-    const payload = ticket.getPayload();
+    const payload = ticket!.getPayload();
     if (!payload) {
       throw new Error(`Invalid Google Account info.`);
     }
@@ -74,8 +72,8 @@ class UserService {
     }
   }
 
-  async login(code: string): Promise<string> {
-    const ggUser = await this.getGoogleUser(code);
+  async login(idToken: string): Promise<string> {
+    const ggUser = await this.getGoogleUser(idToken);
     const user = this.db.getOrCreate(ggUser.id, ggUser.name);
 
     const sessionId = this.genSessionId(0);
