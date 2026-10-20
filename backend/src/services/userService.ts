@@ -35,8 +35,7 @@ class UserService {
   });
 
   private genSessionId(_seed: number): string {
-    // TODO UUID
-    return "37";
+    return crypto.randomUUID();
   }
 
   private getUserBySessionId(sessionId: string): User {
@@ -124,7 +123,7 @@ class UserService {
 
 // HACK Move to user repo.
 class UserDB {
-  // TODO
+  // TODO The whole thing. Stub for now.
 
   create(id: string, name: Name, displayName?: string): User {
     return {
