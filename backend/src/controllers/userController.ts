@@ -5,9 +5,9 @@ export const userRouter = express.Router();
 
 export const userService = new UserService();
 
-userRouter.post('/login/callback', async (req, res) => {
+userRouter.get('/login', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code } = req.query;
     if (!code || typeof (code) !== 'string') {
       res.status(400).json({ message: `Wrong OAuth parameter: code: ${code}` });
       return;
