@@ -9,6 +9,7 @@ private const val GOOGLE_AUTH_ENDPOINT = "user/auth/google"
 
 interface AuthAPIService {
     @POST(GOOGLE_AUTH_ENDPOINT)
+    @Headers("Content-Type: application/json")
     suspend fun googleSignin(@Body body: GoogleSigninRequest) : Response<String>
 }
 
