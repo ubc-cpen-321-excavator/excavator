@@ -78,7 +78,7 @@ fun ButtonUI(authAPIService: AuthAPIService) {
 
                     displayMessage = if (tokenResponse.isSuccessful) {
                         // Can always expect a non-null body since server response is a placeholder value
-                        tokenResponse.body()!!
+                        tokenResponse.body()!!.sessionId
                     } else {
                         "Error: Code ${tokenResponse.code()}"
                     }
