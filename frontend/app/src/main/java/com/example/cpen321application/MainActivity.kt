@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
 
 
 //                    Greeting(
-//                        apiBaseUrl = BuildConfig.API_BASE_URL,
+//                 p       apiBaseUrl = BuildConfig.API_BASE_URL,
 //                        modifier = Modifier.padding(innerPadding)
 //                    )
                 }
@@ -118,7 +118,7 @@ fun GemCard(
         .fillMaxSize()
         .padding(16.dp)
     ) {
-        Text(text = gem.title, modifier = Modifier
+        Text(text = gem.name, modifier = Modifier
             .fillMaxSize()
             , textAlign = TextAlign.Center
         )

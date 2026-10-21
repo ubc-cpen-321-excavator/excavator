@@ -11,7 +11,10 @@ class GemRepositoryImpl : GemRepository {
 
         // Return dummy values for now
         return flow {
-            emit(listOf(Gem("Hello"), Gem("World")))
+            emit(listOf(
+                Gem("Sample Gem 1", 34.345, 43.435),
+                Gem("Sample Gem 2", 38.352, 49.452))
+            )
         }
     }
 
