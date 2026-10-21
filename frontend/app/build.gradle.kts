@@ -109,4 +109,8 @@ dependencies {
     implementation(libs.maps.compose)
 
     implementation(libs.googleid)
+
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+
 }
