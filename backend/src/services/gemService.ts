@@ -53,8 +53,15 @@ class GemService {
 
     const place = res[0];
 
-    if (!place.name || !place.location || !place.location.latitude || !place.location.longitude) {
-      return Promise.reject();
+    if (
+      place.name === undefined
+      || place.name === null
+      || place.location?.latitude === undefined
+      || place.location?.latitude === null
+      || place.location?.longitude === undefined
+      || place.location?.longitude === null
+    ) {
+      return Promise.reject(new Error('Invalid response from Google Map.'));
     }
 
     return new Place(place.name, place.location.latitude, place.location.longitude);
@@ -87,8 +94,8 @@ class GemRepo {
   }
 
   // HACK Stub.
-  getOrCreate(id: string, place?: Place): Gem {
-    return this.get(id) ?? this.create(id, place!);
+  getOrCreate(id: string, place: Place): Gem {
+    return this.get(id) ?? this.create(id, place);
   }
 
   // HACK
@@ -97,8 +104,7 @@ class GemRepo {
   }
 
   // HACK Stub.
-  set(name: string, gem: Gem): boolean {
-    const _ = [name, gem];
+  set(_name: string, _gem: Gem): boolean {
     return true;
   }
 

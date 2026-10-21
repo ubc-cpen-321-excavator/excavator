@@ -12,7 +12,7 @@ gemRouter.get('/get', (req, res) => {
     return;
   }
 
-  const gem = gemService.getGem(name as string);
+  const gem = gemService.getGem(name);
 
   if (!gem) {
     res.status(404).json({message: 'No such Gem.'});
