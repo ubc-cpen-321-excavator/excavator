@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "CPEN321 Application"
 include(":app")
+include(":domain")
+include(":data")

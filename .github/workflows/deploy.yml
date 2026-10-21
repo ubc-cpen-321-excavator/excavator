@@ -1,0 +1,53 @@
+name: Deploy to GCE
+
+on:
+  push:
+    branches: [main, develop, bren-cicd]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-gce
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy files to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "."
+          target: /home/${{ secrets.VM_USER }}/cpen321-project
+          rm: true
+
+      - name: Build and deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            set -e
+            cd ~/cpen321-project
+
+            # backend/.env is gitignored, so write it from repo secrets.
+            # MONGODB_URI is set by docker-compose.yml and must not be overridden here.
+            # Add new secrets here as the backend starts reading them (e.g. JWT_SECRET).
+            cat > backend/.env <<'EOF'
+            PORT=${{ secrets.PROD_PORT }}
+            NODE_ENV=production
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            EOF
+            chmod 600 backend/.env
+
+            docker compose down
+            docker compose up --build -d
+            docker image prune -f
