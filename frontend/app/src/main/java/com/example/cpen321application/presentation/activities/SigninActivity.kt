@@ -1,8 +1,7 @@
 package com.example.cpen321application.presentation.activities
 
-import android.content.Context
 import android.os.Bundle
-import android.util.Log
+
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,41 +9,27 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.cpen321application.BuildConfig
-import com.example.cpen321application.presentation.activities.ui.theme.CPEN321ApplicationTheme
 
-import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialCancellationException
-import androidx.credentials.exceptions.GetCredentialCustomException
-import androidx.credentials.exceptions.GetCredentialException
-import androidx.credentials.exceptions.NoCredentialException
 import com.example.cpen321application.R
-import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
+
 import com.example.cpen321application.utils.AuthAPIService
 import com.example.cpen321application.utils.AuthUtil
 import com.example.cpen321application.utils.GoogleSigninRequest
-import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+
 import dagger.hilt.android.AndroidEntryPoint
-import java.security.SecureRandom
-import java.util.Base64
-import kotlinx.coroutines.delay
+
 import kotlinx.coroutines.launch
-import java.net.ConnectException
+
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.milliseconds
+
 
 @AndroidEntryPoint
 class SigninActivity : ComponentActivity() {
@@ -77,7 +62,6 @@ fun ButtonUI(authAPIService: AuthAPIService) {
 
         coroutineScope.launch {
 
-
             authUtil.signIn(context)
 
             if (authUtil.idToken != null) {
@@ -101,7 +85,7 @@ fun ButtonUI(authAPIService: AuthAPIService) {
 
                     Toast.makeText(context, displayMessage, Toast.LENGTH_LONG).show()
 
-                }  catch (e: ConnectException) {
+                }  catch (e: java.io.IOException) {
                     Toast.makeText(context,
                         "Failed to connect to server. Please try again later",
                         Toast.LENGTH_SHORT)

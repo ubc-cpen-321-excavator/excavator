@@ -77,12 +77,11 @@ class AuthUtil {
                 idToken =  googleIdTokenCredential.idToken
 
                 Log.i(TAG, "Signed in as: ${googleIdTokenCredential.id}")
+                Toast.makeText(context, "Sign in successful!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Invalid Credential type", Toast.LENGTH_SHORT).show()
             }
 
-            // Perform logic here for successful signin
-
-
-            Toast.makeText(context, "Sign in successful!", Toast.LENGTH_SHORT).show()
             Log.i(TAG, "(☞ﾟヮﾟ)☞  Sign in Successful!  ☜(ﾟヮﾟ☜)")
             null
         } catch (e: GoogleIdTokenParsingException) {
