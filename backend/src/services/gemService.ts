@@ -1,68 +1,89 @@
 import { PlacesClient } from "@googlemaps/places";
 
-interface Place {
-  readonly id: string;
+class Place {
   readonly name: string;
-  readonly displayName?: string;
+  private displayName?: string;
+  readonly latitude: number;
+  readonly longitude: number;
+
+  constructor(name: string, latitude: number, longitude: number) {
+    this.name = name;
+    this.latitude = latitude;
+    this.longitude = longitude;
+  }
+
+  getDisplayName(): string {
+    return this.displayName ?? this.name;
+  }
+
+  setDisplayName(displayName: string): void {
+    this.displayName = displayName;
+  }
 }
 
 class Gem {
-  readonly id: string;
+  readonly name: string;
   readonly place: Place;
   protected score?: number;
   protected scoreTime?: number;
 
-  constructor(id: string, place: Place) {
-    this.id = id;
+  constructor(name: string, place: Place) {
+    this.name = name;
     this.place = place;
   }
 
-  setScore(newScore: number) {
+  setScore(newScore: number): void {
     this.score = newScore;
     this.scoreTime = Date.now();
   }
 }
 
 class GemService {
-  private db: GemDB = new GemDB();
+  private repo: GemRepo = new GemRepo();
   private gpClient: PlacesClient = new PlacesClient();
-
 
   private genGemId(): string {
     return crypto.randomUUID();
   }
 
-  // TODO
-  private async getPlaceByName(name: string): Promise<Place> {
-    const req = {
-      name: name
-    };
+  private async getPlace(name: string): Promise<Place> {
+    const req = { name };
 
-    const _res = await this.gpClient.getPlace(req);
+    const res = await this.gpClient.getPlace(req);
 
-    return Promise.reject();
+    const place = res[0];
+
+    if (!place.name || !place.location || !place.location.latitude || !place.location.longitude) {
+      return Promise.reject();
+    }
+
+    return new Place(place.name, place.location.latitude, place.location.longitude);
   }
 
-  getGemByPlace(place: Place): Gem | undefined {
-    return this.db.getByPlace(place);
+  getGem(name: string): Gem | undefined {
+    return this.repo.get(name);
   }
 
-  getGemByPlaceName(name: string): Gem | undefined {
-    return this.db.getByPlaceName(name);
+  addGem(gem: Gem): boolean {
+    if (this.repo.has(gem.name)) {
+      return false;
+    }
+
+    return this.repo.set(gem.name, gem);
   }
 }
 
 // HACK Stub for actual gem repo.
-class GemDB {
+class GemRepo {
 
   // HACK Stub.
-  create(id: string, place: Place): Gem {
-    return new Gem(id, place);
+  create(name: string, place: Place): Gem {
+    return new Gem(name, place);
   }
 
   // HACK Stub.
-  get(id: string): Gem | undefined {
-    return this.create(id, { id: '37', name: 'mitakihara' });
+  get(name: string): Gem | undefined {
+    return this.create(name, new Place('name/mitakihara', 0, 0));
   }
 
   // HACK Stub.
@@ -70,18 +91,18 @@ class GemDB {
     return this.get(id) ?? this.create(id, place!);
   }
 
+  // HACK
+  has(_name: string): boolean {
+    return false;
+  }
+
   // HACK Stub.
-  set(_id: string, _gem: Gem): boolean {
+  set(name: string, gem: Gem): boolean {
+    const _ = [name, gem];
     return true;
   }
 
-  // HACK Stub.
-  getByPlace(place: Place): Gem | undefined {
-    return this.create('37', place);
-  }
-
-  // HACK Stub.
-  getByPlaceName(name: string): Gem | undefined {
-    return this.create('37', { id: '37', name: name });
-  }
 }
+
+export default GemService
+
