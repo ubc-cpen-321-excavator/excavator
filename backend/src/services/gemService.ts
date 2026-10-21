@@ -42,29 +42,30 @@ class GemService {
   private repo: GemRepo = new GemRepo();
   private gpClient: PlacesClient = new PlacesClient();
 
-  private genGemId(): string {
-    return crypto.randomUUID();
-  }
-
   private async getPlace(name: string): Promise<Place> {
     const req = { name };
 
     const res = await this.gpClient.getPlace(req);
 
-    const place = res[0];
+    const gPlace = res[0];
 
     if (
-      place.name === undefined
-      || place.name === null
-      || place.location?.latitude === undefined
-      || place.location?.latitude === null
-      || place.location?.longitude === undefined
-      || place.location?.longitude === null
+      gPlace.name === undefined
+      || gPlace.name === null
+      || gPlace.location?.latitude === undefined
+      || gPlace.location?.latitude === null
+      || gPlace.location?.longitude === undefined
+      || gPlace.location?.longitude === null
     ) {
       return Promise.reject(new Error('Invalid response from Google Map.'));
     }
 
-    return new Place(place.name, place.location.latitude, place.location.longitude);
+    const place = new Place(gPlace.name, gPlace.location.latitude, gPlace.location.longitude);
+    if (gPlace.displayName?.text) {
+      place.setDisplayName(gPlace.displayName.text);
+    }
+
+    return place;
   }
 
   getGem(name: string): Gem | undefined {
