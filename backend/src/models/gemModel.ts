@@ -22,11 +22,12 @@ const gemSchema = new Schema({
   score: { type: Number },
   scoreTime: { type: Number }, // ms since epoch, same as Date.now()
   nicheness: { type: Number }, // From the nicheness API
-  popularity: { type: Number },
-  certainty: { type: Number }, // How confident we are in the score
+  quality: { type: Number },
 
   addedBy: { type: String }, // User id (Google sub) of the user who added the gem
 }, { timestamps: true });
+
+gemSchema.index({ name: 1 });
 
 // For map browsing and the nearby gems feed ($near / $geoWithin).
 gemSchema.index({ 'place.location': '2dsphere' });

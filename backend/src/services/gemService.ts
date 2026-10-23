@@ -6,6 +6,8 @@ class Place {
   private displayName?: string;
   readonly latitude: number;
   readonly longitude: number;
+  type?: string | undefined;
+  description?: string | undefined;
 
   constructor(name: string, latitude: number, longitude: number) {
     this.name = name;
@@ -22,42 +24,18 @@ class Place {
   }
 }
 
-interface GemInfo {
-  description?: string | undefined;
-  type?: string | undefined;
-  nicheness?: number | undefined;
-  popularity?: number | undefined;
-  certainty?: number | undefined;
-  addedBy?: string | undefined;
-}
-
 class Gem {
   readonly name: string;
   readonly place: Place;
-  info: GemInfo = {};
-  protected score?: number;
-  protected scoreTime?: number;
+  readonly addedBy?: string | undefined;
+  protected score?: number | undefined;
+  protected nicheness?: number | undefined;
+  protected quality?: number | undefined;
+  protected scoreTime?: number | undefined;
 
   constructor(name: string, place: Place) {
     this.name = name;
     this.place = place;
-  }
-
-  // Same shape as the frontend Gem (id, name, description, latitude, longitude) + extras.
-  toJSON() {
-    return {
-      id: this.name,
-      name: this.place.getDisplayName(),
-      description: this.info.description ?? '',
-      latitude: this.place.latitude,
-      longitude: this.place.longitude,
-      type: this.info.type,
-      score: this.score,
-      scoreTime: this.scoreTime,
-      nicheness: this.info.nicheness,
-      popularity: this.info.popularity,
-      certainty: this.info.certainty,
-    };
   }
 
   getScore(): number | undefined {
@@ -68,7 +46,7 @@ class Gem {
     return this.scoreTime;
   }
 
-  setScore(newScore: number, scoreTime: number = Date.now()): void {
+  setScore(newScore: number | undefined, scoreTime: number | undefined = Date.now()): void {
     this.score = newScore;
     this.scoreTime = scoreTime;
   }
@@ -113,7 +91,7 @@ class GemService {
       return false;
     }
 
-    return this.repo.set(gem.name, gem);
+    return this.repo.upsert(gem.name, gem);
   }
 }
 
@@ -160,14 +138,14 @@ function fromDoc(doc: GemDoc): Gem {
   }
 
   const gem = new Gem(doc.name, place);
-  gem.info = {
-    description: doc.description ?? undefined,
-    type: doc.type ?? undefined,
-    nicheness: doc.nicheness ?? undefined,
-    popularity: doc.popularity ?? undefined,
-    certainty: doc.certainty ?? undefined,
-    addedBy: doc.addedBy ?? undefined,
-  };
+  // TODO update
+  // gem.info = {
+  //   description: doc.description ?? undefined,
+  //   type: doc.type ?? undefined,
+  //   nicheness: doc.nicheness ?? undefined,
+  //   quality: doc.quality ?? undefined,
+  //   addedBy: doc.addedBy ?? undefined,
+  // };
   if (doc.score !== undefined && doc.score !== null) {
     gem.setScore(doc.score, doc.scoreTime ?? Date.now());
   }
@@ -197,7 +175,7 @@ class GemRepo {
   }
 
   // Insert or replace.
-  async set(name: string, gem: Gem): Promise<boolean> {
+  async upsert(name: string, gem: Gem): Promise<boolean> {
     const res = await GemModel.replaceOne({ name }, toDoc(gem), { upsert: true });
     return res.acknowledged;
   }
