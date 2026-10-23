@@ -1,5 +1,6 @@
 import express from "express";
 import GemService from "../services/gemService";
+import { alphnumDashOnly } from "../utils/trust";
 
 export const gemRouter = express.Router();
 
@@ -12,13 +13,18 @@ gemRouter.get('/get', (req, res) => {
     return;
   }
 
-  const gem = gemService.getGem(name);
+  gemService.getGem(name)
+    .then(gem => {
+      if (!gem) {
+        res.status(404).json({ message: 'No such Gem.' });
+        return;
+      }
 
-  if (!gem) {
-    res.status(404).json({message: 'No such Gem.'});
-    return;
-  }
-
-  res.json(gem);
+      res.json(gem);
+    })
+    .catch(err => {
+      console.log(`Get Gem failed: ${alphnumDashOnly(err)}`);
+      res.status(500).json({ message: 'Get Gem failed.' });
+    });
 });
 
