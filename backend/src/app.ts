@@ -4,7 +4,7 @@ import ipController from "./controllers/ipController";
 import nameController from "./controllers/nameController";
 import timeController from "./controllers/timeController";
 import { gemRouter } from './controllers/gemController';
-import { userRouter } from './controllers/userController';
+import { authRouter } from './controllers/authController';
 
 // import WebSocket from 'ws';
 
@@ -23,7 +23,7 @@ export function createApp(): Express {
 
   app.use('/gem', gemRouter);
 
-  app.use('/user', userRouter);
+  app.use('/user', authRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not Found' });

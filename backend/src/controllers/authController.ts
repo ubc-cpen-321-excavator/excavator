@@ -1,12 +1,12 @@
 import express from "express";
-import UserService from "../services/userService";
+import AuthService from "../services/authService";
 import { alphnumDashOnly } from "../utils/trust";
 
-export const userRouter = express.Router();
+export const authRouter = express.Router();
 
-export const userService = new UserService();
+export const authService = new AuthService();
 
-userRouter.post('/auth/google', async (req, res) => {
+authRouter.post('/google', async (req, res) => {
   if (!req.body) {
     res.status(400).json({ message: 'Invalid request.' });
     return;
@@ -19,7 +19,7 @@ userRouter.post('/auth/google', async (req, res) => {
     return;
   }
 
-  userService.login(idToken as string)
+  authService.login(idToken as string)
     .then(sessionId => res.json({ sessionId: sessionId }))
     .catch(err => {
       console.log(`Login failed: ${alphnumDashOnly(err)}`);

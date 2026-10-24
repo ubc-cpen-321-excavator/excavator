@@ -1,33 +1,34 @@
 import { OAuth2Client } from "google-auth-library";
 import { env } from '../config/env'
 import { alphnumDashOnly } from "../utils/trust";
+import { TimedEntry } from '../utils/struct'
 
-interface Name {
+type Name = {
   readonly full: string;
   readonly family?: string | undefined;
   readonly given?: string | undefined;
 }
 
-interface User {
+class User {
   readonly id: string;
   readonly name: Name;
-  displayName?: string | undefined;
-}
+  private displayName?: string | undefined;
 
-class TimedEntry<T> {
-  value: T;
-  time: number = Date.now();
-
-  constructor(value: T) {
-    this.value = value;
+  constructor(id: string, name: Name) {
+    this.id = id;
+    this.name = name;
   }
 
-  heartbeat(): void {
-    this.time = Date.now();
+  getDisplayName(): string {
+    return this.displayName ?? this.name.full;
+  }
+
+  setDisplayName(displayName: string): void {
+    this.displayName = displayName;
   }
 }
 
-class UserService {
+class AuthService {
   private sessions: Map<string, TimedEntry<User>> = new Map<string, TimedEntry<User>>();
   private db: UserDB = new UserDB();
   private ggClient = new OAuth2Client({
@@ -63,14 +64,14 @@ class UserService {
       throw new Error(`Invalid Google Account info.`);
     }
 
-    return {
-      id: payload.sub, // requires 'openid' in client req. scope
-      name: {
+    return new User(
+      payload.sub, // requires 'openid' in client req. scope
+      {
         full: payload.name as string, // requires 'profile' in client req. scope
         family: payload.family_name,
         given: payload.given_name,
       }
-    }
+    )
   }
 
   async login(idToken: string): Promise<string> {
@@ -99,25 +100,20 @@ class UserService {
   }
 
   getDisplayName(sessionId: string): string | undefined {
-    return this.getUserBySessionId(sessionId).displayName;
+    return this.getUserBySessionId(sessionId).getDisplayName();
   }
 
   getOrCreateDisplayName(sessionId: string): string {
     const user = this.getUserBySessionId(sessionId);
 
-    if (!user.displayName) {
-      const displayName = `${user.name.given} ${user.name.family}`;
-      this.db.set(user.id, { ...user, displayName: displayName });
-      return displayName;
-    }
-
-    return user.displayName;
+    return user.getDisplayName();
   }
 
   setDisplayName(sessionId: string, displayName: string): void {
     const user = this.getUserBySessionId(sessionId);
+    user.setDisplayName(displayName);
 
-    this.db.set(user.id, { ...user, displayName });
+    this.db.set(user.id, user);
   }
 }
 
@@ -126,11 +122,12 @@ class UserDB {
 
   // HACK Stub.
   create(id: string, name: Name, displayName?: string): User {
-    return {
-      id,
-      name,
-      displayName
-    };
+    const user = new User(id, name);
+    if (displayName !== undefined) {
+      user.setDisplayName(displayName);
+    }
+
+    return user;
   }
 
   // HACK Stub.
@@ -149,5 +146,5 @@ class UserDB {
   }
 }
 
-export default UserService
+export default AuthService
 
