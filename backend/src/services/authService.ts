@@ -2,6 +2,18 @@ import { OAuth2Client } from "google-auth-library";
 import { env } from '../config/env'
 import { alphnumDashOnly } from "../utils/trust";
 import { TimedEntry } from '../utils/struct'
+import type { Request, Response, NextFunction } from 'express';
+
+const SESSION_TIMEOUT: number = 5 * 60 * 1000;
+const BEARER_PREFIX: string = 'Bearer ';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
+}
 
 type Name = {
   readonly full: string;
@@ -36,7 +48,6 @@ class AuthService {
     clientSecret: env.google_client_secret,
   });
 
-  // TODO Use JWT later
   private genSessionId(_seed: number): string {
     return crypto.randomUUID();
   }
@@ -92,8 +103,7 @@ class AuthService {
     this.sessions.get(sessionId)?.heartbeat();
   }
 
-  // TODO Review after JWT
-  sweep(olderThan: number): void {
+  sweep(olderThan: number = SESSION_TIMEOUT): void {
     const now = Date.now();
     const elders = [...this.sessions].filter(([_sid, en]) => (en.time + olderThan) < now).map(([sid, _en]) => sid)
     elders.forEach(sid => this.sessions.delete(sid))
@@ -114,6 +124,33 @@ class AuthService {
     user.setDisplayName(displayName);
 
     this.db.set(user.id, user);
+  }
+
+  reqLogin(req: Request, res: Response, next: NextFunction): void {
+    const auth = req.headers.authorization;
+
+    if (!auth?.startsWith(BEARER_PREFIX)) {
+      res.status(401).json({ message: 'Unauthorized request.' });
+      return;
+    }
+
+    const sessionId = auth.slice(BEARER_PREFIX.length).trim();
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      res.status(401).json({ message: 'Invalid session.' });
+      return;
+    }
+    if ((session.time + SESSION_TIMEOUT) > Date.now()) {
+      this.sessions.delete(sessionId);
+      res.status(401).json({ message: 'Session timed out, please login again.' });
+      return;
+    }
+
+    session.heartbeat();
+
+    req.user = session.value;
+
+    next();
   }
 }
 
