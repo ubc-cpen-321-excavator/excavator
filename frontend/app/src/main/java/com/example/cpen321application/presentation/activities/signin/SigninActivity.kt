@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities
+package com.example.cpen321application.presentation.activities.signin
 
 import android.os.Bundle
 
@@ -27,6 +27,7 @@ import com.example.cpen321application.utils.GoogleSigninRequest
 import dagger.hilt.android.AndroidEntryPoint
 
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 import javax.inject.Inject
 
@@ -85,7 +86,7 @@ fun ButtonUI(authAPIService: AuthAPIService) {
 
                     Toast.makeText(context, displayMessage, Toast.LENGTH_LONG).show()
 
-                }  catch (e: java.io.IOException) {
+                }  catch (e: IOException) {
                     Toast.makeText(context,
                         "Failed to connect to server. Please try again later",
                         Toast.LENGTH_SHORT)
