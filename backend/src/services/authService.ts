@@ -140,7 +140,7 @@ class AuthService {
       res.status(401).json({ message: 'Invalid session.' });
       return;
     }
-    if ((session.time + SESSION_TIMEOUT) > Date.now()) {
+    if ((session.time + SESSION_TIMEOUT) < Date.now()) {
       this.sessions.delete(sessionId);
       res.status(401).json({ message: 'Session timed out, please login again.' });
       return;
