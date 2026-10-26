@@ -4,7 +4,6 @@ import { alphnumDashOnly } from "../utils/trust";
 import { TimedEntry } from '../utils/struct'
 import type { Request, Response, NextFunction } from 'express';
 
-const SESSION_TIMEOUT: number = 5 * 60 * 1000;
 const BEARER_PREFIX: string = 'Bearer ';
 
 declare global {
@@ -41,28 +40,24 @@ class User {
 }
 
 class AuthService {
-  private sessions: Map<string, TimedEntry<User>> = new Map<string, TimedEntry<User>>();
-  private db: UserDB = new UserDB();
+  private repo: UserRepo = new UserRepo();
   private ggClient = new OAuth2Client({
     clientId: env.google_client_id,
     clientSecret: env.google_client_secret,
   });
 
-  private genSessionId(_seed: number): string {
+  protected sessions: Map<string, TimedEntry<User>> = new Map<string, TimedEntry<User>>();
+  protected sessionTimeout: number;
+
+  constructor(sessionTimeout: number = 5 * 60 * 1000) {
+    this.sessionTimeout = sessionTimeout;
+  }
+
+  private genSessionId(): string {
     return crypto.randomUUID();
   }
 
-  private getUserBySessionId(sessionId: string): User {
-    const user = this.sessions.get(sessionId)?.value
-    if (!user) {
-      throw new Error(`Invalid session: ${alphnumDashOnly(sessionId)}`);
-    }
-
-    return user;
-
-  }
-
-  private async getGoogleUser(idToken: string): Promise<User> {
+  private async getUserFromGoogle(idToken: string): Promise<User> {
     const ticket = await this.ggClient.verifyIdToken({
       idToken,
       audience: env.google_client_id
@@ -86,10 +81,10 @@ class AuthService {
   }
 
   async login(idToken: string): Promise<string> {
-    const ggUser = await this.getGoogleUser(idToken);
-    const user = this.db.getOrCreate(ggUser.id, ggUser.name);
+    const ggUser = await this.getUserFromGoogle(idToken);
+    const user = this.repo.getOrCreate(ggUser.id, ggUser.name);
 
-    const sessionId = this.genSessionId(0);
+    const sessionId = this.genSessionId();
     this.sessions.set(sessionId, new TimedEntry(user));
 
     return sessionId;
@@ -103,27 +98,10 @@ class AuthService {
     this.sessions.get(sessionId)?.heartbeat();
   }
 
-  sweep(olderThan: number = SESSION_TIMEOUT): void {
+  sweep(olderThan: number = this.sessionTimeout): void {
     const now = Date.now();
     const elders = [...this.sessions].filter(([_sid, en]) => (en.time + olderThan) < now).map(([sid, _en]) => sid)
     elders.forEach(sid => this.sessions.delete(sid))
-  }
-
-  getDisplayName(sessionId: string): string | undefined {
-    return this.getUserBySessionId(sessionId).getDisplayName();
-  }
-
-  getOrCreateDisplayName(sessionId: string): string {
-    const user = this.getUserBySessionId(sessionId);
-
-    return user.getDisplayName();
-  }
-
-  setDisplayName(sessionId: string, displayName: string): void {
-    const user = this.getUserBySessionId(sessionId);
-    user.setDisplayName(displayName);
-
-    this.db.set(user.id, user);
   }
 
   reqLogin(req: Request, res: Response, next: NextFunction): void {
@@ -140,7 +118,7 @@ class AuthService {
       res.status(401).json({ message: 'Invalid session.' });
       return;
     }
-    if ((session.time + SESSION_TIMEOUT) < Date.now()) {
+    if ((session.time + this.sessionTimeout) < Date.now()) {
       this.sessions.delete(sessionId);
       res.status(401).json({ message: 'Session timed out, please login again.' });
       return;
@@ -155,7 +133,7 @@ class AuthService {
 }
 
 // HACK Stub for actual user repo.
-class UserDB {
+class UserRepo {
 
   // HACK Stub.
   create(id: string, name: Name, displayName?: string): User {
