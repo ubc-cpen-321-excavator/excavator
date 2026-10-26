@@ -33,9 +33,26 @@ class Gem {
   protected quality?: number | undefined;
   protected scoreTime?: number | undefined;
 
-  constructor(name: string, place: Place) {
+  constructor(name: string, place: Place, addedBy?: string) {
     this.name = name;
     this.place = place;
+    this.addedBy = addedBy;
+  }
+
+  getNicheness(): number | undefined {
+    return this.nicheness;
+  }
+
+  setNicheness(nicheness: number | undefined): void {
+    this.nicheness = nicheness;
+  }
+
+  getQuality(): number | undefined {
+    return this.quality;
+  }
+
+  setQuality(quality: number | undefined): void {
+    this.quality = quality;
   }
 
   getScore(): number | undefined {
@@ -111,17 +128,16 @@ function toDoc(gem: Gem): GemInput {
       displayName: place.getDisplayName(),
       location: { type: 'Point', coordinates: [place.longitude, place.latitude] },
     },
-    ...definedOnly(gem.info),
+    ...definedOnly({
+      description: place.description,
+      type: place.type,
+      score: gem.getScore(),
+      scoreTime: gem.getScoreTime(),
+      nicheness: gem.getNicheness(),
+      quality: gem.getQuality(),
+      addedBy: gem.addedBy,
+    }),
   };
-
-  const score = gem.getScore();
-  const scoreTime = gem.getScoreTime();
-  if (score !== undefined) {
-    doc.score = score;
-  }
-  if (scoreTime !== undefined) {
-    doc.scoreTime = scoreTime;
-  }
 
   return doc;
 }
@@ -136,16 +152,12 @@ function fromDoc(doc: GemDoc): Gem {
   if (doc.place.displayName) {
     place.setDisplayName(doc.place.displayName);
   }
+  place.type = doc.type ?? undefined;
+  place.description = doc.description ?? undefined;
 
-  const gem = new Gem(doc.name, place);
-  // TODO update
-  // gem.info = {
-  //   description: doc.description ?? undefined,
-  //   type: doc.type ?? undefined,
-  //   nicheness: doc.nicheness ?? undefined,
-  //   quality: doc.quality ?? undefined,
-  //   addedBy: doc.addedBy ?? undefined,
-  // };
+  const gem = new Gem(doc.name, place, doc.addedBy ?? undefined);
+  gem.setNicheness(doc.nicheness ?? undefined);
+  gem.setQuality(doc.quality ?? undefined);
   if (doc.score !== undefined && doc.score !== null) {
     gem.setScore(doc.score, doc.scoreTime ?? Date.now());
   }
@@ -181,6 +193,8 @@ class GemRepo {
   }
 
 }
+
+export { Gem, Place };
 
 export default GemService
 

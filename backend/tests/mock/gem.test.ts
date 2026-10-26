@@ -56,8 +56,8 @@ describe('Mocked: GET /gem/get', () => {
   // Mocked behavior: GemModel.findOne returns a stored gem document with all fields
   // Input: GET request to /gem/get?name=places/abc
   // Expected status code: 200
-  // Expected behavior: document is mapped to the frontend Gem shape ([lng, lat] -> latitude / longitude)
-  // Expected output: { id, name, description, latitude, longitude, type, score, scoreTime, nicheness, popularity, certainty }
+  // Expected behavior: document is mapped back to a Gem ([lng, lat] -> latitude / longitude)
+  // Expected output: the Gem with its place (incl. type, description), addedBy, score, scoreTime, nicheness and quality
   test('Existing gem', async () => {
     mockFindOne(Promise.resolve({
       name: 'places/abc',
@@ -71,8 +71,7 @@ describe('Mocked: GET /gem/get', () => {
       score: 87,
       scoreTime: 1761000000000,
       nicheness: 0.9,
-      popularity: 0.2,
-      certainty: 0.6,
+      quality: 0.8,
       addedBy: 'google-sub-123',
     }));
 
@@ -80,25 +79,28 @@ describe('Mocked: GET /gem/get', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      id: 'places/abc',
-      name: 'Mitakihara Cafe',
-      description: 'Quiet cafe behind the library.',
-      latitude: 49.26,
-      longitude: -123.25,
-      type: 'cafe',
+      name: 'places/abc',
+      place: {
+        name: 'places/abc',
+        displayName: 'Mitakihara Cafe',
+        latitude: 49.26,
+        longitude: -123.25,
+        type: 'cafe',
+        description: 'Quiet cafe behind the library.',
+      },
+      addedBy: 'google-sub-123',
       score: 87,
       scoreTime: 1761000000000,
       nicheness: 0.9,
-      popularity: 0.2,
-      certainty: 0.6,
+      quality: 0.8,
     });
   });
 
   // Mocked behavior: GemModel.findOne returns a stored gem with only required fields
   // Input: GET request to /gem/get?name=places/bare
   // Expected status code: 200
-  // Expected behavior: missing optional fields are left out; description defaults to ""; name falls back to place name
-  // Expected output: { id, name, description: "", latitude, longitude }
+  // Expected behavior: missing optional fields are left out
+  // Expected output: { name, place: { name, latitude, longitude } }
   test('Existing gem without optional fields', async () => {
     mockFindOne(Promise.resolve({
       name: 'places/bare',
@@ -112,11 +114,12 @@ describe('Mocked: GET /gem/get', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      id: 'places/bare',
       name: 'places/bare',
-      description: '',
-      latitude: 20,
-      longitude: 10,
+      place: {
+        name: 'places/bare',
+        latitude: 20,
+        longitude: 10,
+      },
     });
   });
 

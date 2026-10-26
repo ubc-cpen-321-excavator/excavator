@@ -18,16 +18,14 @@ const gemSchema = new Schema({
   description: { type: String },
   type: { type: String }, // Google Places primary type, e.g. "cafe"
 
-  // GemScore is a weighted score of nicheness, certainty, popularity, ...
+  // GemScore is a weighted score of nicheness, quality, ...
   score: { type: Number },
   scoreTime: { type: Number }, // ms since epoch, same as Date.now()
   nicheness: { type: Number }, // From the nicheness API
-  quality: { type: Number },
+  quality: { type: Number }, // Review quality from Google Places
 
   addedBy: { type: String }, // User id (Google sub) of the user who added the gem
 }, { timestamps: true });
-
-gemSchema.index({ name: 1 });
 
 // For map browsing and the nearby gems feed ($near / $geoWithin).
 gemSchema.index({ 'place.location': '2dsphere' });
