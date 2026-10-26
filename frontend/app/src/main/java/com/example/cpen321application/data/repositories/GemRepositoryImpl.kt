@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.update
+import kotlin.math.min
 
 class GemRepositoryImpl : GemRepository {
 
@@ -30,6 +32,7 @@ class GemRepositoryImpl : GemRepository {
     override suspend fun getNewestGems(numGems: UInt): Flow<List<Gem>> {
         return gems
             .map { gems -> gems.sortedByDescending { it.dateTimeCreated } }
+            .take(min(numGems.toInt(),gems.value.size))
     }
 
     override suspend fun addGem(gem: Gem) {
