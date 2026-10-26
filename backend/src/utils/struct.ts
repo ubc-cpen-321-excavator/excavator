@@ -1,8 +1,9 @@
 export class TimedEntry<T> {
   value: T;
-  time: number = Date.now();
+  time: number;
 
   constructor(value: T) {
+    this.time = Date.now();
     this.value = value;
   }
 

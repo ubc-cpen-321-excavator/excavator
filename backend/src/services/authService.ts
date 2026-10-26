@@ -14,12 +14,18 @@ declare global {
   }
 }
 
+/**
+ * Do not assume one has so-called 'family' or 'given' name parts, or if they do, the preferred ordering.
+ */
 type Name = {
   readonly full: string;
   readonly family?: string | undefined;
   readonly given?: string | undefined;
 }
 
+/**
+ * Our own in-memory user, not Google user or DB schema.
+ */
 class User {
   readonly id: string;
   readonly name: Name;
@@ -39,16 +45,21 @@ class User {
   }
 }
 
+/**
+ * Singleton service, holds its own cofigurations.
+ */
 class AuthService {
+  private sessions: Map<string, TimedEntry<User>> = new Map<string, TimedEntry<User>>();
+  private sessionTimeout: number;
   private repo: UserRepo = new UserRepo();
   private ggClient = new OAuth2Client({
     clientId: env.google_client_id,
     clientSecret: env.google_client_secret,
   });
 
-  protected sessions: Map<string, TimedEntry<User>> = new Map<string, TimedEntry<User>>();
-  protected sessionTimeout: number;
-
+  /**
+   * @param [sessionTimeout=5 * 60 * 1000] in miliseconds.
+   */
   constructor(sessionTimeout: number = 5 * 60 * 1000) {
     this.sessionTimeout = sessionTimeout;
   }
@@ -80,6 +91,13 @@ class AuthService {
     )
   }
 
+  /**
+   * Logs a user in with Google.
+   *
+   * @requires A valid Google OAuth session be initiated elsewhere.
+   * @param idToken from Google.
+   * @returns session ID.
+   */
   async login(idToken: string): Promise<string> {
     const ggUser = await this.getUserFromGoogle(idToken);
     const user = this.repo.getOrCreate(ggUser.id, ggUser.name);
@@ -90,21 +108,35 @@ class AuthService {
     return sessionId;
   }
 
+  /**
+   * Logs a user out.
+   *
+   * @returns if such a user session was deleted.
+   */
   logout(sessionId: string): boolean {
     return this.sessions.delete(sessionId);
   }
 
-  heartbeat(sessionId: string): void {
-    this.sessions.get(sessionId)?.heartbeat();
-  }
-
+  /**
+   * Delete all sessions older than some age.
+   * @param [olderThan=this.sessionTimeout] in miliseconds.
+   */
   sweep(olderThan: number = this.sessionTimeout): void {
     const now = Date.now();
     const elders = [...this.sessions].filter(([_sid, en]) => (en.time + olderThan) < now).map(([sid, _en]) => sid)
     elders.forEach(sid => this.sessions.delete(sid))
   }
 
-  reqLogin(req: Request, res: Response, next: NextFunction): void {
+  /**
+   * Express middleware that requires an existing session.
+   * If a session does exist, populate `req.user`
+   *
+   * @requires request header to include
+   * ```http
+   * Authorization: Bearer <sessionId>
+   * ```
+   */
+  reqSession(req: Request, res: Response, next: NextFunction): void {
     const auth = req.headers.authorization;
 
     if (!auth?.startsWith(BEARER_PREFIX)) {
