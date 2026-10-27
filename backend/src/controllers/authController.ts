@@ -19,10 +19,12 @@ authRouter.post('/google', async (req, res) => {
     return;
   }
 
-  authService.login(idToken as string)
+  await authService.login(idToken)
     .then(sessionId => res.json({ sessionId: sessionId }))
     .catch(err => {
       console.log(`Login failed: ${alphnumDashOnly(err)}`);
       res.status(400).json({ message: `Login failed.` });
     });
+
+  return;
 });
