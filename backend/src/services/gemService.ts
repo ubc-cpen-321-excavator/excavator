@@ -33,6 +33,9 @@ class Gem {
   protected quality?: number | undefined;
   protected scoreTime?: number | undefined;
 
+  /**
+   * Does not validate the gem!
+   */
   constructor(name: string, place: Place, addedBy?: string) {
     this.name = name;
     this.place = place;
@@ -99,16 +102,46 @@ class GemService {
     return place;
   }
 
+  /**
+   * Makes a valid Gem, or rejects.
+   *
+   * @constructs `Gem`
+   */
+  private async newGem(name: string): Promise<Gem> {
+    // TODO lookup and get place, or reject
+    return Promise.reject(new Error('No such place.'));
+  }
+
   async getGem(name: string): Promise<Gem | undefined> {
     return this.repo.get(name);
   }
 
-  async addGem(gem: Gem): Promise<boolean> {
-    if (await this.repo.has(gem.name)) {
+  /**
+   * Validates and adds a Gem.
+   *
+   * @param name of a place, which is also the Gem's name.
+   * @param addedBy ID of user who is to add the Gem.
+   * @returns `Promise.reject()` if `name` is invalid, or `boolean` for if a Gem was actually added.
+   */
+  async addGem(name: string, addedBy: string): Promise<boolean> {
+    if (await this.repo.has(name)) {
       return false;
     }
 
-    return this.repo.upsert(gem.name, gem);
+    // TODO validate gem: maybe use newGem?
+    const gem = await this.newGem(name);
+    if (!gem) {
+      return Promise.reject(new Error('Invalid gem.'));
+    }
+
+    return this.repo.upsert(name, gem);
+  }
+
+  /**
+   * @requires the `name` to be valid and such gem exists.
+   */
+  async scoreGem(name: string) {
+    // TODO score the gem.
   }
 }
 
