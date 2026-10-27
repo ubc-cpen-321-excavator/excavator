@@ -9,34 +9,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.cpen321application.data.entities.Gem
+import com.example.cpen321application.presentation.viewmodels.GemGridEvent
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.rememberUpdatedMarkerState
 import dagger.hilt.android.AndroidEntryPoint
-import java.net.HttpURLConnection
-import java.net.URL
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 
 @AndroidEntryPoint
@@ -53,18 +42,18 @@ class MainActivity : ComponentActivity() {
                     GemList(modifier = Modifier.padding(innerPadding))
 
                     // To be refactored, simply here to try out the google maps features
-                    GoogleMap(
-                        modifier=Modifier.fillMaxSize(),
-                        cameraPositionState = rememberCameraPositionState {
-                            position= CameraPosition.fromLatLngZoom(coord, 10f)
-                        }
-                    ){
-                        Marker(
-                            state= rememberUpdatedMarkerState(position= coord),
-                            title="THIS IS A TITLE",
-                            snippet = "THIS IS A SNIPPET"
-                        )
-                    }
+//                    GoogleMap(
+//                        modifier=Modifier.fillMaxSize(),
+//                        cameraPositionState = rememberCameraPositionState {
+//                            position= CameraPosition.fromLatLngZoom(coord, 10f)
+//                        }
+//                    ){
+//                        Marker(
+//                            state= rememberUpdatedMarkerState(position= coord),
+//                            title="THIS IS A TITLE",
+//                            snippet = "THIS IS A SNIPPET"
+//                        )
+//                    }
 
 
 //                    Greeting(
@@ -89,19 +78,28 @@ fun GemList(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    GemListContent(uiState)
+    GemListContent(uiState, viewModel::onEvent)
 }
 
 @Composable
 fun GemListContent (
-    uiState: List<Gem>
+    uiState: List<Gem>,
+    onEvent: (GemGridEvent) -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
+
+        Button(
+            onClick = { onEvent(GemGridEvent.AddGem("New Gem from button")) })
+        {
+            Text("Add gem")
+        }
+
         LazyColumn() {
+
             items(uiState) { gem ->
                 GemCard(gem)
             }
@@ -118,49 +116,18 @@ fun GemCard(
         .fillMaxSize()
         .padding(16.dp)
     ) {
-        Text(text = gem.title, modifier = Modifier
-            .fillMaxSize()
-            , textAlign = TextAlign.Center
-        )
-    }
-}
+        Column() {
 
-// Keep for later in case, remove once retrofit
-// has been set up
-@Composable
-fun Greeting(apiBaseUrl: String, modifier: Modifier = Modifier) {
-    var statusText by remember { mutableStateOf("Checking backend at $apiBaseUrl/health...") }
+            Text(text = gem.title, modifier = Modifier
+                .fillMaxSize()
+                , textAlign = TextAlign.Center
+            )
 
-    LaunchedEffect(apiBaseUrl) {
-        statusText = fetchHealthStatus(apiBaseUrl)
-    }
-
-    Text(
-        text = statusText,
-        modifier = modifier
-    )
-}
-
-private suspend fun fetchHealthStatus(apiBaseUrl: String): String = withContext(Dispatchers.IO) {
-    val healthUrl = "${apiBaseUrl.trimEnd('/')}/health"
-    try {
-        val connection = (URL(healthUrl).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 5_000
-            readTimeout = 5_000
+            Text(text = gem.dateTimeCreated.toString(), modifier = Modifier
+                .fillMaxSize()
+                , textAlign = TextAlign.Center
+            )
         }
 
-        when (val code = connection.responseCode) {
-            HttpURLConnection.HTTP_OK -> {
-                val body = connection.inputStream.bufferedReader().use { it.readText() }
-                "Backend healthy ($healthUrl): $body"
-            }
-            else -> {
-                val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() }
-                "Backend error ($healthUrl): HTTP $code${errorBody?.let { " — $it" } ?: ""}"
-            }
-        }
-    } catch (e: Exception) {
-        "Backend unreachable ($healthUrl): ${e.message ?: e.javaClass.simpleName}"
     }
 }
