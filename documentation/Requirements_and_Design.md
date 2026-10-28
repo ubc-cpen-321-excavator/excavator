@@ -95,7 +95,8 @@
 ### **4.2. Databases**
 1. **Gems DB (MongoDB, `gems` collection)**
     - **Purpose**: Stores every gem in Excavator. Each gem holds its Google Places place (place ID, display name and location), its type and description, the user who added it, and its Gem Score together with the inputs the score is computed from (nicheness and review quality) and the time the score was last computed. The location is indexed for geospatial queries, so the discovery screen can load the gems around the user and the dashboard can show nearby gems. Gems are also indexed by type for filtering and by Gem Score for recommendations.
-2. ...
+2. **Users DB (MongoDB, `users` collection)**
+    - **Purpose**: Stores every Excavator user, keyed by their Google account ID. Each user holds their name from Google and the display name shown to other users. A user is created the first time they sign in with Google, and the same ID is what each gem stores as the user who added it.
 
 
 ### **4.3. External Modules**
