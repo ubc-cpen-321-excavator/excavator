@@ -48,6 +48,12 @@ fun DiscoveryMap(
             position = CameraPosition.fromLatLngZoom(coord, CAMERA_INIT_ZOOM_FACTOR)
         }
 
+        GemInfoSheetContent(
+            gem = selectedGem,
+            {showGemInfoSheet = it},
+            showGemInfoSheet
+        )
+
         GoogleMap (
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState
@@ -67,11 +73,7 @@ fun DiscoveryMap(
                 )
             }
 
-            GemInfoSheetContent(
-                gem = selectedGem,
-                {showGemInfoSheet = it},
-                showGemInfoSheet
-            )
+
 
         }
 
