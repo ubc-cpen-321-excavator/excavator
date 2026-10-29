@@ -4,6 +4,7 @@ import com.example.cpen321application.data.entities.Gem
 import com.example.cpen321application.domain.usecases.AddGemUseCase
 import com.example.cpen321application.domain.usecases.GetGemsUseCase
 import com.example.cpen321application.domain.usecases.GetNewestGemsUseCase
+import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +29,7 @@ class GemViewModel @Inject constructor(
 
     fun onEvent(event: GemGridEvent) {
         when (event) {
-            is GemGridEvent.AddGem -> addGem(event.title)
+            is GemGridEvent.AddGem -> addGem(event.title, event.coords)
         }
     }
 
@@ -40,13 +41,13 @@ class GemViewModel @Inject constructor(
         }
     }
 
-    private fun addGem(title: String) {
+    private fun addGem(title: String, coords: LatLng) {
         launch {
 
             // Store the result in a variable for now, later the result will be able to cover
             // failure cases.
             val result = addGemUseCase(
-                AddGemUseCase.Params(title)
+                AddGemUseCase.Params(title, coords)
             )
 
             if (result.isFailure) {
@@ -70,5 +71,5 @@ class GemViewModel @Inject constructor(
 }
 
 sealed class GemGridEvent {
-    data class AddGem(val title: String) : GemGridEvent()
+    data class AddGem(val title: String, val coords: LatLng) : GemGridEvent()
 }

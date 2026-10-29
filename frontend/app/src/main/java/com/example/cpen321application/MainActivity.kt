@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CPEN321ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    GemList(modifier = Modifier.padding(innerPadding))
+                   // GemList(modifier = Modifier.padding(innerPadding))
 
                     // To be refactored, simply here to try out the google maps features
 //                    GoogleMap(
@@ -72,64 +72,64 @@ class MainActivity : ComponentActivity() {
 // with GemList and GemList Content
 // This comment will be removed after documentation
 // has been written outlining frontend architecture
-@Composable
-fun GemList(
-    modifier: Modifier = Modifier,
-    viewModel: GemViewModel = hiltViewModel()
-) {
-    val uiState by viewModel.uiState.collectAsState()
+//@Composable
+//fun GemList(
+//    modifier: Modifier = Modifier,
+//    viewModel: GemViewModel = hiltViewModel()
+//) {
+//    val uiState by viewModel.uiState.collectAsState()
+//
+//    GemListContent(uiState, viewModel::onEvent)
+//}
 
-    GemListContent(uiState, viewModel::onEvent)
-}
+//@Composable
+//fun GemListContent (
+//    uiState: List<Gem>,
+//    onEvent: (GemGridEvent) -> Unit
+//) {
+//    Column(
+//        modifier = Modifier
+//            .fillMaxSize()
+//            .padding(16.dp)
+//    ) {
+//
+//        Button(
+//            onClick = { onEvent(GemGridEvent.AddGem("New Gem from button")) })
+//        {
+//            Text("Add gem")
+//        }
+//
+//        LazyColumn() {
+//
+//            items(uiState) { gem ->
+//                GemCard(gem)
+//            }
+//        }
+//    }
+//}
 
-@Composable
-fun GemListContent (
-    uiState: List<Gem>,
-    onEvent: (GemGridEvent) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-
-        Button(
-            onClick = { onEvent(GemGridEvent.AddGem("New Gem from button")) })
-        {
-            Text("Add gem")
-        }
-
-        LazyColumn() {
-
-            items(uiState) { gem ->
-                GemCard(gem)
-            }
-        }
-    }
-}
-
-@Composable
-fun GemCard(
-    gem: Gem,
-    modifier: Modifier = Modifier
-) {
-    Card(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp)
-    ) {
-        Column() {
-
-            Text(text = gem.title, modifier = Modifier
-                .fillMaxSize()
-                , textAlign = TextAlign.Center
-            )
-
-            Text(text = gem.dateTimeCreated.toString(), modifier = Modifier
-                .fillMaxSize()
-                , textAlign = TextAlign.Center
-            )
-        }
-
-    }
-}
+//@Composable
+//fun GemCard(
+//    gem: Gem,
+//    modifier: Modifier = Modifier
+//) {
+//    Card(modifier = Modifier
+//        .fillMaxSize()
+//        .padding(16.dp)
+//    ) {
+//        Column() {
+//
+//            Text(text = gem.title, modifier = Modifier
+//                .fillMaxSize()
+//                , textAlign = TextAlign.Center
+//            )
+//
+//            Text(text = gem.dateTimeCreated.toString(), modifier = Modifier
+//                .fillMaxSize()
+//                , textAlign = TextAlign.Center
+//            )
+//        }
+//
+//    }
+//}
 

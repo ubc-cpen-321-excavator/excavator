@@ -4,4 +4,5 @@
 
     <!-- Content Descriptions -->
     <string name="favorites_description">The favorites button</string>
+    <string name="title_activity_discovery">DiscoveryActivity</string>
 </resources>

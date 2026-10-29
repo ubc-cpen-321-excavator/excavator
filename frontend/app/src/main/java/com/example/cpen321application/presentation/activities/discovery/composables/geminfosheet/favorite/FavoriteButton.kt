@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities.discovery.composables.favorite
+package com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
