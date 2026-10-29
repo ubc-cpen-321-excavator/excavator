@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from "express";
-import CommentService, { InvalidCommentError, NoSuchGemError, isValidCommentBody } from "../services/commentService";
+import CommentService, { NoSuchGemError, isValidCommentBody } from "../services/commentService";
 import GemService, { gemNameFromPlaceId } from "../services/gemService";
+import { methodNotAllowed } from "../utils/http";
 import { alphnumDashOnly } from "../utils/trust";
 
 /** Route parameters inherited from the parent route `/gem/:pk`; `pk` is the Gem's place ID. */
@@ -75,10 +76,7 @@ export function createCommentRouter(gemService: GemService): express.Router {
       const comment = await commentService.addComment(gem, body);
       res.status(201).json(comment);
     } catch (err) {
-      if (err instanceof InvalidCommentError) {
-        res.status(400).json({ message: 'Invalid comment body.' });
-        return;
-      }
+      // The body was validated above, so the service's InvalidCommentError cannot happen here.
       if (err instanceof NoSuchGemError) {
         res.status(404).json({ message: 'No such Gem.' });
         return;
@@ -88,6 +86,8 @@ export function createCommentRouter(gemService: GemService): express.Router {
       res.status(500).json({ message: 'Add comment failed.' });
     }
   });
+
+  commentRouter.all('/', methodNotAllowed(['GET', 'POST']));
 
   return commentRouter;
 }

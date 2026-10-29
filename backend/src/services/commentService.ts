@@ -84,6 +84,10 @@ class CommentService {
   }
 
   /**
+   * Check-then-act: a Gem deleted between this check and the comment's insert would leave an
+   * orphan comment. Gems cannot be deleted yet; when they can (admin "Remove place"), deleting a
+   * Gem must also delete its comments.
+   *
    * @param gem Gem name, `places/<place ID>`.
    * @throws `NoSuchGemError` if no Gem has that name.
    */

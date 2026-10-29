@@ -1,5 +1,6 @@
 import express from "express";
 import UserService, { InvalidTokenError } from "../services/userService";
+import { methodNotAllowed } from "../utils/http";
 import { alphnumDashOnly } from "../utils/trust";
 
 /** Routes mounted at `/user`. */
@@ -14,7 +15,7 @@ export const userService = new UserService();
  * - 200 `{ sessionId }`: logged in.
  * - 400 `{ message: 'Invalid request.' }`: no JSON body.
  * - 400 `{ message: 'Wrong OAuth idToken.' }`: `idToken` is missing or not a string.
- * - 400 `{ message: 'Login failed.' }`: Google rejected the token.
+ * - 401 `{ message: 'Login failed.' }`: Google rejected the token.
  * - 500 `{ message: 'Login failed.' }`: database error.
  */
 userRouter.post('/auth/google', async (req, res) => {
@@ -35,6 +36,8 @@ userRouter.post('/auth/google', async (req, res) => {
     res.json({ sessionId: sessionId });
   } catch (err) {
     console.log(`Login failed: ${alphnumDashOnly(err)}`);
-    res.status(err instanceof InvalidTokenError ? 400 : 500).json({ message: `Login failed.` });
+    res.status(err instanceof InvalidTokenError ? 401 : 500).json({ message: `Login failed.` });
   }
 });
+
+userRouter.all('/auth/google', methodNotAllowed(['POST']));

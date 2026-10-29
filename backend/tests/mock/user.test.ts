@@ -70,7 +70,7 @@ describe('Mocked: POST /user/auth/google', () => {
 
   // Mocked behavior: Google rejects the token
   // Input: POST request with an invalid idToken
-  // Expected status code: 400
+  // Expected status code: 401
   // Expected behavior: the DB is not called
   // Expected output: { message: "Login failed." }
   test('Rejected token', async () => {
@@ -78,7 +78,7 @@ describe('Mocked: POST /user/auth/google', () => {
 
     const response = await request(createApp()).post('/user/auth/google').send({ idToken: 'bad-token' });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: 'Login failed.' });
     expect(mockedUserModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
@@ -96,5 +96,18 @@ describe('Mocked: POST /user/auth/google', () => {
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ message: 'Login failed.' });
+  });
+
+  // Mocked behavior: none
+  // Input: GET request to /user/auth/google
+  // Expected status code: 405
+  // Expected behavior: Google is not called; Allow is POST
+  // Expected output: { message: "Method not allowed." }
+  test('Unsupported method', async () => {
+    const response = await request(createApp()).get('/user/auth/google');
+
+    expect(response.status).toBe(405);
+    expect(response.headers.allow).toBe('POST');
+    expect(mockVerifyIdToken).not.toHaveBeenCalled();
   });
 });

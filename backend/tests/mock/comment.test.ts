@@ -118,6 +118,21 @@ describe('Mocked: GET /gem/:pk/comments', () => {
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ message: 'Get comments failed.' });
   });
+
+  // Mocked behavior: GemModel.exists rejects (e.g. DB unreachable) while checking the Gem
+  // Input: GET request to /gem/abc/comments
+  // Expected status code: 500, not 404
+  // Expected behavior: error is logged; comments are not read
+  // Expected output: { message: "Get comments failed." }
+  test('Database error while checking the Gem', async () => {
+    mockedGemModel.exists.mockRejectedValue(new Error('connection refused'));
+
+    const response = await request(createApp()).get('/gem/abc/comments');
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ message: 'Get comments failed.' });
+    expect(mockedCommentModel.find).not.toHaveBeenCalled();
+  });
 });
 
 // Interface POST /gem/:pk/comments
@@ -153,6 +168,7 @@ describe('Mocked: POST /gem/:pk/comments', () => {
     ['non-string body', { body: 37 }],
     ['blank body', { body: '   ' }],
     ['too long', { body: 'a'.repeat(1001) }],
+    ['control character', { body: 'bell\u0007' }],
   ])('Invalid body: %s', async (_label, payload) => {
     const req = request(createApp()).post('/gem/abc/comments');
     const response = payload === undefined ? await req : await req.send(payload);
@@ -204,5 +220,20 @@ describe('Mocked: POST /gem/:pk/comments', () => {
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ message: 'Add comment failed.' });
+  });
+
+  // Mocked behavior: GemModel.exists rejects (e.g. DB unreachable) while checking the Gem
+  // Input: POST request to /gem/abc/comments with a valid body
+  // Expected status code: 500, not 404
+  // Expected behavior: error is logged; nothing is stored
+  // Expected output: { message: "Add comment failed." }
+  test('Database error while checking the Gem', async () => {
+    mockedGemModel.exists.mockRejectedValue(new Error('connection refused'));
+
+    const response = await request(createApp()).post('/gem/abc/comments').send({ body: 'hello' });
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ message: 'Add comment failed.' });
+    expect(mockedCommentModel.create).not.toHaveBeenCalled();
   });
 });
