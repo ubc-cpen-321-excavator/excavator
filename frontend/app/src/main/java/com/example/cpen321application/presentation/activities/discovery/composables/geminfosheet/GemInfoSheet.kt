@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities.discovery.composables
+package com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,22 +21,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cpen321application.data.entities.Gem
-import com.example.cpen321application.presentation.activities.discovery.composables.comments.CommentCardList
-import com.example.cpen321application.presentation.activities.discovery.composables.favorite.FavoriteButton
+import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.CommentCardList
+import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
 import java.util.Locale.getDefault
 
-@Composable
-fun GemInfoSheet() {
-
-    var showBottomSheet by remember { mutableStateOf(true) }
-
-    GemInfoSheetContent(
-        gem = Gem("Sample Gem Title"),
-        onShowChange = {showBottomSheet = it},
-        showBottomSheet = showBottomSheet
-    )
-
-}
+//@Composable
+//fun GemInfoSheet() {
+//
+//    var showBottomSheet by remember { mutableStateOf(true) }
+//
+//    GemInfoSheetContent(
+//        gem = Gem("Sample Gem Title"),
+//        onShowChange = {showBottomSheet = it},
+//        showBottomSheet = showBottomSheet
+//    )
+//
+//}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,14 +71,3 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
 
 }
 
-
-
-
-
-@Preview(showSystemUi = true)
-@Composable
-fun GemInfoSheetPreview(
-    modifier: Modifier = Modifier.fillMaxSize()
-) {
-    GemInfoSheet()
-}

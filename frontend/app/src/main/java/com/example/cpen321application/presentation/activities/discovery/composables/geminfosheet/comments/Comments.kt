@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities.discovery.composables.comments
+package com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
