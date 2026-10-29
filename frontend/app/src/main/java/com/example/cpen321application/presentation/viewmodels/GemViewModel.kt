@@ -6,11 +6,9 @@ import com.example.cpen321application.domain.usecases.GetGemsUseCase
 import com.example.cpen321application.domain.usecases.GetNewestGemsUseCase
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.single
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,9 +25,9 @@ class GemViewModel @Inject constructor(
         getGems()
     }
 
-    fun onEvent(event: GemGridEvent) {
+    fun onEvent(event: GemEvent) {
         when (event) {
-            is GemGridEvent.AddGem -> addGem(event.title, event.coords)
+            is GemEvent.AddGem -> addGem(event.title, event.coords)
         }
     }
 
@@ -70,6 +68,6 @@ class GemViewModel @Inject constructor(
     }
 }
 
-sealed class GemGridEvent {
-    data class AddGem(val title: String, val coords: LatLng) : GemGridEvent()
+sealed class GemEvent {
+    data class AddGem(val title: String, val coords: LatLng) : GemEvent()
 }
