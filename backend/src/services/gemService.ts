@@ -12,8 +12,11 @@ const PLACE_FIELD_MASK = 'id,name,displayName,location,primaryType,editorialSumm
 const GRPC_INVALID_ARGUMENT = 3;
 const GRPC_NOT_FOUND = 5;
 
-/** Google Places resource name, e.g. `places/ChIJN1t_tDeuEmsRUsoyG83frY4`. */
-const PLACE_NAME_PATTERN = /^places\/[A-Za-z0-9_-]{1,255}$/;
+/** Google Places place ID, e.g. `ChIJN1t_tDeuEmsRUsoyG83frY4`. */
+const PLACE_ID_PATTERN = /^[A-Za-z0-9_-]{1,255}$/;
+
+/** Prefix of a Google Places resource name; a Gem's name is this plus the place ID. */
+const PLACE_NAME_PREFIX = 'places/';
 
 /**
  * Checks that `name` is shaped like a Google Places resource name (`places/<place ID>`).
@@ -23,7 +26,22 @@ const PLACE_NAME_PATTERN = /^places\/[A-Za-z0-9_-]{1,255}$/;
  * @returns `true` if `name` is a string of the form `places/<place ID>`.
  */
 export function isValidGemName(name: unknown): name is string {
-  return typeof name === 'string' && PLACE_NAME_PATTERN.test(name);
+  return typeof name === 'string'
+    && name.startsWith(PLACE_NAME_PREFIX)
+    && PLACE_ID_PATTERN.test(name.slice(PLACE_NAME_PREFIX.length));
+}
+
+/**
+ * Turns a place ID from a URL (e.g. `:pk` in `/gem/:pk/comments`) into a Gem name.
+ * Gem names contain a slash, so URLs carry only the place ID.
+ *
+ * @param placeId value to convert, usually taken straight from a route parameter.
+ * @returns `places/<placeId>`, or `undefined` if `placeId` is not a valid place ID.
+ */
+export function gemNameFromPlaceId(placeId: unknown): string | undefined {
+  return typeof placeId === 'string' && PLACE_ID_PATTERN.test(placeId)
+    ? PLACE_NAME_PREFIX + placeId
+    : undefined;
 }
 
 /**
@@ -253,6 +271,20 @@ class GemService {
     }
 
     return this.repo.get(name);
+  }
+
+  /**
+   * Checks whether a Gem is stored, without loading it.
+   *
+   * @param name Gem name, `places/<place ID>`.
+   * @returns `true` if the Gem exists; `false` if not or if `name` is malformed (the DB is then not queried).
+   */
+  async hasGem(name: string): Promise<boolean> {
+    if (!isValidGemName(name)) {
+      return false;
+    }
+
+    return this.repo.has(name);
   }
 
   /**

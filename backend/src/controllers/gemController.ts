@@ -1,11 +1,15 @@
 import express from "express";
 import GemService, { InvalidPlaceError, isValidGemName } from "../services/gemService";
 import { alphnumDashOnly } from "../utils/trust";
+import { createCommentRouter } from "./commentController";
 
 /** Routes mounted at `/gem`. */
 export const gemRouter = express.Router();
 
 export const gemService = new GemService();
+
+/** Nested router: a Gem's comments at `/gem/:pk/comments`, where `pk` is the Gem's place ID. */
+gemRouter.use('/:pk/comments', createCommentRouter(gemService));
 
 /**
  * GET /gem?name=places/<place ID>
