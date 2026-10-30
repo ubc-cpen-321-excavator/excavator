@@ -1,8 +1,4 @@
 <resources>
     <string name="app_name">CPEN321 Application</string>
     <string name="title_activity_signin">SigninActivity</string>
-
-    <!-- Content Descriptions -->
-    <string name="favorites_description">The favorites button</string>
-    <string name="title_activity_discovery">DiscoveryActivity</string>
 </resources>

@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities.signin.theme
+package com.example.cpen321application.presentation.activities.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

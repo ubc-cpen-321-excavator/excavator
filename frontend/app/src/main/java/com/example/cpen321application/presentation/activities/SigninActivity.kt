@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities.signin
+package com.example.cpen321application.presentation.activities
 
 import android.os.Bundle
 
@@ -27,7 +27,6 @@ import com.example.cpen321application.utils.GoogleSigninRequest
 import dagger.hilt.android.AndroidEntryPoint
 
 import kotlinx.coroutines.launch
-import java.io.IOException
 
 import javax.inject.Inject
 
@@ -79,14 +78,14 @@ fun ButtonUI(authAPIService: AuthAPIService) {
 
                     displayMessage = if (tokenResponse.isSuccessful) {
                         // Can always expect a non-null body since server response is a placeholder value
-                        tokenResponse.body()!!.sessionId
+                        tokenResponse.body()!!
                     } else {
                         "Error: Code ${tokenResponse.code()}"
                     }
 
                     Toast.makeText(context, displayMessage, Toast.LENGTH_LONG).show()
 
-                }  catch (e: IOException) {
+                }  catch (e: java.io.IOException) {
                     Toast.makeText(context,
                         "Failed to connect to server. Please try again later",
                         Toast.LENGTH_SHORT)

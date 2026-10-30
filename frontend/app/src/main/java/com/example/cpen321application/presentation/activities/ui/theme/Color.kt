@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities.discovery.ui.theme
+package com.example.cpen321application.presentation.activities.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
