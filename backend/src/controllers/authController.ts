@@ -1,12 +1,12 @@
 import express from "express";
-import UserService from "../services/userService";
+import AuthService from "../services/authService";
 import { alphnumDashOnly } from "../utils/trust";
 
-export const userRouter = express.Router();
+export const authRouter = express.Router();
 
-export const userService = new UserService();
+export const authService = new AuthService();
 
-userRouter.post('/auth/google', async (req, res) => {
+authRouter.post('/google', async (req, res) => {
   if (!req.body) {
     res.status(400).json({ message: 'Invalid request.' });
     return;
@@ -15,14 +15,13 @@ userRouter.post('/auth/google', async (req, res) => {
   const { idToken } = req.body;
   if (!idToken || typeof (idToken) !== 'string') {
     console.log(`Wrong OAuth idToken: ${alphnumDashOnly(idToken)}`);
-    res.status(400).json({ message: `Wrong OAuth idToken.` });
-    return;
+    return res.status(400).json({ message: `Wrong OAuth idToken.` });
   }
 
-  userService.login(idToken as string)
-    .then(sessionId => res.json({ sessionId: sessionId }))
+  await authService.login(idToken)
+    .then(jwt => res.json({ jwt }))
     .catch(err => {
       console.log(`Login failed: ${alphnumDashOnly(err)}`);
-      res.status(400).json({ message: `Login failed.` });
+      return res.status(400).json({ message: `Login failed.` });
     });
 });
