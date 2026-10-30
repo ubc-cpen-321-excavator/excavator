@@ -24,7 +24,7 @@ fun GemCard(
             modifier = Modifier.padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // TODO: replace with AsyncImage when Gem has an image field and Coil is added
+            // TODO: replace with AsyncImage when Gem has an image field and Coil is added, tell claude AGP version and ask it to set it up
             Box(
                 modifier = Modifier
                     .size(96.dp)
