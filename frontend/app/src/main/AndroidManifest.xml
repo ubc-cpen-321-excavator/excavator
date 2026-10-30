@@ -26,7 +26,7 @@
             android:theme="@style/Theme.CPEN321Application">
         </activity>
         <activity
-            android:name=".presentation.activities.SigninActivity"
+            android:name=".presentation.activities.signin.SigninActivity"
             android:exported="true"
             android:label="@string/title_activity_signin"
             android:theme="@style/Theme.CPEN321Application"

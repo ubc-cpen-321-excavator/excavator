@@ -10,7 +10,7 @@
 
 ## 2. Project Description
 
-[WRITE_PROJECT_DESCRIPTION_HERE]
+Excavator is an app designed to let you find niche, high quality locations in your area, or hidden gems. The app features three main screens. A dashboard where users can see the latest gems, a discovery screen, where users can see all the gems in their area on a Google Maps-like screen, and the favorites screen, where users can see all the gems they have added to their favorites. Excavator features a special metric for each gem posted that is known as the Gem Score. The Gem Score, is a score computed from aggregated data from sources such as Google Places that includes data such as the number of reviews, average review quality, as well as Google Trends Data such as how much the place has been searched.
 
 ---
 
@@ -69,7 +69,7 @@
 ...
 
 ### **3.6. Screen Mock-ups**
-
+![Frontend Screens Diagram](images/frontend_screens_diagram.jpg)
 
 ### **3.7. Non-Functional Requirements**
 <a name="nfr1"></a>
@@ -111,10 +111,12 @@
         3. `int publishGemAdded(Gem gem)`
             - **Purpose**: Called by Gems after a gem is stored; sends it to every subscribed client in range and returns how many it was sent to. A failure here never fails adding the gem.
 3. **Users**
-    - **Purpose**: Signs users in with Google and keeps their sessions and profile (Google name and display name).
+    - **Purpose**: Signs users in with Google and keeps their profile (Google name and display name). After verifying the Google ID token, the server issues its own JSON Web Token (JWT), valid for 7 days, which the app sends as `Authorization: Bearer <token>`. A JWT was chosen over server-side sessions because it survives server restarts and needs no session store; the server still checks the user exists on every request.
     - **Interfaces**:
         1. `POST /user/auth/google { idToken }` → `{ sessionId }`
-            - **Purpose**: Signs in with a Google ID token, creating the user on their first sign-in.
+            - **Purpose**: Signs in with a Google ID token, creating the user on their first sign-in. `sessionId` holds the JWT.
+        2. `void reqJwt(Request req, Response res, NextFunction next)`
+            - **Purpose**: Express middleware for routes that need a signed-in user: checks the Bearer JWT, loads the user into `req.user`, and answers 401 otherwise.
 
 
 ### **4.2. Databases**
@@ -134,10 +136,15 @@
 
 
 ### **4.4. Frameworks and Libraries**
-1. **[WRITE_NAME_HERE]**
-    - **Purpose**: ...
-    - **Reason**: ...
-2. ...
+1. **Dagger Hilt**
+    - **Purpose**: Manages dependency injection automatically and in a centralized way.
+    - **Reason**: Easy management of dependencies and allows for easier implementation of fakes while the frontend waits for backend functionality.
+2. **Retrofit**
+   - **Purpose**: Allows the client app to make HTTP requests and receive HTTP responses from the backend
+   - **Reason**: Being able to define API requests as interfaces, combined with Dagger Hilt's dependency injection means that API calling capabilities become as simple as providing an interface as a dependency to another in-app component.
+3. **Google Maps**
+   - **Purpose**: Leverage Google Maps APIs to add in-app map capabilities
+   - **Reason**: The Discovery Screen portion of our app (where you can see Gems on the map) requires the Google Maps API so that users can see the Gems around them, and gems around the world.
 
 
 ### **4.5. Dependencies Diagram**

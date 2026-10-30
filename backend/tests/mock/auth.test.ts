@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
 import { createApp } from '../../src/app';
@@ -54,7 +55,7 @@ describe('Mocked: POST /user/auth/google', () => {
   // Input: POST request with a valid idToken
   // Expected status code: 200
   // Expected behavior: the user is upserted by googleId
-  // Expected output: { sessionId }
+  // Expected output: { sessionId } holding a JWT whose subject is the user's Google ID
   test('Valid token', async () => {
     mockVerifyIdToken.mockResolvedValue({ getPayload: () => ({ sub: 'google-sub-123', name: 'Sayaka Miki' }) });
     mockedUserModel.findOneAndUpdate.mockReturnValue({
@@ -65,6 +66,7 @@ describe('Mocked: POST /user/auth/google', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ sessionId: expect.any(String) });
+    expect(jwt.verify(response.body.sessionId, process.env.JWT_SECRET ?? '')).toMatchObject({ sub: 'google-sub-123' });
     expect(mockedUserModel.findOneAndUpdate.mock.calls[0][0]).toEqual({ googleId: 'google-sub-123' });
   });
 

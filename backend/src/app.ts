@@ -5,7 +5,7 @@ import nameController from "./controllers/nameController";
 import timeController from "./controllers/timeController";
 import { gemRouter } from './controllers/gemController';
 import { placeRouter } from './controllers/placeController';
-import { userRouter } from './controllers/userController';
+import { authRouter } from './controllers/authController';
 import { alphnumDashOnly } from './utils/trust';
 
 // import WebSocket from 'ws';
@@ -27,7 +27,7 @@ export function createApp(): Express {
 
   app.use('/place', placeRouter);
 
-  app.use('/user', userRouter);
+  app.use('/user', authRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not Found' });

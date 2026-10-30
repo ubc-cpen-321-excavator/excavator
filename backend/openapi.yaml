@@ -12,7 +12,8 @@ info:
     with an `Allow` header naming the supported ones. Malformed JSON bodies get **400** `{ message: "Invalid JSON." }`,
     and unexpected server errors get **500** `{ message: "Internal error." }`. Unknown paths get **404** `{ error: "Not Found" }`.
 
-    Authentication is not enforced yet: sessions from `POST /user/auth/google` are not required by any route.
+    Sign-in (`POST /user/auth/google`) returns a JWT in `sessionId`, valid for 7 days, to send as
+    `Authorization: Bearer <token>`. No route requires it yet.
 
     **Live feed.** New Gems are also pushed over a WebSocket at `ws://<server>/feed` (same port), which OpenAPI 3.0
     cannot describe. The client sends `{ "type": "subscribe", "latitude": 49.26, "longitude": -123.25, "radius": 5000 }`
@@ -336,7 +337,7 @@ paths:
                 type: object
                 required: [sessionId]
                 properties:
-                  sessionId: { type: string }
+                  sessionId: { type: string, description: 'A JWT for the Authorization Bearer header, valid for 7 days.' }
         '400':
           description: No JSON body, `idToken` missing or not a string, or the body is not valid JSON.
           content:
