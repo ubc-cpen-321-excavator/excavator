@@ -45,6 +45,7 @@ jobs:
             NODE_ENV=production
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY}}
             EOF
             chmod 600 backend/.env
 
