@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CPEN321ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    GemList(modifier = Modifier.padding(innerPadding))
+                    //GemList(modifier = Modifier.padding(innerPadding))
 
                     // To be refactored, simply here to try out the google maps features
 //                    GoogleMap(
@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
 // with GemList and GemList Content
 // This comment will be removed after documentation
 // has been written outlining frontend architecture
+/**
 @Composable
 fun GemList(
     modifier: Modifier = Modifier,
@@ -131,3 +132,4 @@ fun GemCard(
 
     }
 }
+        **/
