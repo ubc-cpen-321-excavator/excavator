@@ -14,6 +14,7 @@ import { toBounds, toIntInRange, toLatLng } from "../utils/geo";
 import { methodNotAllowed } from "../utils/http";
 import { alphnumDashOnly } from "../utils/trust";
 import { createCommentRouter } from "./commentController";
+import { feedService } from "./feedController";
 
 /** Routes mounted at `/gem`. */
 export const gemRouter = express.Router();
@@ -58,7 +59,8 @@ gemRouter.get('/', (req, res) => {
  * POST /gem with JSON body `{ name: 'places/<place ID>', latitude, longitude }`
  *
  * Adds the place as a Gem, after checking it exists on Google Places and is within
- * 200 m of the user. `latitude` / `longitude` are the user's current location. The new Gem is scored.
+ * 200 m of the user. `latitude` / `longitude` are the user's current location. The new Gem is scored
+ * and pushed to live-feed clients near it.
  * - 201 the new Gem, with a `Location` header pointing at `GET /gem?name=…`.
  * - 400 `{ message: 'Invalid place name.' }`: `name` is missing or not `places/<place ID>`.
  * - 400 `{ message: 'Invalid location.' }`: `latitude` / `longitude` missing or out of range.
@@ -84,6 +86,13 @@ gemRouter.post('/', async (req, res) => {
   try {
     // TODO reqSession, then fill user ID
     const gem = await gemService.addGem(name, '37', userLocation);
+
+    // The Gem is stored either way, so a feed failure must not fail the request.
+    try {
+      feedService.publishGemAdded(gem);
+    } catch (err) {
+      console.log(`Live feed publish failed: ${alphnumDashOnly(err)}`);
+    }
 
     res.status(201).location(`/gem?name=${encodeURIComponent(gem.name)}`).json(gem);
   } catch (err) {

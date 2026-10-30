@@ -13,6 +13,13 @@ info:
     and unexpected server errors get **500** `{ message: "Internal error." }`. Unknown paths get **404** `{ error: "Not Found" }`.
 
     Authentication is not enforced yet: sessions from `POST /user/auth/google` are not required by any route.
+
+    **Live feed.** New Gems are also pushed over a WebSocket at `ws://<server>/feed` (same port), which OpenAPI 3.0
+    cannot describe. The client sends `{ "type": "subscribe", "latitude": 49.26, "longitude": -123.25, "radius": 5000 }`
+    (radius optional, metres, max 50000; at most once a second) and gets `{ "type": "subscribed", ... }`, then
+    `{ "type": "gem.added", "gem": <Gem> }` for every Gem added within that radius. Invalid messages get
+    `{ "type": "error", "message": "..." }`. Messages over 1 KB close the connection; clients that stop answering
+    pings are dropped within 30–60 s. No session is required yet. See Requirements_and_Design.md section 4.1.
 servers:
   - url: http://localhost:3000
     description: Local development (PORT defaults to 3000)

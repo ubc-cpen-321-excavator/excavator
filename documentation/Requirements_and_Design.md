@@ -101,7 +101,16 @@
         7. `GET /place/nearby?lat&lng[&type]` → up to 20 places within 200 m, nearest first, each with `isGem`
             - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem; the app then sends its `name` to `POST /gem`.
     - Any other method on these paths gets 405 with an `Allow` header.
-2. **Users**
+2. **Live Feed**
+    - **Purpose**: Pushes newly added gems to the users near them as they happen, so other users' new gems appear on the map without refreshing. It runs as a WebSocket on the same server as the REST API. Each connected app tells the server where it is, and when a gem is added, the server sends it to every app whose area contains it. A WebSocket was chosen over polling because new gems should show up immediately and an idle connection costs almost nothing, while polling would mean many empty requests.
+    - **Interfaces**:
+        1. WebSocket `/feed`, client → server: `{ type: "subscribe", latitude, longitude, radius? }`; server → client: `{ type: "subscribed", latitude, longitude, radius }`
+            - **Purpose**: Starts listening for new gems within `radius` metres of the user (default 5000, max 50000). Sending it again moves the area, at most once a second. Invalid messages get `{ type: "error", message }` and the connection stays open.
+        2. WebSocket `/feed`, server → client: `{ type: "gem.added", gem }`
+            - **Purpose**: A gem was just added within the client's area; `gem` is the same gem JSON that `POST /gem` returns.
+        3. `int publishGemAdded(Gem gem)`
+            - **Purpose**: Called by Gems after a gem is stored; sends it to every subscribed client in range and returns how many it was sent to. A failure here never fails adding the gem.
+3. **Users**
     - **Purpose**: Signs users in with Google and keeps their sessions and profile (Google name and display name).
     - **Interfaces**:
         1. `POST /user/auth/google { idToken }` → `{ sessionId }`
