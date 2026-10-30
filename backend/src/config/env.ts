@@ -14,5 +14,7 @@ export const env = {
   port,
   mongodb_uri: process.env.MONGODB_URI ?? 'mongodb://localhost:27017/cpen321',
   google_client_id: process.env.GOOGLE_CLIENT_ID!,
-  google_client_secret: process.env.GOOGLE_CLIENT_SECRET!
+  google_client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+  // Google Places API (New) key. Without it, the Places client falls back to Application Default Credentials.
+  google_places_api_key: process.env.GOOGLE_PLACES_API_KEY || undefined,
 } as const;

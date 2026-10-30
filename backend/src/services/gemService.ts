@@ -1,4 +1,5 @@
 import { PlacesClient } from "@googlemaps/places";
+import { env } from "../config/env";
 import { GemModel, type GemDoc, type GemInput } from "../models/gemModel";
 import { definedOnly } from "../utils/defined";
 import { computeGemScore } from "../utils/gemScore";
@@ -301,7 +302,9 @@ export interface PlaceCandidate {
  */
 class GemService {
   private repo: GemRepo = new GemRepo();
-  private gpClient: PlacesClient = new PlacesClient();
+  private gpClient: PlacesClient = new PlacesClient(
+    env.google_places_api_key ? { apiKey: env.google_places_api_key } : {},
+  );
 
   /**
    * Looks up a place on Google Places.
