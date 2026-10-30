@@ -1,8 +1,8 @@
 import { OAuth2Client } from "google-auth-library";
 import { env } from '../config/env'
 import { alphnumDashOnly } from "../utils/trust";
-import { TimedEntry } from '../utils/struct'
 import type { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 
 const BEARER_PREFIX: string = 'Bearer ';
 
@@ -49,8 +49,7 @@ class User {
  * Singleton service, holds its own cofigurations.
  */
 class AuthService {
-  private sessions: Map<string, TimedEntry<User>> = new Map<string, TimedEntry<User>>();
-  private sessionTimeout: number;
+  private tokenTimeout: number;
   private repo: UserRepo = new UserRepo();
   private ggClient = new OAuth2Client({
     clientId: env.google_client_id,
@@ -58,14 +57,16 @@ class AuthService {
   });
 
   /**
-   * @param [sessionTimeout=5 * 60 * 1000] in miliseconds.
+   * @param [tokenTimeout=7 * 24 * 60 * 60 * 1000] in miliseconds.
    */
-  constructor(sessionTimeout: number = 5 * 60 * 1000) {
-    this.sessionTimeout = sessionTimeout;
+  constructor(tokenTimeout: number = 7 * 24 * 60 * 60 * 1000) {
+    this.tokenTimeout = tokenTimeout;
   }
 
-  private genSessionId(): string {
-    return crypto.randomUUID();
+  private genJwt(userId: string): string {
+    return jwt.sign(userId, env.jwt_secret, {
+      expiresIn: this.tokenTimeout
+    });
   }
 
   private async getUserFromGoogle(idToken: string): Promise<User> {
@@ -102,29 +103,7 @@ class AuthService {
     const ggUser = await this.getUserFromGoogle(idToken);
     const user = this.repo.getOrCreate(ggUser.id, ggUser.name);
 
-    const sessionId = this.genSessionId();
-    this.sessions.set(sessionId, new TimedEntry(user));
-
-    return sessionId;
-  }
-
-  /**
-   * Logs a user out.
-   *
-   * @returns if such a user session was deleted.
-   */
-  logout(sessionId: string): boolean {
-    return this.sessions.delete(sessionId);
-  }
-
-  /**
-   * Delete all sessions older than some age.
-   * @param [olderThan=this.sessionTimeout] in miliseconds.
-   */
-  sweep(olderThan: number = this.sessionTimeout): void {
-    const now = Date.now();
-    const elders = [...this.sessions].filter(([_sid, en]) => (en.time + olderThan) < now).map(([sid, _en]) => sid)
-    elders.forEach(sid => this.sessions.delete(sid))
+    return this.genJwt(user.id);
   }
 
   /**
@@ -136,7 +115,7 @@ class AuthService {
    * Authorization: Bearer <sessionId>
    * ```
    */
-  reqSession(req: Request, res: Response, next: NextFunction): void {
+  reqJwt(req: Request, res: Response, next: NextFunction): void {
     const auth = req.headers.authorization;
 
     if (!auth?.startsWith(BEARER_PREFIX)) {
@@ -144,23 +123,24 @@ class AuthService {
       return;
     }
 
-    const sessionId = auth.slice(BEARER_PREFIX.length).trim();
-    const session = this.sessions.get(sessionId);
-    if (!session) {
-      res.status(401).json({ message: 'Invalid session.' });
-      return;
-    }
-    if ((session.time + this.sessionTimeout) < Date.now()) {
-      this.sessions.delete(sessionId);
-      res.status(401).json({ message: 'Session timed out, please login again.' });
-      return;
-    }
+    const token = auth.slice(BEARER_PREFIX.length).trim();
 
-    session.heartbeat();
+    jwt.verify(token, env.jwt_secret, (err, userId) => {
+      if (err) {
+        return res.status(403).json({ message: 'Invalid token.' })
+      }
+      if (!userId || typeof (userId) !== 'string') {
+        return res.status(403).json({ message: 'Invalid user ID.' })
+      }
 
-    req.user = session.value;
+      const user = this.repo.get(userId);
+      if (!user) {
+        return res.status(403).json({ message: 'Nonexistent user.' })
+      }
 
-    next();
+      req.user = user;
+      next();
+    })
   }
 }
 
