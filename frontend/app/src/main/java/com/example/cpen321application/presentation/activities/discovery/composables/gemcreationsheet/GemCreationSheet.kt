@@ -91,7 +91,7 @@ fun GemCreationSheet(onShowChange: (Boolean)-> Unit, showBottomSheet: Boolean) {
 @Composable
 fun GemAttributeFilterChip(label: String, currentFilters: MutableObjectList<String>) {
 
-    var checked by remember { mutableStateOf(false) }
+    var checked by remember { mutableStateOf(label in currentFilters) }
 
     FilterChip(selected = checked, onClick = {
 
