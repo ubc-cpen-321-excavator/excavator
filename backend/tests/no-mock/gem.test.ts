@@ -4,12 +4,16 @@ import { createApp } from '../../src/app';
 import { GemModel } from '../../src/models/gemModel';
 import {
   DB_START_TIMEOUT_MS, DOWNTOWN, NEAR_UBC, SEED_SCORE_TIME, UBC,
-  clearDb, seedGem, startDb, stopDb,
+  clearDb, seedGem, seedUser, startDb, stopDb,
 } from '../helpers/db';
+import { TEST_USER_ID, bearer } from '../helpers/auth';
 
 beforeAll(startDb, DB_START_TIMEOUT_MS);
 afterAll(stopDb);
-beforeEach(clearDb);
+beforeEach(async () => {
+  await clearDb();
+  await seedUser();
+});
 
 /** Place IDs of the Gems in a list response, in order. */
 function names(body: { name: string }[]): string[] {
@@ -69,10 +73,22 @@ describe('Unmocked: POST /gem', () => {
     [{ name: 'cafe', ...UBC }, 'Invalid place name.'],
     [{ name: 'places/cafe' }, 'Invalid location.'],
   ])('Invalid request %p', async (body, message) => {
-    const response = await request(createApp()).post('/gem').send(body);
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send(body);
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ message });
+    expect(await GemModel.countDocuments()).toBe(0);
+  });
+
+  // Input: POST /gem with a valid body but no token
+  // Expected status code: 401
+  // Expected behavior: nothing is stored
+  // Expected output: { message: "Unauthorized request." }
+  test('Not signed in', async () => {
+    const response = await request(createApp()).post('/gem').send({ name: 'places/cafe', ...UBC });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message: 'Unauthorized request.' });
     expect(await GemModel.countDocuments()).toBe(0);
   });
 
@@ -83,7 +99,7 @@ describe('Unmocked: POST /gem', () => {
   test('Existing Gem', async () => {
     await seedGem('cafe', UBC, 82.2);
 
-    const response = await request(createApp()).post('/gem').send({ name: 'places/cafe', ...UBC });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: 'places/cafe', ...UBC });
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({ message: 'Gem already exists.' });
@@ -92,8 +108,8 @@ describe('Unmocked: POST /gem', () => {
   });
 });
 
-// These call the real Google Places API, so they run only when GOOGLE_PLACES_API_KEY is set.
-const describeWithPlaces = process.env.GOOGLE_PLACES_API_KEY ? describe : describe.skip;
+// These call the real Google Places API, so they run only when GOOGLE_API_KEY is set.
+const describeWithPlaces = process.env.GOOGLE_API_KEY ? describe : describe.skip;
 
 /** Google's own example place (Google Sydney), and a point next to it. */
 const GOOGLE_SYDNEY = 'places/ChIJN1t_tDeuEmsRUsoyG83frY4';
@@ -103,13 +119,13 @@ const AT_GOOGLE_SYDNEY = { latitude: -33.866971, longitude: 151.195875 };
 describeWithPlaces('Unmocked: POST /gem with Google Places', () => {
   // Input: POST /gem for Google Sydney, from next to it
   // Expected status code: 201
-  // Expected behavior: Google Places is asked for the place; the scored Gem is stored once
-  // Expected output: the new Gem, with Google's display name and a score from 0 to 100
+  // Expected behavior: Google Places is asked for the place; the scored Gem is stored once, added by the signed-in user
+  // Expected output: the new Gem, with Google's display name, a score from 0 to 100, and addedBy
   test('New Gem', async () => {
-    const response = await request(createApp()).post('/gem').send({ name: GOOGLE_SYDNEY, ...AT_GOOGLE_SYDNEY });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: GOOGLE_SYDNEY, ...AT_GOOGLE_SYDNEY });
 
     expect(response.status).toBe(201);
-    expect(response.body).toMatchObject({ name: GOOGLE_SYDNEY, place: { name: GOOGLE_SYDNEY } });
+    expect(response.body).toMatchObject({ name: GOOGLE_SYDNEY, place: { name: GOOGLE_SYDNEY }, addedBy: TEST_USER_ID });
     expect(response.body.place.displayName).toEqual(expect.any(String));
     expect(response.body.score).toBeGreaterThanOrEqual(0);
     expect(response.body.score).toBeLessThanOrEqual(100);
@@ -121,7 +137,7 @@ describeWithPlaces('Unmocked: POST /gem with Google Places', () => {
   // Expected behavior: nothing is stored
   // Expected output: { message: "Too far from place." }
   test('Too far from place', async () => {
-    const response = await request(createApp()).post('/gem').send({ name: GOOGLE_SYDNEY, ...UBC });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: GOOGLE_SYDNEY, ...UBC });
 
     expect(response.status).toBe(422);
     expect(response.body).toEqual({ message: 'Too far from place.' });
@@ -133,7 +149,7 @@ describeWithPlaces('Unmocked: POST /gem with Google Places', () => {
   // Expected behavior: nothing is stored
   // Expected output: { message: "Place does not exist." }
   test('Place does not exist', async () => {
-    const response = await request(createApp()).post('/gem').send({ name: 'places/doesNotExist000', ...UBC });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: 'places/doesNotExist000', ...UBC });
 
     expect(response.status).toBe(422);
     expect(response.body).toEqual({ message: 'Place does not exist.' });

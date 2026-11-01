@@ -6,6 +6,8 @@ import { env } from '../../src/config/env';
 import { UserModel } from '../../src/models/userModel';
 import AuthService, {
   InvalidDisplayNameError,
+  User,
+  currentUser,
   InvalidTokenError,
   TOKEN_LIFETIME,
   isValidDisplayName,
@@ -302,3 +304,36 @@ describe('Mocked: AuthService.setDisplayName', () => {
     expect(user?.getChosenDisplayName()).toBeUndefined();
   });
 });
+
+// Interface currentUser
+describe('currentUser', () => {
+  // Input: a request that went through reqJwt (req.user set)
+  // Expected output: that user
+  test('Signed in', () => {
+    const user = new User('google-sub-123', { full: 'Sayaka Miki' });
+
+    expect(currentUser({ user } as express.Request)).toBe(user);
+  });
+
+  // Input: a request that didn't go through reqJwt
+  // Expected output: throws, so a route that forgot reqJwt fails loudly (500) instead of acting as nobody
+  test('reqJwt did not run', () => {
+    expect(() => currentUser({} as express.Request)).toThrow('reqJwt must run before this handler.');
+  });
+});
+
+// Interface User.toJSON
+describe('User.toJSON', () => {
+  // Input: users with and without a chosen display name
+  // Expected output: { id, name, displayName }, where displayName falls back to the Google name
+  test('Profile JSON', () => {
+    const user = new User('google-sub-123', { full: 'Sayaka Miki', given: 'Sayaka' });
+    expect(JSON.parse(JSON.stringify(user))).toEqual({
+      id: 'google-sub-123', name: { full: 'Sayaka Miki', given: 'Sayaka' }, displayName: 'Sayaka Miki',
+    });
+
+    user.setDisplayName('mermaid');
+    expect(JSON.parse(JSON.stringify(user))).toMatchObject({ displayName: 'mermaid' });
+  });
+});
+

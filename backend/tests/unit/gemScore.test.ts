@@ -45,3 +45,39 @@ describe('computeGemScore', () => {
     expect(nicheness).toBeLessThanOrEqual(1);
   });
 });
+
+// Interface computeGemScore: Excavator ratings
+describe('computeGemScore with Excavator ratings', () => {
+  // Input: the same Google data with and without Excavator ratings of 0
+  // Expected output: identical results, so Gems without Excavator ratings score as before
+  test('No Excavator ratings changes nothing', () => {
+    expect(computeGemScore({ rating: 4.8, reviewCount: 60, appRatingCount: 0, appRating: 5 }))
+      .toEqual(computeGemScore({ rating: 4.8, reviewCount: 60 }));
+    expect(computeGemScore({ rating: 4.8, reviewCount: 60, appRatingCount: 5 }))
+      .toEqual(computeGemScore({ rating: 4.8, reviewCount: 60 }));
+  });
+
+  // Input: a little-known place (20 Google reviews at 4.0) rated 5 or 1 by 10 Excavator users
+  // Expected output: good ratings raise the score, bad ones lower it; nicheness is unchanged
+  test('Ratings move quality, not nicheness', () => {
+    const base = computeGemScore({ rating: 4.0, reviewCount: 20 });
+    const loved = computeGemScore({ rating: 4.0, reviewCount: 20, appRating: 5, appRatingCount: 10 });
+    const hated = computeGemScore({ rating: 4.0, reviewCount: 20, appRating: 1, appRatingCount: 10 });
+
+    expect(loved.score).toBeGreaterThan(base.score);
+    expect(hated.score).toBeLessThan(base.score);
+    expect(loved.nicheness).toBe(base.nicheness);
+    expect(hated.nicheness).toBe(base.nicheness);
+  });
+
+  // Input: a place with no Google data rated 5 by 1 and by 30 Excavator users
+  // Expected output: more ratings move the score further from the prior (66.0)
+  test('More ratings weigh more', () => {
+    const one = computeGemScore({ appRating: 5, appRatingCount: 1 }).score;
+    const many = computeGemScore({ appRating: 5, appRatingCount: 30 }).score;
+
+    expect(one).toBeGreaterThan(66.0);
+    expect(many).toBeGreaterThan(one);
+    expect(many).toBeLessThanOrEqual(100);
+  });
+});

@@ -3,6 +3,7 @@ import GemService, {
   InvalidPlaceError,
   InvalidPlaceTypeError,
   MAX_ADD_DISTANCE_M,
+  NoSuchGemError,
   PlacesUnavailableError,
   TooFarError,
   gemNameFromPlaceId,
@@ -17,6 +18,7 @@ jest.mock('../../src/models/gemModel', () => ({
     find: jest.fn(),
     exists: jest.fn(),
     replaceOne: jest.fn(),
+    updateOne: jest.fn(),
     create: jest.fn(),
   },
 }));
@@ -36,6 +38,7 @@ const mockedGemModel = GemModel as unknown as {
   find: jest.Mock;
   exists: jest.Mock;
   replaceOne: jest.Mock;
+  updateOne: jest.Mock;
   create: jest.Mock;
 };
 
@@ -381,28 +384,37 @@ describe('Mocked: GemService.findNearbyPlaces', () => {
   });
 });
 
+/** A stored gem with a Google rating and review count but an outdated score. */
+const STORED_FOR_SCORING = {
+  name: 'places/abc',
+  place: { name: 'places/abc', location: { type: 'Point', coordinates: [-123.25, 49.26] } },
+  quality: 4.8,
+  reviewCount: 60,
+  score: 1,
+};
+
 // Interface GemService.scoreGem
 describe('Mocked: GemService.scoreGem', () => {
-  // Mocked behavior: GemModel.findOne returns a stored gem with a rating and review count but an old score; replaceOne succeeds
+  // Mocked behavior: GemModel.findOne returns a stored gem with a rating and review count but an old score; updateOne succeeds
   // Input: the gem's name
-  // Expected behavior: the score is recomputed from the stored inputs and written back
+  // Expected behavior: the score is recomputed from the stored inputs and only the score fields are written back
+  //                    with $set (no replace, so createdAt is kept); fields with no value are $unset
   // Expected output: the new score
   test('Stored gem', async () => {
-    mockedGemModel.findOne.mockReturnValue({
-      lean: () => Promise.resolve({
-        name: 'places/abc',
-        place: { name: 'places/abc', location: { type: 'Point', coordinates: [-123.25, 49.26] } },
-        quality: 4.8,
-        reviewCount: 60,
-        score: 1,
-      }),
-    });
-    mockedGemModel.replaceOne.mockResolvedValue({ acknowledged: true });
-    const expected = computeGemScore({ rating: 4.8, reviewCount: 60 }).score;
+    mockedGemModel.findOne.mockReturnValue({ lean: () => Promise.resolve(STORED_FOR_SCORING) });
+    mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true });
+    const expected = computeGemScore({ rating: 4.8, reviewCount: 60 });
 
-    await expect(new GemService().scoreGem('places/abc')).resolves.toBe(expected);
+    await expect(new GemService().scoreGem('places/abc')).resolves.toBe(expected.score);
 
-    expect(mockedGemModel.replaceOne.mock.calls[0][1]).toMatchObject({ score: expected, quality: 4.8, reviewCount: 60 });
+    expect(mockedGemModel.replaceOne).not.toHaveBeenCalled();
+    expect(mockedGemModel.updateOne).toHaveBeenCalledWith(
+      { name: 'places/abc' },
+      {
+        $set: { score: expected.score, scoreTime: expect.any(Number), nicheness: expected.nicheness },
+        $unset: { ratingCount: 1, ratingAverage: 1 },
+      },
+    );
   });
 
   // Mocked behavior: GemModel.findOne finds nothing
@@ -414,7 +426,84 @@ describe('Mocked: GemService.scoreGem', () => {
 
     await expect(new GemService().scoreGem('places/unknown')).resolves.toBeUndefined();
 
-    expect(mockedGemModel.replaceOne).not.toHaveBeenCalled();
+    expect(mockedGemModel.updateOne).not.toHaveBeenCalled();
+  });
+});
+
+// Interface GemService.applyAppRatings
+describe('Mocked: GemService.applyAppRatings', () => {
+  // Mocked behavior: GemModel.findOne returns the stored gem; updateOne succeeds
+  // Input: 3 Excavator ratings averaging 5
+  // Expected behavior: the totals and the score computed with them are stored with $set, nothing $unset
+  // Expected output: the Gem, with ratingCount 3, ratingAverage 5 and a higher score than without them
+  test('New totals', async () => {
+    mockedGemModel.findOne.mockReturnValue({ lean: () => Promise.resolve(STORED_FOR_SCORING) });
+    mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true });
+    const expected = computeGemScore({ rating: 4.8, reviewCount: 60, appRating: 5, appRatingCount: 3 });
+
+    const gem = await new GemService().applyAppRatings('places/abc', 3, 5);
+
+    expect(gem.getRatingCount()).toBe(3);
+    expect(gem.getRatingAverage()).toBe(5);
+    expect(gem.getScore()).toBe(expected.score);
+    expect(expected.score).toBeGreaterThan(computeGemScore({ rating: 4.8, reviewCount: 60 }).score);
+    expect(mockedGemModel.updateOne).toHaveBeenCalledWith(
+      { name: 'places/abc' },
+      { $set: { score: expected.score, scoreTime: expect.any(Number), nicheness: expected.nicheness, ratingCount: 3, ratingAverage: 5 } },
+    );
+  });
+
+  // Mocked behavior: GemModel.findOne finds nothing
+  // Input: an unknown gem's name
+  // Expected behavior: nothing is written
+  // Expected output: rejects with NoSuchGemError
+  test('No such gem', async () => {
+    mockedGemModel.findOne.mockReturnValue({ lean: () => Promise.resolve(null) });
+
+    await expect(new GemService().applyAppRatings('places/unknown', 1, 4)).rejects.toBeInstanceOf(NoSuchGemError);
+
+    expect(mockedGemModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: GemModel.findOne returns a gem that has 2 ratings stored
+  // Input: totals of 0 ratings (e.g. after ratings were removed)
+  // Expected behavior: the rating totals are cleared on the Gem
+  // Expected output: ratingCount and ratingAverage undefined
+  test('Totals cleared', async () => {
+    mockedGemModel.findOne.mockReturnValue({ lean: () => Promise.resolve({ ...STORED_FOR_SCORING, ratingCount: 2, ratingAverage: 3 }) });
+    mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true });
+
+    const gem = await new GemService().applyAppRatings('places/abc', 0, undefined);
+
+    expect(gem.getRatingCount()).toBeUndefined();
+    expect(gem.getRatingAverage()).toBeUndefined();
+  });
+});
+
+// Interface GemService.getGems
+describe('Mocked: GemService.getGems', () => {
+  // Mocked behavior: GemModel.find returns two of the three gems asked for, in another order
+  // Input: names [b, missing, a]
+  // Expected behavior: one query for all names
+  // Expected output: [b, a]: in the order asked, without the missing one
+  test('Order kept, missing left out', async () => {
+    const doc = (name: string): object => ({ name, place: { name, location: { type: 'Point', coordinates: [0, 0] } } });
+    mockedGemModel.find.mockReturnValue({ lean: () => Promise.resolve([doc('places/a'), doc('places/b')]) });
+
+    const gems = await new GemService().getGems(['places/b', 'places/missing', 'places/a']);
+
+    expect(mockedGemModel.find).toHaveBeenCalledWith({ name: { $in: ['places/b', 'places/missing', 'places/a'] } });
+    expect(gems.map(g => g.name)).toEqual(['places/b', 'places/a']);
+  });
+
+  // Mocked behavior: none
+  // Input: no names
+  // Expected behavior: the DB is not queried
+  // Expected output: []
+  test('No names', async () => {
+    await expect(new GemService().getGems([])).resolves.toEqual([]);
+
+    expect(mockedGemModel.find).not.toHaveBeenCalled();
   });
 });
 

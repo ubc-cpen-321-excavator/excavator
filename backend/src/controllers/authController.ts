@@ -1,5 +1,5 @@
 import express from "express";
-import AuthService, { InvalidTokenError } from "../services/authService";
+import AuthService, { InvalidTokenError, currentUser, isValidDisplayName } from "../services/authService";
 import { methodNotAllowed } from "../utils/http";
 import { alphnumDashOnly } from "../utils/trust";
 
@@ -43,3 +43,47 @@ authRouter.post('/auth/google', async (req, res) => {
 });
 
 authRouter.all('/auth/google', methodNotAllowed(['POST']));
+
+/**
+ * GET /user/me
+ * Requires login: `Authorization: Bearer <token>`.
+ *
+ * Gets the signed-in user's profile.
+ * - 200 `{ id, name: { full, given?, family? }, displayName }`: `displayName` is the one they chose,
+ *   or their Google name.
+ * - 401 `{ message }`: not signed in (see `AuthService.reqJwt`).
+ */
+authRouter.get('/me', authService.reqJwt, (req, res) => {
+  res.json(currentUser(req));
+});
+
+/**
+ * PATCH /user/me with JSON body `{ displayName }`
+ * Requires login: `Authorization: Bearer <token>`.
+ *
+ * Sets the signed-in user's display name, shown to other users (e.g. on their comments).
+ * - 200 the updated profile, as `GET /user/me` returns it.
+ * - 400 `{ message: 'Invalid display name.' }`: missing, not a string, blank, over 50 characters
+ *   after trimming, or with control characters.
+ * - 401 `{ message }`: not signed in (see `AuthService.reqJwt`).
+ * - 500 `{ message: 'Update profile failed.' }`: database error.
+ */
+authRouter.patch('/me', authService.reqJwt, async (req, res) => {
+  const displayName: unknown = req.body?.displayName;
+  if (!isValidDisplayName(displayName)) {
+    res.status(400).json({ message: 'Invalid display name.' });
+    return;
+  }
+
+  const user = currentUser(req);
+  try {
+    await authService.setDisplayName(user.id, displayName);
+    user.setDisplayName(displayName.trim());
+    res.json(user);
+  } catch (err) {
+    console.log(`Update profile failed: ${alphnumDashOnly(err)}`);
+    res.status(500).json({ message: 'Update profile failed.' });
+  }
+});
+
+authRouter.all('/me', methodNotAllowed(['GET', 'PATCH']));

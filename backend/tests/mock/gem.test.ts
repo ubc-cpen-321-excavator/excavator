@@ -2,6 +2,13 @@ import request from 'supertest';
 
 import { createApp } from '../../src/app';
 import { GemModel } from '../../src/models/gemModel';
+import { UserModel } from '../../src/models/userModel';
+import { TEST_USER_DOC, bearer } from '../helpers/auth';
+
+// The login check (AuthService.reqJwt) looks the signed-in user up.
+jest.mock('../../src/models/userModel', () => ({
+  UserModel: { findOne: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn() },
+}));
 
 jest.mock('../../src/models/gemModel', () => ({
   GemModel: {
@@ -43,6 +50,7 @@ function placesError(code: number): Error & { code: number } {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (UserModel as unknown as { findOne: jest.Mock }).findOne.mockReturnValue({ lean: () => Promise.resolve(TEST_USER_DOC) });
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
 });
 
@@ -188,7 +196,7 @@ describe('Mocked: POST /gem', () => {
     ['non-string name', { name: 37 }],
     ['query operator as name', { name: { $ne: null } }],
   ])('Invalid name: %s', async (_label, body) => {
-    const req = request(createApp()).post('/gem');
+    const req = request(createApp()).post('/gem').set('Authorization', bearer());
     const response = body === undefined ? await req : await req.send(body);
 
     expect(response.status).toBe(400);
@@ -212,7 +220,7 @@ describe('Mocked: POST /gem', () => {
       primaryType: 'cafe',
     }]);
 
-    const response = await request(createApp()).post('/gem').send({ name: 'places/abc', ...USER });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...USER });
 
     expect(response.status).toBe(201);
     expect(response.headers.location).toBe('/gem?name=places%2Fabc');
@@ -234,7 +242,7 @@ describe('Mocked: POST /gem', () => {
   test('Existing gem', async () => {
     mockedGemModel.exists.mockResolvedValue({ _id: 'existing' });
 
-    const response = await request(createApp()).post('/gem').send({ name: 'places/abc', ...USER });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...USER });
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({ message: 'Gem already exists.' });
@@ -251,7 +259,7 @@ describe('Mocked: POST /gem', () => {
     mockedGemModel.exists.mockResolvedValue(null);
     mockGetPlace.mockRejectedValue(placesError(5));
 
-    const response = await request(createApp()).post('/gem').send({ name: 'places/unknown', ...USER });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: 'places/unknown', ...USER });
 
     expect(response.status).toBe(422);
     expect(response.body).toEqual({ message: 'Place does not exist.' });
@@ -267,7 +275,7 @@ describe('Mocked: POST /gem', () => {
     mockedGemModel.exists.mockResolvedValue(null);
     mockGetPlace.mockRejectedValue(placesError(14));
 
-    const response = await request(createApp()).post('/gem').send({ name: 'places/abc', ...USER });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...USER });
 
     expect(response.status).toBe(502);
     expect(response.body).toEqual({ message: 'Google Places unavailable.' });
@@ -282,11 +290,49 @@ describe('Mocked: POST /gem', () => {
   test('Database error', async () => {
     mockedGemModel.exists.mockRejectedValue(new Error('connection refused'));
 
-    const response = await request(createApp()).post('/gem').send({ name: 'places/abc', ...USER });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...USER });
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ message: 'Add Gem failed.' });
     expect(mockGetPlace).not.toHaveBeenCalled();
+  });
+});
+
+// Interface POST /gem: login
+describe('Mocked: POST /gem login', () => {
+  // Mocked behavior: none
+  // Input: POST request to /gem with a valid body but no Authorization header, or an invalid token
+  // Expected status code: 401
+  // Expected behavior: neither the DB nor Google Places is called
+  // Expected output: { message } from the login check
+  test.each([
+    ['no token', undefined, 'Unauthorized request.'],
+    ['bad token', 'Bearer not-a-jwt', 'Invalid token.'],
+  ])('Rejected: %s', async (_label, header, message) => {
+    const req = request(createApp()).post('/gem');
+    const response = await (header === undefined ? req : req.set('Authorization', header)).send({ name: 'places/abc', ...USER });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message });
+    expect(mockedGemModel.exists).not.toHaveBeenCalled();
+    expect(mockGetPlace).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: GemModel.exists finds no gem; Google Places returns the place; GemModel.create succeeds
+  // Input: POST request to /gem signed in as TEST_USER
+  // Expected status code: 201
+  // Expected behavior: the Gem is stored with addedBy = the signed-in user's ID
+  // Expected output: the new Gem, with that addedBy
+  test('addedBy is the signed-in user', async () => {
+    mockedGemModel.exists.mockResolvedValue(null);
+    mockedGemModel.create.mockResolvedValue({});
+    mockGetPlace.mockResolvedValue([{ name: 'places/abc', location: { latitude: 49.26, longitude: -123.25 } }]);
+
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...USER });
+
+    expect(response.status).toBe(201);
+    expect(response.body.addedBy).toBe(TEST_USER_DOC.googleId);
+    expect(mockedGemModel.create.mock.calls[0][0]).toMatchObject({ addedBy: TEST_USER_DOC.googleId });
   });
 });
 
@@ -303,7 +349,7 @@ describe('Mocked: POST /gem location', () => {
     ['strings', { latitude: 'north', longitude: 'west' }],
     ['out of range', { latitude: 91, longitude: 0 }],
   ])('Invalid location: %s', async (_label, location) => {
-    const response = await request(createApp()).post('/gem').send({ name: 'places/abc', ...location });
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...location });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ message: 'Invalid location.' });
@@ -320,7 +366,7 @@ describe('Mocked: POST /gem location', () => {
     mockedGemModel.exists.mockResolvedValue(null);
     mockGetPlace.mockResolvedValue([{ name: 'places/abc', location: USER }]);
 
-    const response = await request(createApp()).post('/gem')
+    const response = await request(createApp()).post('/gem').set('Authorization', bearer())
       .send({ name: 'places/abc', latitude: USER.latitude + 0.01, longitude: USER.longitude });
 
     expect(response.status).toBe(422);

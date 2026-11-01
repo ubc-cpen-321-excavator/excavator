@@ -5,7 +5,14 @@ import type { WebSocketServer } from 'ws';
 import { createApp } from '../../src/app';
 import { attachFeed, feedService } from '../../src/controllers/feedController';
 import { GemModel } from '../../src/models/gemModel';
+import { UserModel } from '../../src/models/userModel';
+import { TEST_USER_DOC, bearer } from '../helpers/auth';
 import { TestFeedClient, feedUrl } from '../helpers/feedClient';
+
+// The login check (AuthService.reqJwt) looks the signed-in user up.
+jest.mock('../../src/models/userModel', () => ({
+  UserModel: { findOne: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn() },
+}));
 
 jest.mock('../../src/models/gemModel', () => ({
   GemModel: {
@@ -35,6 +42,7 @@ let client: TestFeedClient;
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  (UserModel as unknown as { findOne: jest.Mock }).findOne.mockReturnValue({ lean: () => Promise.resolve(TEST_USER_DOC) });
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
   server = createServer(createApp());
@@ -71,7 +79,7 @@ describe('Mocked: WS /feed', () => {
   test('Gem added near the client', async () => {
     mockNewPlace(UBC);
 
-    const response = await request(server).post('/gem').send({ name: 'places/abc', ...UBC });
+    const response = await request(server).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...UBC });
 
     expect(response.status).toBe(201);
     expect(await client.next()).toEqual({ type: 'gem.added', gem: response.body });
@@ -86,7 +94,7 @@ describe('Mocked: WS /feed', () => {
     const downtown = { latitude: 49.2827, longitude: -123.1207 };
     mockNewPlace(downtown);
 
-    const response = await request(server).post('/gem').send({ name: 'places/abc', ...downtown });
+    const response = await request(server).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...downtown });
 
     expect(response.status).toBe(201);
     expect(await client.drain()).toEqual([]);
@@ -100,7 +108,7 @@ describe('Mocked: WS /feed', () => {
   test('No message when the Gem is not added', async () => {
     mockedGemModel.exists.mockResolvedValue({ _id: 'existing' });
 
-    const response = await request(server).post('/gem').send({ name: 'places/abc', ...UBC });
+    const response = await request(server).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...UBC });
 
     expect(response.status).toBe(409);
     expect(await client.drain()).toEqual([]);
@@ -115,7 +123,7 @@ describe('Mocked: WS /feed', () => {
     mockNewPlace(UBC);
     jest.spyOn(feedService, 'publishGemAdded').mockImplementation(() => { throw new Error('feed down'); });
 
-    const response = await request(server).post('/gem').send({ name: 'places/abc', ...UBC });
+    const response = await request(server).post('/gem').set('Authorization', bearer()).send({ name: 'places/abc', ...UBC });
 
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({ name: 'places/abc' });

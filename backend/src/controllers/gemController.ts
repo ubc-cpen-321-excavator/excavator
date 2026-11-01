@@ -12,8 +12,11 @@ import GemService, {
 } from "../services/gemService";
 import { toBounds, toIntInRange, toLatLng } from "../utils/geo";
 import { methodNotAllowed } from "../utils/http";
+import { currentUser } from "../services/authService";
 import { alphnumDashOnly } from "../utils/trust";
+import { authService } from "./authController";
 import { createCommentRouter } from "./commentController";
+import { createRatingRouter } from "./ratingController";
 import { feedService } from "./feedController";
 
 /** Routes mounted at `/gem`. */
@@ -23,6 +26,9 @@ export const gemService = new GemService();
 
 /** Nested router: a Gem's comments at `/gem/:pk/comments`, where `pk` is the Gem's place ID. */
 gemRouter.use('/:pk/comments', createCommentRouter(gemService));
+
+/** Nested router: the signed-in user's rating of a Gem at `/gem/:pk/rating`. */
+gemRouter.use('/:pk/rating', createRatingRouter(gemService));
 
 /**
  * GET /gem?name=places/<place ID>
@@ -57,6 +63,7 @@ gemRouter.get('/', (req, res) => {
 
 /**
  * POST /gem with JSON body `{ name: 'places/<place ID>', latitude, longitude }`
+ * Requires login: `Authorization: Bearer <token>`. The Gem's `addedBy` is the signed-in user.
  *
  * Adds the place as a Gem, after checking it exists on Google Places and is within
  * 200 m of the user. `latitude` / `longitude` are the user's current location. The new Gem is scored
@@ -64,13 +71,14 @@ gemRouter.get('/', (req, res) => {
  * - 201 the new Gem, with a `Location` header pointing at `GET /gem?name=…`.
  * - 400 `{ message: 'Invalid place name.' }`: `name` is missing or not `places/<place ID>`.
  * - 400 `{ message: 'Invalid location.' }`: `latitude` / `longitude` missing or out of range.
+ * - 401 `{ message }`: not signed in (see `AuthService.reqJwt`).
  * - 409 `{ message: 'Gem already exists.' }`: a Gem with that name exists; nothing changed.
  * - 422 `{ message: 'Place does not exist.' }`: Google Places has no such place.
  * - 422 `{ message: 'Too far from place.' }`: the place is more than 200 m from the user.
  * - 500 `{ message: 'Add Gem failed.' }`: database error.
  * - 502 `{ message: 'Google Places unavailable.' }`: Google Places failed; nothing is stored.
  */
-gemRouter.post('/', async (req, res) => {
+gemRouter.post('/', authService.reqJwt, async (req, res) => {
   const name: unknown = req.body?.name;
   if (!isValidGemName(name)) {
     res.status(400).json({ message: 'Invalid place name.' });
@@ -84,8 +92,7 @@ gemRouter.post('/', async (req, res) => {
   }
 
   try {
-    // TODO reqSession, then fill user ID
-    const gem = await gemService.addGem(name, '37', userLocation);
+    const gem = await gemService.addGem(name, currentUser(req).id, userLocation);
 
     // The Gem is stored either way, so a feed failure must not fail the request.
     try {

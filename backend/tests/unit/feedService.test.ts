@@ -97,3 +97,23 @@ describe('FeedService.publishGemAdded', () => {
     expect(new FeedService().publishGemAdded(gemAt(UBC.latitude, UBC.longitude))).toBe(0);
   });
 });
+
+// Interface FeedService.publishGemUpdated
+describe('FeedService.publishGemUpdated', () => {
+  // Input: clients 1 km and 20 km around UBC; a changed Gem downtown (~9 km away)
+  // Expected behavior: only the 20 km client gets one gem.updated message with the Gem
+  // Expected output: 1
+  test('Only clients in range, as gem.updated', () => {
+    const feed = new FeedService();
+    const near = recordingClient();
+    const wide = recordingClient();
+    feed.subscribe(near, { center: UBC, radius: 1000 });
+    feed.subscribe(wide, { center: UBC, radius: 20000 });
+
+    expect(feed.publishGemUpdated(gemAt(49.2827, -123.1207))).toBe(1);
+
+    expect(near.received).toEqual([]);
+    expect(wide.received).toEqual([{ type: 'gem.updated', gem: expect.objectContaining({ name: 'places/abc' }) }]);
+  });
+});
+

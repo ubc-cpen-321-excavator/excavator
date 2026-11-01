@@ -1,4 +1,6 @@
 import { CommentModel, COMMENT_BODY_MAX_LENGTH, type CommentDoc, type CommentInput } from "../models/commentModel";
+import { definedOnly } from "../utils/defined";
+import { NoSuchGemError } from "./gemService";
 import type GemService from "./gemService";
 
 /** Control characters other than tab, line feed and carriage return; newlines are fine in a comment. */
@@ -30,12 +32,24 @@ export class InvalidCommentError extends Error {
   }
 }
 
-/** Thrown when comments are read or added for a Gem that is not stored. The client's fault (404). */
-export class NoSuchGemError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'NoSuchGemError';
-  }
+// Re-exported so comment code can keep importing it from here.
+export { NoSuchGemError };
+
+/** Who wrote a comment. */
+export interface CommentAuthor {
+  /** User ID (Google `sub`). */
+  id: string;
+  /** Their display name when they wrote it. */
+  name: string;
+}
+
+/** A comment as the API returns it. The Gem is already in the URL, so it is left out. */
+export interface CommentJson {
+  id: string;
+  body: string;
+  /** Absent on comments written before authors were recorded. */
+  author?: string;
+  authorName?: string;
 }
 
 /**
@@ -47,6 +61,7 @@ class Comment {
   /** Comment ID, unique within its Gem. */
   readonly id: string;
   readonly body: string;
+  readonly author?: CommentAuthor | undefined;
 
   /**
    * Does not validate the comment! Use `CommentService.addComment` to add a validated comment.
@@ -54,18 +69,24 @@ class Comment {
    * @param gem owning Gem's name.
    * @param id comment ID, unique within the Gem.
    * @param body the comment text.
+   * @param author who wrote it.
    */
-  constructor(gem: string, id: string, body: string) {
+  constructor(gem: string, id: string, body: string, author?: CommentAuthor) {
     this.gem = gem;
     this.id = id;
     this.body = body;
+    this.author = author;
   }
 
   /**
-   * @returns what the API returns for a comment: its `id` and `body`. The Gem is already in the URL.
+   * @returns what the API returns for a comment: its `id`, `body`, and author's ID and name.
    */
-  toJSON(): { id: string; body: string } {
-    return { id: this.id, body: this.body };
+  toJSON(): CommentJson {
+    return {
+      id: this.id,
+      body: this.body,
+      ...definedOnly({ author: this.author?.id, authorName: this.author?.name }),
+    };
   }
 }
 
@@ -116,20 +137,21 @@ class CommentService {
    *
    * @param gem Gem name, `places/<place ID>`.
    * @param body the comment text; stored trimmed.
+   * @param author who is writing it.
    * @returns the new comment, with its new ID.
    * @throws `InvalidCommentError` if `body` fails `isValidCommentBody`; nothing is stored.
    * @throws `NoSuchGemError` if no Gem has that name; nothing is stored.
    * @throws the database error for anything else.
    * @constructs `Comment`
    */
-  async addComment(gem: string, body: string): Promise<Comment> {
+  async addComment(gem: string, body: string, author?: CommentAuthor): Promise<Comment> {
     if (!isValidCommentBody(body)) {
       throw new InvalidCommentError('Invalid comment body.');
     }
 
     await this.requireGem(gem);
 
-    const comment = new Comment(gem, crypto.randomUUID(), body.trim());
+    const comment = new Comment(gem, crypto.randomUUID(), body.trim(), author);
     await this.repo.create(comment);
 
     return comment;
@@ -147,6 +169,7 @@ function toDoc(comment: Comment): CommentInput {
     gem: comment.gem,
     commentId: comment.id,
     body: comment.body,
+    ...definedOnly({ author: comment.author?.id, authorName: comment.author?.name }),
   };
 }
 
@@ -157,7 +180,8 @@ function toDoc(comment: Comment): CommentInput {
  * @returns the Comment.
  */
 function fromDoc(doc: CommentDoc): Comment {
-  return new Comment(doc.gem, doc.commentId, doc.body);
+  const author = doc.author ? { id: doc.author, name: doc.authorName ?? '' } : undefined;
+  return new Comment(doc.gem, doc.commentId, doc.body, author);
 }
 
 /**

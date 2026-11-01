@@ -1,8 +1,10 @@
 import express, { type Request, type Response } from "express";
 import CommentService, { NoSuchGemError, isValidCommentBody } from "../services/commentService";
+import { currentUser } from "../services/authService";
 import GemService, { gemNameFromPlaceId } from "../services/gemService";
 import { methodNotAllowed } from "../utils/http";
 import { alphnumDashOnly } from "../utils/trust";
+import { authService } from "./authController";
 
 /** Route parameters inherited from the parent route `/gem/:pk`; `pk` is the Gem's place ID. */
 type GemParams = { pk: string };
@@ -22,7 +24,8 @@ export function createCommentRouter(gemService: GemService): express.Router {
    * GET /gem/:pk/comments
    *
    * Gets every comment on the Gem whose place ID is `pk`, oldest first.
-   * - 200 `[{ id, body }, ...]`: the comments; `[]` if there are none.
+   * - 200 `[{ id, body, author, authorName }, ...]`: the comments; `[]` if there are none.
+   *   `author` / `authorName` are absent on comments written before authors were recorded.
    * - 400 `{ message: 'Invalid Gem ID.' }`: `pk` is not a place ID; the DB is not queried.
    * - 404 `{ message: 'No such Gem.' }`: no Gem has that place ID.
    * - 500 `{ message: 'Get comments failed.' }`: database error.
@@ -50,15 +53,17 @@ export function createCommentRouter(gemService: GemService): express.Router {
 
   /**
    * POST /gem/:pk/comments with JSON body `{ body: '<comment text>' }`
+   * Requires login: `Authorization: Bearer <token>`. The comment's author is the signed-in user.
    *
    * Adds a comment to the Gem whose place ID is `pk`.
-   * - 201 `{ id, body }`: the new comment (body trimmed).
+   * - 201 `{ id, body, author, authorName }`: the new comment (body trimmed).
    * - 400 `{ message: 'Invalid Gem ID.' }`: `pk` is not a place ID.
    * - 400 `{ message: 'Invalid comment body.' }`: `body` is missing, not a string, blank, over 1000 characters, or has control characters.
+   * - 401 `{ message }`: not signed in (see `AuthService.reqJwt`).
    * - 404 `{ message: 'No such Gem.' }`: no Gem has that place ID; nothing is stored.
    * - 500 `{ message: 'Add comment failed.' }`: database error.
    */
-  commentRouter.post('/', async (req: Request<GemParams>, res: Response) => {
+  commentRouter.post('/', authService.reqJwt, async (req: Request<GemParams>, res: Response) => {
     const gem = gemNameFromPlaceId(req.params.pk);
     if (!gem) {
       res.status(400).json({ message: 'Invalid Gem ID.' });
@@ -72,8 +77,8 @@ export function createCommentRouter(gemService: GemService): express.Router {
     }
 
     try {
-      // TODO reqSession, then record the author (Comment has only id and body for now)
-      const comment = await commentService.addComment(gem, body);
+      const user = currentUser(req);
+      const comment = await commentService.addComment(gem, body, { id: user.id, name: user.getDisplayName() });
       res.status(201).json(comment);
     } catch (err) {
       // The body was validated above, so the service's InvalidCommentError cannot happen here.

@@ -24,8 +24,8 @@ describe('Unmocked: GET /place/nearby', () => {
   });
 });
 
-// These call the real Google Places API, so they run only when GOOGLE_PLACES_API_KEY is set.
-const describeWithPlaces = process.env.GOOGLE_PLACES_API_KEY ? describe : describe.skip;
+// These call the real Google Places API, so they run only when GOOGLE_API_KEY is set.
+const describeWithPlaces = process.env.GOOGLE_API_KEY ? describe : describe.skip;
 
 /** Next to Google Sydney, a busy area with many places. */
 const AT_GOOGLE_SYDNEY = { lat: '-33.866971', lng: '151.195875' };

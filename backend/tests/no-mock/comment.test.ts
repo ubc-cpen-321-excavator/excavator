@@ -2,28 +2,41 @@ import request from 'supertest';
 
 import { createApp } from '../../src/app';
 import { CommentModel } from '../../src/models/commentModel';
-import { DB_START_TIMEOUT_MS, UBC, clearDb, seedGem, startDb, stopDb } from '../helpers/db';
+import { DB_START_TIMEOUT_MS, UBC, clearDb, seedGem, seedUser, startDb, stopDb } from '../helpers/db';
+import { TEST_USER_ID, bearer } from '../helpers/auth';
 
 beforeAll(startDb, DB_START_TIMEOUT_MS);
 afterAll(stopDb);
 beforeEach(async () => {
   await clearDb();
   await seedGem('cafe', UBC);
+  await seedUser();
 });
 
 // Interface POST /gem/:pk/comments
 describe('Unmocked: POST /gem/:pk/comments', () => {
   // Input: POST /gem/cafe/comments with { body: "  Great view!  " }
   // Expected status code: 201
-  // Expected behavior: the comment is stored under places/cafe with the trimmed body
-  // Expected output: { id, body: "Great view!" }
+  // Expected behavior: the comment is stored under places/cafe with the trimmed body and the signed-in user as author
+  // Expected output: { id, body: "Great view!", author, authorName }
   test('Valid comment', async () => {
-    const response = await request(createApp()).post('/gem/cafe/comments').send({ body: '  Great view!  ' });
+    const response = await request(createApp()).post('/gem/cafe/comments').set('Authorization', bearer()).send({ body: '  Great view!  ' });
 
     expect(response.status).toBe(201);
-    expect(response.body).toEqual({ id: expect.any(String), body: 'Great view!' });
+    expect(response.body).toEqual({ id: expect.any(String), body: 'Great view!', author: TEST_USER_ID, authorName: 'mermaid' });
     expect(await CommentModel.findOne({ gem: 'places/cafe', commentId: response.body.id }).lean())
-      .toMatchObject({ body: 'Great view!' });
+      .toMatchObject({ body: 'Great view!', author: TEST_USER_ID, authorName: 'mermaid' });
+  });
+
+  // Input: POST /gem/cafe/comments with a valid body but no token
+  // Expected status code: 401
+  // Expected behavior: nothing is stored
+  // Expected output: { message: "Unauthorized request." }
+  test('Not signed in', async () => {
+    const response = await request(createApp()).post('/gem/cafe/comments').send({ body: 'hello' });
+
+    expect(response.status).toBe(401);
+    expect(await CommentModel.countDocuments()).toBe(0);
   });
 
   // Input: POST /gem/unknown/comments with a valid body
@@ -31,7 +44,7 @@ describe('Unmocked: POST /gem/:pk/comments', () => {
   // Expected behavior: nothing is stored
   // Expected output: { message: "No such Gem." }
   test('Unknown Gem', async () => {
-    const response = await request(createApp()).post('/gem/unknown/comments').send({ body: 'hello' });
+    const response = await request(createApp()).post('/gem/unknown/comments').set('Authorization', bearer()).send({ body: 'hello' });
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ message: 'No such Gem.' });
@@ -43,7 +56,7 @@ describe('Unmocked: POST /gem/:pk/comments', () => {
   // Expected behavior: nothing is stored
   // Expected output: { message: "Invalid comment body." }
   test('Invalid body', async () => {
-    const response = await request(createApp()).post('/gem/cafe/comments').send({ body: '   ' });
+    const response = await request(createApp()).post('/gem/cafe/comments').set('Authorization', bearer()).send({ body: '   ' });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ message: 'Invalid comment body.' });
@@ -60,9 +73,9 @@ describe('Unmocked: GET /gem/:pk/comments', () => {
   test('Comments oldest first', async () => {
     await seedGem('other', UBC);
     for (const body of ['first', 'second', 'third']) {
-      await request(createApp()).post('/gem/cafe/comments').send({ body });
+      await request(createApp()).post('/gem/cafe/comments').set('Authorization', bearer()).send({ body });
     }
-    await request(createApp()).post('/gem/other/comments').send({ body: 'elsewhere' });
+    await request(createApp()).post('/gem/other/comments').set('Authorization', bearer()).send({ body: 'elsewhere' });
 
     const response = await request(createApp()).get('/gem/cafe/comments');
 

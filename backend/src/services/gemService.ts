@@ -88,6 +88,14 @@ export class TooFarError extends Error {
   }
 }
 
+/** Thrown when something is read or added for a Gem that is not stored, e.g. its comments. The client's fault (404). */
+export class NoSuchGemError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NoSuchGemError';
+  }
+}
+
 /** Thrown when adding a Gem that already exists (409). */
 export class GemExistsError extends Error {
   constructor(message: string) {
@@ -182,6 +190,8 @@ class Gem {
   protected nicheness?: number | undefined;
   protected quality?: number | undefined;
   protected reviewCount?: number | undefined;
+  protected ratingCount?: number | undefined;
+  protected ratingAverage?: number | undefined;
   protected scoreTime?: number | undefined;
 
   /**
@@ -240,11 +250,40 @@ class Gem {
   }
 
   /**
-   * Computes the GemScore from the stored rating (`quality`) and review count, and sets it with
-   * its nicheness. See `utils/gemScore.ts` for the formula.
+   * @returns how many Excavator users rated the Gem, if any did.
+   */
+  getRatingCount(): number | undefined {
+    return this.ratingCount;
+  }
+
+  /**
+   * @returns the average of the Excavator users' ratings, 1–5, if any.
+   */
+  getRatingAverage(): number | undefined {
+    return this.ratingAverage;
+  }
+
+  /**
+   * @param count number of Excavator users' ratings; 0 or `undefined` clears both values.
+   * @param average their average, 1–5.
+   */
+  setAppRatings(count: number | undefined, average: number | undefined): void {
+    const hasRatings = count !== undefined && count > 0 && average !== undefined;
+    this.ratingCount = hasRatings ? count : undefined;
+    this.ratingAverage = hasRatings ? average : undefined;
+  }
+
+  /**
+   * Computes the GemScore from the Google rating (`quality`) and review count and the Excavator
+   * ratings, and sets it with its nicheness. See `utils/gemScore.ts` for the formula.
    */
   rescore(): void {
-    const { score, nicheness } = computeGemScore({ rating: this.quality, reviewCount: this.reviewCount });
+    const { score, nicheness } = computeGemScore({
+      rating: this.quality,
+      reviewCount: this.reviewCount,
+      appRating: this.ratingAverage,
+      appRatingCount: this.ratingCount,
+    });
     this.setNicheness(nicheness);
     this.setScore(score);
   }
@@ -303,7 +342,7 @@ export interface PlaceCandidate {
 class GemService {
   private repo: GemRepo = new GemRepo();
   private gpClient: PlacesClient = new PlacesClient(
-    env.google_places_api_key ? { apiKey: env.google_places_api_key } : {},
+    env.google_api_key ? { apiKey: env.google_api_key } : {},
   );
 
   /**
@@ -446,7 +485,6 @@ class GemService {
 
   /**
    * Recomputes and stores a Gem's GemScore from its stored inputs.
-   * Call it when an input changes (e.g. once in-app ratings feed into the score).
    *
    * @param name Gem name, `places/<place ID>`.
    * @returns the new GemScore, or `undefined` if there is no such Gem (nothing is stored).
@@ -458,9 +496,44 @@ class GemService {
     }
 
     gem.rescore();
-    await this.repo.upsert(name, gem);
+    await this.repo.saveScore(gem);
 
     return gem.getScore();
+  }
+
+  /**
+   * Stores a Gem's new Excavator rating totals and the GemScore they lead to.
+   *
+   * @param name Gem name, `places/<place ID>`.
+   * @param count number of Excavator users' ratings.
+   * @param average their average, 1–5.
+   * @returns the rescored Gem.
+   * @throws `NoSuchGemError` if there is no such Gem; nothing is stored.
+   */
+  async applyAppRatings(name: string, count: number, average: number | undefined): Promise<Gem> {
+    const gem = await this.getGem(name);
+    if (!gem) {
+      throw new NoSuchGemError('No such Gem.');
+    }
+
+    gem.setAppRatings(count, average);
+    gem.rescore();
+    await this.repo.saveScore(gem);
+
+    return gem;
+  }
+
+  /**
+   * Gets several stored Gems at once, e.g. a user's favorites.
+   *
+   * @param names Gem names, `places/<place ID>`.
+   * @returns the stored Gems, in the order of `names`; names with no Gem are left out.
+   */
+  async getGems(names: string[]): Promise<Gem[]> {
+    const gems = await this.repo.getMany(names);
+    const byName = new Map(gems.map(g => [g.name, g]));
+
+    return names.flatMap(name => byName.get(name) ?? []);
   }
 
   /**
@@ -573,6 +646,8 @@ function toDoc(gem: Gem): GemInput {
       nicheness: gem.getNicheness(),
       quality: gem.getQuality(),
       reviewCount: gem.getReviewCount(),
+      ratingCount: gem.getRatingCount(),
+      ratingAverage: gem.getRatingAverage(),
       addedBy: gem.addedBy,
     }),
   };
@@ -604,6 +679,7 @@ function fromDoc(doc: GemDoc): Gem {
   gem.setNicheness(doc.nicheness ?? undefined);
   gem.setQuality(doc.quality ?? undefined);
   gem.setReviewCount(doc.reviewCount ?? undefined);
+  gem.setAppRatings(doc.ratingCount ?? undefined, doc.ratingAverage ?? undefined);
   if (doc.score !== undefined && doc.score !== null) {
     gem.setScore(doc.score, doc.scoreTime ?? Date.now());
   }
@@ -714,15 +790,39 @@ class GemRepo {
   }
 
   /**
-   * Inserts the Gem, or replaces the stored one with the same name.
-   *
-   * @param name Gem name.
-   * @param gem the Gem to store.
-   * @returns `true` if the write was acknowledged.
+   * @param names Gem names.
+   * @returns the stored Gems among them, in no particular order.
    */
-  async upsert(name: string, gem: Gem): Promise<boolean> {
-    const res = await GemModel.replaceOne({ name }, toDoc(gem), { upsert: true });
-    return res.acknowledged;
+  async getMany(names: string[]): Promise<Gem[]> {
+    if (names.length === 0) {
+      return [];
+    }
+
+    const docs = await GemModel.find({ name: { $in: names } }).lean<GemDoc[]>();
+    return docs.map(fromDoc);
+  }
+
+  /**
+   * Stores a Gem's GemScore and the values it was computed from, leaving everything else as stored.
+   * `$set` rather than a replace, so `createdAt` (used by the newest-Gems list) is kept.
+   * A value that is now `undefined` (e.g. the last rating was removed) is unset.
+   *
+   * @param gem the rescored Gem.
+   */
+  async saveScore(gem: Gem): Promise<void> {
+    const fields = {
+      score: gem.getScore(),
+      scoreTime: gem.getScoreTime(),
+      nicheness: gem.getNicheness(),
+      ratingCount: gem.getRatingCount(),
+      ratingAverage: gem.getRatingAverage(),
+    };
+    const unset = Object.fromEntries(Object.entries(fields).filter(([_k, v]) => v === undefined).map(([k]) => [k, 1]));
+
+    await GemModel.updateOne(
+      { name: gem.name },
+      { $set: definedOnly(fields), ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}) },
+    );
   }
 
 }

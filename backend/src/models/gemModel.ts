@@ -29,6 +29,8 @@ const gemSchema = new Schema({
   nicheness: { type: Number }, // 0–1, from reviewCount; fewer reviews = more niche
   quality: { type: Number }, // Google Places rating, 1.0–5.0
   reviewCount: { type: Number }, // Google Places review count (userRatingCount)
+  ratingCount: { type: Number }, // Number of Excavator users' ratings (see ratingModel.ts)
+  ratingAverage: { type: Number }, // Average of the Excavator users' ratings, 1–5
 
   addedBy: { type: String }, // User id (Google sub) of the user who added the gem
 }, { timestamps: true });

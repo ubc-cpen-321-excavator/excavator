@@ -3,6 +3,7 @@ import request from 'supertest';
 
 import { createApp } from '../../src/app';
 import { UserModel } from '../../src/models/userModel';
+import { TEST_USER_DOC, TEST_USER_ID, bearer } from '../helpers/auth';
 
 jest.mock('../../src/models/userModel', () => ({
   UserModel: {
@@ -23,7 +24,7 @@ jest.mock('google-auth-library', () => ({
   })),
 }));
 
-const mockedUserModel = UserModel as unknown as { findOneAndUpdate: jest.Mock };
+const mockedUserModel = UserModel as unknown as { findOneAndUpdate: jest.Mock; findOne: jest.Mock; updateOne: jest.Mock };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -113,3 +114,90 @@ describe('Mocked: POST /user/auth/google', () => {
     expect(mockVerifyIdToken).not.toHaveBeenCalled();
   });
 });
+
+// Interface GET /user/me
+describe('Mocked: GET /user/me', () => {
+  // Mocked behavior: UserModel.findOne returns the signed-in user, who chose a display name
+  // Input: GET /user/me signed in
+  // Expected status code: 200
+  // Expected output: { id, name, displayName }
+  test('Signed in', async () => {
+    mockedUserModel.findOne.mockReturnValue({ lean: () => Promise.resolve(TEST_USER_DOC) });
+
+    const response = await request(createApp()).get('/user/me').set('Authorization', bearer());
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ id: TEST_USER_ID, name: TEST_USER_DOC.name, displayName: 'mermaid' });
+  });
+
+  // Mocked behavior: none
+  // Input: GET /user/me without a token
+  // Expected status code: 401
+  // Expected output: { message: "Unauthorized request." }
+  test('Not signed in', async () => {
+    const response = await request(createApp()).get('/user/me');
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message: 'Unauthorized request.' });
+  });
+});
+
+// Interface PATCH /user/me
+describe('Mocked: PATCH /user/me', () => {
+  // Mocked behavior: UserModel.findOne returns the signed-in user; UserModel.updateOne succeeds
+  // Input: PATCH /user/me { displayName: "  kyoko  " } signed in
+  // Expected status code: 200
+  // Expected behavior: the trimmed name is stored for the signed-in user
+  // Expected output: the profile with displayName "kyoko"
+  test('Set display name', async () => {
+    mockedUserModel.findOne.mockReturnValue({ lean: () => Promise.resolve(TEST_USER_DOC) });
+    mockedUserModel.updateOne.mockResolvedValue({ acknowledged: true });
+
+    const response = await request(createApp()).patch('/user/me').set('Authorization', bearer()).send({ displayName: '  kyoko  ' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ id: TEST_USER_ID, name: TEST_USER_DOC.name, displayName: 'kyoko' });
+    expect(mockedUserModel.updateOne.mock.calls[0][1].$set.displayName).toBe('kyoko');
+  });
+
+  // Mocked behavior: UserModel.findOne returns the signed-in user
+  // Input: PATCH /user/me with a missing, blank or too long display name, signed in
+  // Expected status code: 400
+  // Expected behavior: nothing is stored
+  // Expected output: { message: "Invalid display name." }
+  test.each([[{}], [{ displayName: '   ' }], [{ displayName: 'a'.repeat(51) }]])('Invalid name %p', async (body) => {
+    mockedUserModel.findOne.mockReturnValue({ lean: () => Promise.resolve(TEST_USER_DOC) });
+
+    const response = await request(createApp()).patch('/user/me').set('Authorization', bearer()).send(body);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ message: 'Invalid display name.' });
+    expect(mockedUserModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: UserModel.findOne returns the signed-in user; UserModel.updateOne rejects (e.g. DB unreachable)
+  // Input: PATCH /user/me { displayName: "kyoko" } signed in
+  // Expected status code: 500
+  // Expected output: { message: "Update profile failed." }
+  test('Database error', async () => {
+    mockedUserModel.findOne.mockReturnValue({ lean: () => Promise.resolve(TEST_USER_DOC) });
+    mockedUserModel.updateOne.mockRejectedValue(new Error('connection refused'));
+
+    const response = await request(createApp()).patch('/user/me').set('Authorization', bearer()).send({ displayName: 'kyoko' });
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ message: 'Update profile failed.' });
+  });
+
+  // Mocked behavior: none
+  // Input: DELETE /user/me
+  // Expected status code: 405
+  // Expected output: Allow is "GET, PATCH"
+  test('Unsupported method', async () => {
+    const response = await request(createApp()).delete('/user/me');
+
+    expect(response.status).toBe(405);
+    expect(response.headers.allow).toBe('GET, PATCH');
+  });
+});
+

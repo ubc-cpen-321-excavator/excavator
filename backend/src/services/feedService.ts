@@ -18,14 +18,17 @@ export interface FeedSubscription {
   radius: number;
 }
 
-/** Pushed to a client when a Gem is added within its subscription. */
-export interface GemAddedMessage {
-  type: 'gem.added';
+/**
+ * Pushed to a client about a Gem within its subscription:
+ * `gem.added` when the Gem is added, `gem.updated` when it changes (e.g. its GemScore after a rating).
+ */
+export interface GemMessage {
+  type: 'gem.added' | 'gem.updated';
   gem: Gem;
 }
 
 /**
- * The live feed: keeps who is listening where, and pushes new Gems to everyone in range.
+ * The live feed: keeps who is listening where, and pushes new and changed Gems to everyone in range.
  * Knows nothing about WebSockets or the database, so it can be tested on its own.
  */
 class FeedService {
@@ -66,7 +69,28 @@ class FeedService {
    * @returns how many clients it was sent to.
    */
   publishGemAdded(gem: Gem): number {
-    const message: GemAddedMessage = { type: 'gem.added', gem };
+    return this.publish({ type: 'gem.added', gem });
+  }
+
+  /**
+   * Pushes a changed Gem (e.g. a new GemScore after a rating) to every client whose subscription contains it.
+   * A client that fails to receive it is unsubscribed; the others still get it.
+   *
+   * @param gem the Gem as it is now.
+   * @returns how many clients it was sent to.
+   */
+  publishGemUpdated(gem: Gem): number {
+    return this.publish({ type: 'gem.updated', gem });
+  }
+
+  /**
+   * Sends a message about a Gem to every client in range of it.
+   *
+   * @param message the message; its Gem's location decides who gets it.
+   * @returns how many clients it was sent to.
+   */
+  private publish(message: GemMessage): number {
+    const { gem } = message;
     const data = JSON.stringify(message);
     const location = { latitude: gem.place.latitude, longitude: gem.place.longitude };
 

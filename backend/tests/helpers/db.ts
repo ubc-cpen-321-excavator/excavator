@@ -4,8 +4,11 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
 import { CommentModel } from '../../src/models/commentModel';
+import { FavoriteModel } from '../../src/models/favoriteModel';
 import { GemModel } from '../../src/models/gemModel';
+import { RatingModel } from '../../src/models/ratingModel';
 import { UserModel } from '../../src/models/userModel';
+import { TEST_USER_DOC } from './auth';
 
 /**
  * A real MongoDB for no-mock tests, running in memory for one test file.
@@ -17,18 +20,32 @@ export const DB_START_TIMEOUT_MS = 120_000;
 
 let mongo: MongoMemoryServer | undefined;
 
+
 /** Starts MongoDB, connects Mongoose to it, and builds every index (the geo queries need the 2dsphere one). */
 export async function startDb(): Promise<void> {
   mongo = await MongoMemoryServer.create();
   // The MongoDB driver loads `os` with a dynamic import(), which Jest's sandbox doesn't support; without
   // it the driver's handshake is incomplete and MongoDB rejects the connection. Passing `os` avoids that.
   await mongoose.connect(mongo.getUri(), { runtimeAdapters: { os } });
-  await Promise.all([GemModel.init(), CommentModel.init(), UserModel.init()]);
+  await Promise.all([GemModel.init(), CommentModel.init(), UserModel.init(), FavoriteModel.init(), RatingModel.init()]);
 }
 
 /** Empties every collection, keeping the indexes. */
 export async function clearDb(): Promise<void> {
-  await Promise.all([GemModel.deleteMany({}), CommentModel.deleteMany({}), UserModel.deleteMany({})]);
+  await Promise.all([
+    GemModel.deleteMany({}), CommentModel.deleteMany({}), UserModel.deleteMany({}),
+    FavoriteModel.deleteMany({}), RatingModel.deleteMany({}),
+  ]);
+}
+
+/**
+ * Stores a user directly in the database, so a token for them passes the login check.
+ *
+ * @param googleId the user's ID; defaults to the test user (see helpers/auth.ts).
+ * @param displayName their display name.
+ */
+export async function seedUser(googleId: string = TEST_USER_DOC.googleId, displayName: string = TEST_USER_DOC.displayName): Promise<void> {
+  await UserModel.create({ ...TEST_USER_DOC, googleId, displayName });
 }
 
 /** Disconnects Mongoose and stops MongoDB. */

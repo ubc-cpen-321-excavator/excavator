@@ -6,6 +6,7 @@ import timeController from "./controllers/timeController";
 import { gemRouter } from './controllers/gemController';
 import { placeRouter } from './controllers/placeController';
 import { authRouter } from './controllers/authController';
+import { favoriteRouter } from './controllers/favoriteController';
 import { alphnumDashOnly } from './utils/trust';
 
 // import WebSocket from 'ws';
@@ -26,6 +27,8 @@ export function createApp(): Express {
   app.use('/gem', gemRouter);
 
   app.use('/place', placeRouter);
+
+  app.use('/user/favorites', favoriteRouter);
 
   app.use('/user', authRouter);
 

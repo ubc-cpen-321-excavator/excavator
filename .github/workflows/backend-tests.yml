@@ -17,7 +17,7 @@ jobs:
         working-directory: backend
     env:
       # The no-mock tests that call Google Places run only when this secret is set.
-      GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

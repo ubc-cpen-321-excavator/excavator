@@ -17,6 +17,6 @@ export const env = {
   jwt_secret: process.env.JWT_SECRET || undefined,
   google_client_id: process.env.GOOGLE_CLIENT_ID!,
   google_client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-  // Google Places API (New) key. Without it, the Places client falls back to Application Default Credentials.
-  google_places_api_key: process.env.GOOGLE_PLACES_API_KEY || undefined,
+  // Google API key with Places API (New) enabled. Without it, the Places client falls back to Application Default Credentials.
+  google_api_key: process.env.GOOGLE_API_KEY || undefined,
 } as const;

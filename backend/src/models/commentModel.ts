@@ -17,6 +17,8 @@ const commentSchema = new Schema({
   gem: { type: String, required: true },       // Owning Gem's name, `places/<place ID>`
   commentId: { type: String, required: true }, // Partial key: unique within its Gem
   body: { type: String, required: true, maxlength: COMMENT_BODY_MAX_LENGTH },
+  author: { type: String },     // User ID (Google `sub`) of who wrote it
+  authorName: { type: String }, // Their display name when they wrote it, so lists need no user lookups
 }, { timestamps: true });
 
 // The weak entity's key: (gem, commentId). Also serves "all comments of a Gem".

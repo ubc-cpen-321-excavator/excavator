@@ -3,6 +3,13 @@ import request from 'supertest';
 import { createApp } from '../../src/app';
 import { CommentModel } from '../../src/models/commentModel';
 import { GemModel } from '../../src/models/gemModel';
+import { UserModel } from '../../src/models/userModel';
+import { TEST_USER_DOC, bearer } from '../helpers/auth';
+
+// The login check (AuthService.reqJwt) looks the signed-in user up.
+jest.mock('../../src/models/userModel', () => ({
+  UserModel: { findOne: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn() },
+}));
 
 jest.mock('../../src/models/commentModel', () => ({
   ...jest.requireActual('../../src/models/commentModel'),
@@ -36,6 +43,7 @@ function mockFind(docs: Promise<unknown>): void {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (UserModel as unknown as { findOne: jest.Mock }).findOne.mockReturnValue({ lean: () => Promise.resolve(TEST_USER_DOC) });
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
 });
 
@@ -45,18 +53,21 @@ describe('Mocked: GET /gem/:pk/comments', () => {
   // Input: GET request to /gem/abc/comments
   // Expected status code: 200
   // Expected behavior: the Gem is looked up as places/abc; only its comments are read
-  // Expected output: [{ id, body }, ...], oldest first, without the Gem name
+  // Expected output: [{ id, body, author?, authorName? }, ...], oldest first, without the Gem name; no login needed
   test('Gem with comments', async () => {
     mockedGemModel.exists.mockResolvedValue({ _id: 'gem' });
     mockFind(Promise.resolve([
       { gem: 'places/abc', commentId: 'c1', body: 'first' },
-      { gem: 'places/abc', commentId: 'c2', body: 'second' },
+      { gem: 'places/abc', commentId: 'c2', body: 'second', author: 'google-sub-9', authorName: 'kyoko' },
     ]));
 
     const response = await request(createApp()).get('/gem/abc/comments');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual([{ id: 'c1', body: 'first' }, { id: 'c2', body: 'second' }]);
+    expect(response.body).toEqual([
+      { id: 'c1', body: 'first' },
+      { id: 'c2', body: 'second', author: 'google-sub-9', authorName: 'kyoko' },
+    ]);
     expect(mockedGemModel.exists).toHaveBeenCalledWith({ name: 'places/abc' });
     expect(mockedCommentModel.find).toHaveBeenCalledWith({ gem: 'places/abc' });
   });
@@ -140,21 +151,38 @@ describe('Mocked: POST /gem/:pk/comments', () => {
   // Mocked behavior: the Gem exists; CommentModel.create succeeds
   // Input: POST request to /gem/abc/comments with { body: "  Great view!  " }
   // Expected status code: 201
-  // Expected behavior: one comment is stored under places/abc with a new ID and the trimmed body
-  // Expected output: { id, body: "Great view!" }
+  // Expected behavior: one comment is stored under places/abc with a new ID, the trimmed body, and the signed-in
+  //                    user as author (with their display name)
+  // Expected output: { id, body: "Great view!", author, authorName }
   test('Valid comment', async () => {
     mockedGemModel.exists.mockResolvedValue({ _id: 'gem' });
     mockedCommentModel.create.mockResolvedValue({});
 
-    const response = await request(createApp()).post('/gem/abc/comments').send({ body: '  Great view!  ' });
+    const response = await request(createApp()).post('/gem/abc/comments').set('Authorization', bearer()).send({ body: '  Great view!  ' });
 
     expect(response.status).toBe(201);
-    expect(response.body).toEqual({ id: expect.any(String), body: 'Great view!' });
+    expect(response.body).toEqual({ id: expect.any(String), body: 'Great view!', author: TEST_USER_DOC.googleId, authorName: 'mermaid' });
     expect(mockedCommentModel.create).toHaveBeenCalledWith({
       gem: 'places/abc',
       commentId: response.body.id,
       body: 'Great view!',
+      author: TEST_USER_DOC.googleId,
+      authorName: 'mermaid',
     });
+  });
+
+  // Mocked behavior: none
+  // Input: POST request to /gem/abc/comments with a valid body but no Authorization header
+  // Expected status code: 401
+  // Expected behavior: nothing is read or stored
+  // Expected output: { message: "Unauthorized request." }
+  test('Not signed in', async () => {
+    const response = await request(createApp()).post('/gem/abc/comments').send({ body: 'hello' });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message: 'Unauthorized request.' });
+    expect(mockedGemModel.exists).not.toHaveBeenCalled();
+    expect(mockedCommentModel.create).not.toHaveBeenCalled();
   });
 
   // Mocked behavior: none
@@ -170,7 +198,7 @@ describe('Mocked: POST /gem/:pk/comments', () => {
     ['too long', { body: 'a'.repeat(1001) }],
     ['control character', { body: 'bell\u0007' }],
   ])('Invalid body: %s', async (_label, payload) => {
-    const req = request(createApp()).post('/gem/abc/comments');
+    const req = request(createApp()).post('/gem/abc/comments').set('Authorization', bearer());
     const response = payload === undefined ? await req : await req.send(payload);
 
     expect(response.status).toBe(400);
@@ -185,7 +213,7 @@ describe('Mocked: POST /gem/:pk/comments', () => {
   // Expected behavior: the DB is not touched
   // Expected output: { message: "Invalid Gem ID." }
   test('Invalid pk', async () => {
-    const response = await request(createApp()).post('/gem/a.b/comments').send({ body: 'hello' });
+    const response = await request(createApp()).post('/gem/a.b/comments').set('Authorization', bearer()).send({ body: 'hello' });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ message: 'Invalid Gem ID.' });
@@ -200,7 +228,7 @@ describe('Mocked: POST /gem/:pk/comments', () => {
   test('No such Gem', async () => {
     mockedGemModel.exists.mockResolvedValue(null);
 
-    const response = await request(createApp()).post('/gem/unknown/comments').send({ body: 'hello' });
+    const response = await request(createApp()).post('/gem/unknown/comments').set('Authorization', bearer()).send({ body: 'hello' });
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ message: 'No such Gem.' });
@@ -216,7 +244,7 @@ describe('Mocked: POST /gem/:pk/comments', () => {
     mockedGemModel.exists.mockResolvedValue({ _id: 'gem' });
     mockedCommentModel.create.mockRejectedValue(new Error('connection refused'));
 
-    const response = await request(createApp()).post('/gem/abc/comments').send({ body: 'hello' });
+    const response = await request(createApp()).post('/gem/abc/comments').set('Authorization', bearer()).send({ body: 'hello' });
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ message: 'Add comment failed.' });
@@ -230,7 +258,7 @@ describe('Mocked: POST /gem/:pk/comments', () => {
   test('Database error while checking the Gem', async () => {
     mockedGemModel.exists.mockRejectedValue(new Error('connection refused'));
 
-    const response = await request(createApp()).post('/gem/abc/comments').send({ body: 'hello' });
+    const response = await request(createApp()).post('/gem/abc/comments').set('Authorization', bearer()).send({ body: 'hello' });
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ message: 'Add comment failed.' });

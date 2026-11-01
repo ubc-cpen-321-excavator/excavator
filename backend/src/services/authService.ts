@@ -61,6 +61,27 @@ class User {
   setDisplayName(displayName: string): void {
     this.displayName = displayName;
   }
+
+  /**
+   * @returns the user's profile as the API returns it (`GET /user/me`).
+   */
+  toJSON(): { id: string; name: Name; displayName: string } {
+    return { id: this.id, name: this.name, displayName: this.getDisplayName() };
+  }
+}
+
+/**
+ * Gets the signed-in user in a route handler that runs after `reqJwt`.
+ *
+ * @param req the request.
+ * @returns `req.user`.
+ * @throws if `reqJwt` did not run first (a programming error; the app's error handler answers 500).
+ */
+export function currentUser(req: Request): User {
+  if (!req.user) {
+    throw new Error('reqJwt must run before this handler.');
+  }
+  return req.user;
 }
 
 /** Thrown when a Google ID token is invalid, expired, or carries no account ID. The client's fault (401). */
