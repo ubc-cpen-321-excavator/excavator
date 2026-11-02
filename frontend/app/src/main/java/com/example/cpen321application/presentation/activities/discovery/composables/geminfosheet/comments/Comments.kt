@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.byValue
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -103,17 +104,18 @@ fun NewCommentInput(modifier: Modifier = Modifier) {
 
         TextField(
             state = commentState,
-            inputTransformation = InputTransformation.maxLength(maxChars).then {
-
+            inputTransformation = InputTransformation.maxLength(maxChars).byValue { current, proposed: CharSequence ->
+                if ("""[\n\t]""".toRegex() in proposed) current else proposed
             },
             lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 1, maxHeightInLines = maxLines),
             modifier = Modifier.weight(1f).clip(shape= RectangleShape),
+            placeholder = {Text("New comment...")}
         )
 
         IconButton(onClick = {}, modifier = Modifier.align(Alignment.CenterVertically)) {
             Icon(
                 painter = painterResource(R.drawable.arrow_circle_up_24),
-                contentDescription = "hi",
+                contentDescription = "Send Comment",
                 modifier = Modifier.scale(2f)
             )
         }
