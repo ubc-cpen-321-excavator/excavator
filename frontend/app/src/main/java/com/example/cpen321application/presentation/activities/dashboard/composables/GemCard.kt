@@ -12,7 +12,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 //import coil.compose.AsyncImage
 import com.example.cpen321application.data.entities.Gem
-import com.google.android.gms.maps.model.LatLng
 
 @Composable
 fun GemCard(
@@ -45,5 +44,5 @@ fun GemCard(
 @Preview(showBackground = true)
 @Composable
 fun GemCardPreview() {
-    GemCard(gem = Gem("Sample Gem", LatLng(12.123,123.123)), onClick = {})
+    GemCard(gem = mockGems.first(), onClick = {})
 }

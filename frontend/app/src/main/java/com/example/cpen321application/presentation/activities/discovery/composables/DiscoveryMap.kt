@@ -1,6 +1,5 @@
 package com.example.cpen321application.presentation.activities.discovery.composables
 
-import android.app.ProgressDialog.show
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -17,7 +16,6 @@ import com.example.cpen321application.presentation.activities.discovery.composab
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.CAMERA_PAN_DURATION_MS
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.INITIAL_COORDINATES
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.PLACEHOLDER_SELECTED_GEM
-import com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.GemCreationSheet
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.GemInfoSheetContent
 import com.example.cpen321application.presentation.activities.discovery.composables.gemmarker.GemMarker
 import com.example.cpen321application.presentation.activities.discovery.composables.newgembutton.NewGemButton
@@ -36,7 +34,6 @@ fun DiscoveryMap(
     val gems by viewModel.uiState.collectAsState()
 
     var showGemInfoSheet by remember {mutableStateOf(false)}
-    var showNewGemSheet by remember {mutableStateOf(false)}
 
     var selectedGem by remember {mutableStateOf(
         PLACEHOLDER_SELECTED_GEM
@@ -57,11 +54,6 @@ fun DiscoveryMap(
             showGemInfoSheet
         )
 
-        GemCreationSheet(
-            {showNewGemSheet = it},
-            showNewGemSheet
-        )
-
         GoogleMap (
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState
@@ -80,11 +72,12 @@ fun DiscoveryMap(
                     }
                 )
             }
+
+
+
         }
 
-        NewGemButton(Modifier.align(Alignment.BottomStart), onClick = viewModel::onEvent){
-            showNewGemSheet=true
-        }
+        NewGemButton(Modifier.align(Alignment.BottomStart), onClick = viewModel::onEvent)
     }
 
 

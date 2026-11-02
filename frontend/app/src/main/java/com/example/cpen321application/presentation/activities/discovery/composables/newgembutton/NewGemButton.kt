@@ -14,11 +14,10 @@ import com.example.cpen321application.presentation.viewmodels.GemEvent
 
 
 @Composable
-fun NewGemButton(modifier: Modifier, onClick: (GemEvent) -> Unit,
-                 onShowNewGemSheet: (Boolean) -> Unit){
+fun NewGemButton(modifier: Modifier, onClick: (GemEvent) -> Unit){
 
     FilledIconButton(
-        onClick = {onShowNewGemSheet(true)},
+        onClick = {},
         modifier = modifier.navigationBarsPadding().padding(16.dp).scale(1.5f),
     ) {
         Icon(

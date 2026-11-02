@@ -30,7 +30,7 @@ class IPService {
             const res = await fetch("https://api.ipify.org");
             return await res.text()
         } catch (err) {
-            return `Error getting IP address: ${String(err)}`;
+            return `Error getting IP address: ${err}`;
         }
 
     }

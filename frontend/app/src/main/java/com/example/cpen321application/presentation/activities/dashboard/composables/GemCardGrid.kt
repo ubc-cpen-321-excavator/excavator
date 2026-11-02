@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.data.entities.Gem
-import com.google.android.gms.maps.model.LatLng
 
 @Composable
 fun GemCardGrid(
@@ -43,13 +42,5 @@ fun GemCardGrid(
 @Preview(showBackground = true)
 @Composable
 fun GemCardGridPreview() {
-    GemCardGrid(gems = listOf(
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12))
-    ),onGemClick = {}, title = "Recently Added")
-
+    GemCardGrid(gems = mockGems, onGemClick = {}, title = "Recently Added")
 }
