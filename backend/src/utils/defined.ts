@@ -12,13 +12,15 @@ export function definedOnly<T extends object>(obj: T): DefinedOnly<T> {
 }
 
 /**
- * Treats an empty string like a missing one, as Google does for fields it has no value for.
+ * Reads an optional text field from outside data (e.g. Google), treating an empty string like a missing one,
+ * as Google does for fields it has no value for. Takes `unknown` and checks the type itself, so it is safe
+ * on data whose type is only declared, not guaranteed.
  *
- * @param value a string that may be missing, `null` or empty.
- * @returns `value`, or `undefined` if it is missing, `null` or empty.
+ * @param value the field's value.
+ * @returns `value` if it is a non-empty string, else `undefined`.
  */
-export function nonEmpty(value: string | null | undefined): string | undefined {
-  return value === null || value === undefined || value === '' ? undefined : value;
+export function nonEmpty(value: unknown): string | undefined {
+  return typeof value === 'string' && value !== '' ? value : undefined;
 }
 
 /**

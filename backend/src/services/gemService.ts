@@ -340,10 +340,10 @@ export interface PlaceCandidate {
 type GooglePlace = protos.google.maps.places.v1.IPlace;
 
 /**
- * @param value a number from Google, which may be unset.
+ * @param value a number from Google, which may be unset. Checked here, so any value is accepted.
  * @returns `value` if it is a number above 0, else `undefined` (unset ratings can come back as 0).
  */
-function positiveOrUndefined(value: number | null | undefined): number | undefined {
+function positiveOrUndefined(value: unknown): number | undefined {
   return typeof value === 'number' && value > 0 ? value : undefined;
 }
 
