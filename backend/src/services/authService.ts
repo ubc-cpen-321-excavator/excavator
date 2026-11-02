@@ -185,10 +185,12 @@ class AuthService {
       throw new InvalidTokenError(`Invalid Google Account info.`);
     }
 
-    // Names require 'profile' in client req. scope
-    const given = nonEmpty(payload.given_name);
-    const family = nonEmpty(payload.family_name);
-    const full = nonEmpty(payload.name) ?? nonEmpty([given, family].filter(Boolean).join(' ')) ?? FALLBACK_FULL_NAME;
+    // Names require 'profile' in client req. scope. Read as `unknown` since they come from Google;
+    // `nonEmpty` keeps only non-empty strings.
+    const names = payload as { given_name?: unknown; family_name?: unknown; name?: unknown };
+    const given = nonEmpty(names.given_name);
+    const family = nonEmpty(names.family_name);
+    const full = nonEmpty(names.name) ?? nonEmpty([given, family].filter(Boolean).join(' ')) ?? FALLBACK_FULL_NAME;
 
     return new User(payload.sub, { full, family, given });
   }
