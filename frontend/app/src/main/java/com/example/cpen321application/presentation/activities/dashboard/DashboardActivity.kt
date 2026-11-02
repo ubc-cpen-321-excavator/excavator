@@ -11,10 +11,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
+import com.example.cpen321application.presentation.activities.NavBar
+import com.example.cpen321application.presentation.activities.NavDestination
 import com.example.cpen321application.presentation.activities.dashboard.composables.LatestGemsGrid
 import com.example.cpen321application.presentation.activities.dashboard.ui.theme.CPEN321ApplicationTheme
+import com.example.cpen321application.presentation.activities.navigateTo
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -24,13 +28,22 @@ class DashboardActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CPEN321ApplicationTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                val context = LocalContext.current
 
-                    Column(modifier= Modifier.padding(innerPadding)) {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        NavBar(
+                            current = NavDestination.DASHBOARD,
+                            onNavigate = { navigateTo(context, it) }
+                        )
+                    }
+                ) { innerPadding ->
+
+                    Column(modifier = Modifier.padding(innerPadding)) {
                         Text("Dashboard", fontSize = 30.sp)
                         LatestGemsGrid(Modifier.padding(innerPadding))
                     }
-
                 }
             }
         }
