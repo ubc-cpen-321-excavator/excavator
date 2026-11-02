@@ -5,6 +5,7 @@ import { FavoriteModel } from '../../src/models/favoriteModel';
 import { GemModel } from '../../src/models/gemModel';
 import { UserModel } from '../../src/models/userModel';
 import { TEST_USER_DOC, TEST_USER_ID, bearer } from '../helpers/auth';
+import { requestWith } from '../helpers/http';
 
 jest.mock('../../src/models/favoriteModel', () => ({
   FavoriteModel: { find: jest.fn(), exists: jest.fn(), countDocuments: jest.fn(), create: jest.fn(), deleteOne: jest.fn() },
@@ -265,7 +266,7 @@ describe('Mocked: DELETE /user/favorites/:placeId', () => {
     ['put', '/user/favorites', 'GET, POST'],
     ['get', '/user/favorites/abc', 'DELETE'],
   ] as const)('%s %s not allowed', async (method, path, allow) => {
-    const response = await request(createApp())[method](path).set('Authorization', bearer());
+    const response = await requestWith(createApp(), method, path).set('Authorization', bearer());
 
     expect(response.status).toBe(405);
     expect(response.headers.allow).toBe(allow);

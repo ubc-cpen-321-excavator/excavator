@@ -1,7 +1,7 @@
-import { PlacesClient } from "@googlemaps/places";
+import { PlacesClient, type protos } from "@googlemaps/places";
 import { env } from "../config/env";
 import { GemModel, type GemDoc, type GemInput } from "../models/gemModel";
-import { definedOnly } from "../utils/defined";
+import { definedOnly, nonEmpty, orUndefined } from "../utils/defined";
 import { computeGemScore } from "../utils/gemScore";
 import { distanceMeters, type Bounds, type LatLng } from "../utils/geo";
 
@@ -336,6 +336,85 @@ export interface PlaceCandidate {
   isGem: boolean;
 }
 
+/** A place as the Google Places client returns it. */
+type GooglePlace = protos.google.maps.places.v1.IPlace;
+
+/**
+ * @param value a number from Google, which may be unset.
+ * @returns `value` if it is a number above 0, else `undefined` (unset ratings can come back as 0).
+ */
+function positiveOrUndefined(value: number | null | undefined): number | undefined {
+  return typeof value === 'number' && value > 0 ? value : undefined;
+}
+
+/**
+ * @param gPlace a place from Google Places.
+ * @returns its location, or `undefined` if Google left it out or it is not finite.
+ */
+function locationFromGoogle(gPlace: GooglePlace): LatLng | undefined {
+  const latitude = gPlace.location?.latitude;
+  const longitude = gPlace.location?.longitude;
+  if (typeof latitude !== 'number' || !Number.isFinite(latitude)
+    || typeof longitude !== 'number' || !Number.isFinite(longitude)) {
+    return undefined;
+  }
+
+  return { latitude, longitude };
+}
+
+/**
+ * Maps a place looked up on Google Places to our `Place` and its Google rating.
+ *
+ * @param gPlace the place from Google Places.
+ * @returns the place (with display name, primary type and description when Google has them) and its rating.
+ * @throws `InvalidPlaceError` if Google returned it without a name or location.
+ */
+function lookupFromGoogle(gPlace: GooglePlace): PlaceLookup {
+  const location = locationFromGoogle(gPlace);
+  const name = nonEmpty(gPlace.name);
+  if (name === undefined || location === undefined) {
+    throw new InvalidPlaceError('Invalid response from Google Map.');
+  }
+
+  const place = new Place(name, location.latitude, location.longitude);
+  const displayName = nonEmpty(gPlace.displayName?.text);
+  if (displayName !== undefined) {
+    place.setDisplayName(displayName);
+  }
+  place.type = nonEmpty(gPlace.primaryType);
+  place.description = nonEmpty(gPlace.editorialSummary?.text);
+
+  return {
+    place,
+    rating: positiveOrUndefined(gPlace.rating),
+    reviewCount: positiveOrUndefined(gPlace.userRatingCount),
+  };
+}
+
+/**
+ * Maps a place from a nearby search to a candidate the user could add.
+ *
+ * @param gPlace the place from Google Places.
+ * @param from where the user is, to measure the distance from.
+ * @returns the candidate, or `undefined` if the place has no valid name or location.
+ */
+function candidateFromGoogle(gPlace: GooglePlace, from: LatLng): Omit<PlaceCandidate, 'isGem'> | undefined {
+  const location = locationFromGoogle(gPlace);
+  if (!isValidGemName(gPlace.name) || location === undefined) {
+    return undefined;
+  }
+
+  return {
+    name: gPlace.name,
+    displayName: nonEmpty(gPlace.displayName?.text) ?? gPlace.name,
+    type: nonEmpty(gPlace.primaryType),
+    address: nonEmpty(gPlace.formattedAddress),
+    latitude: location.latitude,
+    longitude: location.longitude,
+    distance: Math.round(distanceMeters(from, location)),
+  };
+}
+
 /**
  * Gets, validates and adds Gems.
  */
@@ -368,32 +447,7 @@ class GemService {
       throw new PlacesUnavailableError('Place lookup failed.', { cause: err });
     }
 
-    const gPlace = res[0];
-    const latitude = gPlace.location?.latitude;
-    const longitude = gPlace.location?.longitude;
-
-    if (
-      !gPlace.name
-      || typeof latitude !== 'number' || !Number.isFinite(latitude)
-      || typeof longitude !== 'number' || !Number.isFinite(longitude)
-    ) {
-      throw new InvalidPlaceError('Invalid response from Google Map.');
-    }
-
-    const place = new Place(gPlace.name, latitude, longitude);
-    if (gPlace.displayName?.text) {
-      place.setDisplayName(gPlace.displayName.text);
-    }
-    place.type = gPlace.primaryType || undefined;
-    place.description = gPlace.editorialSummary?.text || undefined;
-
-    // Unset ratings can come back as 0; real ratings are 1.0–5.0.
-    const rating = typeof gPlace.rating === 'number' && gPlace.rating > 0 ? gPlace.rating : undefined;
-    const reviewCount = typeof gPlace.userRatingCount === 'number' && gPlace.userRatingCount > 0
-      ? gPlace.userRatingCount
-      : undefined;
-
-    return { place, rating, reviewCount };
+    return lookupFromGoogle(res[0]);
   }
 
   /**
@@ -570,25 +624,8 @@ class GemService {
       throw new PlacesUnavailableError('Nearby search failed.', { cause: err });
     }
 
-    const candidates: Omit<PlaceCandidate, 'isGem'>[] = [];
-    for (const gPlace of res[0].places ?? []) {
-      const latitude = gPlace.location?.latitude;
-      const longitude = gPlace.location?.longitude;
-      // Skip anything Google returns that couldn't be added as a Gem anyway.
-      if (!isValidGemName(gPlace.name) || typeof latitude !== 'number' || typeof longitude !== 'number') {
-        continue;
-      }
-
-      candidates.push({
-        name: gPlace.name,
-        displayName: gPlace.displayName?.text || gPlace.name,
-        type: gPlace.primaryType || undefined,
-        address: gPlace.formattedAddress || undefined,
-        latitude,
-        longitude,
-        distance: Math.round(distanceMeters(location, { latitude, longitude })),
-      });
-    }
+    // Leaves out anything Google returns that couldn't be added as a Gem anyway.
+    const candidates = (res[0].places ?? []).flatMap(gPlace => candidateFromGoogle(gPlace, location) ?? []);
 
     const gems = await this.repo.namesIn(candidates.map(c => c.name));
 
@@ -656,13 +693,13 @@ function toDoc(gem: Gem): GemInput {
 }
 
 /**
- * Maps a stored Mongo document back to a Gem.
+ * Maps the place part of a stored Gem document back to a Place.
  *
  * @param doc the stored document.
- * @returns the Gem; `null` fields become `undefined`.
+ * @returns the Place; `null` fields become `undefined`.
  * @throws if the document has no valid `[longitude, latitude]`.
  */
-function fromDoc(doc: GemDoc): Gem {
+function placeFromDoc(doc: GemDoc): Place {
   const [longitude, latitude] = doc.place.location.coordinates;
   if (longitude === undefined || latitude === undefined) {
     throw new Error(`Invalid location for Gem.`);
@@ -675,11 +712,22 @@ function fromDoc(doc: GemDoc): Gem {
   place.type = doc.type ?? undefined;
   place.description = doc.description ?? undefined;
 
-  const gem = new Gem(doc.name, place, doc.addedBy ?? undefined);
-  gem.setNicheness(doc.nicheness ?? undefined);
-  gem.setQuality(doc.quality ?? undefined);
-  gem.setReviewCount(doc.reviewCount ?? undefined);
-  gem.setAppRatings(doc.ratingCount ?? undefined, doc.ratingAverage ?? undefined);
+  return place;
+}
+
+/**
+ * Maps a stored Mongo document back to a Gem.
+ *
+ * @param doc the stored document.
+ * @returns the Gem; `null` fields become `undefined`.
+ * @throws if the document has no valid `[longitude, latitude]`.
+ */
+function fromDoc(doc: GemDoc): Gem {
+  const gem = new Gem(doc.name, placeFromDoc(doc), orUndefined(doc.addedBy));
+  gem.setNicheness(orUndefined(doc.nicheness));
+  gem.setQuality(orUndefined(doc.quality));
+  gem.setReviewCount(orUndefined(doc.reviewCount));
+  gem.setAppRatings(orUndefined(doc.ratingCount), orUndefined(doc.ratingAverage));
   if (doc.score !== undefined && doc.score !== null) {
     gem.setScore(doc.score, doc.scoreTime ?? Date.now());
   }
@@ -817,7 +865,7 @@ class GemRepo {
       ratingCount: gem.getRatingCount(),
       ratingAverage: gem.getRatingAverage(),
     };
-    const unset = Object.fromEntries(Object.entries(fields).filter(([_k, v]) => v === undefined).map(([k]) => [k, 1]));
+    const unset = Object.fromEntries(Object.entries(fields).filter(entry => entry[1] === undefined).map(entry => [entry[0], 1]));
 
     await GemModel.updateOne(
       { name: gem.name },

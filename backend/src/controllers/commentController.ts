@@ -2,12 +2,15 @@ import express, { type Request, type Response } from "express";
 import CommentService, { NoSuchGemError, isValidCommentBody } from "../services/commentService";
 import { currentUser } from "../services/authService";
 import GemService, { gemNameFromPlaceId } from "../services/gemService";
-import { methodNotAllowed } from "../utils/http";
-import { alphnumDashOnly } from "../utils/trust";
+import type { ParamsDictionary } from "express-serve-static-core";
+import { asyncHandler, methodNotAllowed } from "../utils/http";
+import { logError } from "../utils/log";
 import { authService } from "./authController";
 
 /** Route parameters inherited from the parent route `/gem/:pk`; `pk` is the Gem's place ID. */
-type GemParams = { pk: string };
+interface GemParams extends ParamsDictionary {
+  pk: string;
+}
 
 /**
  * Makes the router for a Gem's comments, to be nested in the Gem router at `/:pk/comments`.
@@ -30,7 +33,7 @@ export function createCommentRouter(gemService: GemService): express.Router {
    * - 404 `{ message: 'No such Gem.' }`: no Gem has that place ID.
    * - 500 `{ message: 'Get comments failed.' }`: database error.
    */
-  commentRouter.get('/', async (req: Request<GemParams>, res: Response) => {
+  commentRouter.get('/', asyncHandler(async (req: Request<GemParams>, res: Response) => {
     const gem = gemNameFromPlaceId(req.params.pk);
     if (!gem) {
       res.status(400).json({ message: 'Invalid Gem ID.' });
@@ -46,10 +49,10 @@ export function createCommentRouter(gemService: GemService): express.Router {
         return;
       }
 
-      console.log(`Get comments failed: ${alphnumDashOnly(err)}`);
+      logError('Get comments failed', err);
       res.status(500).json({ message: 'Get comments failed.' });
     }
-  });
+  }));
 
   /**
    * POST /gem/:pk/comments with JSON body `{ body: '<comment text>' }`
@@ -63,14 +66,14 @@ export function createCommentRouter(gemService: GemService): express.Router {
    * - 404 `{ message: 'No such Gem.' }`: no Gem has that place ID; nothing is stored.
    * - 500 `{ message: 'Add comment failed.' }`: database error.
    */
-  commentRouter.post('/', authService.reqJwt, async (req: Request<GemParams>, res: Response) => {
+  commentRouter.post('/', authService.reqJwt, asyncHandler(async (req: Request<GemParams>, res: Response) => {
     const gem = gemNameFromPlaceId(req.params.pk);
     if (!gem) {
       res.status(400).json({ message: 'Invalid Gem ID.' });
       return;
     }
 
-    const body: unknown = req.body?.body;
+    const { body } = (req.body ?? {}) as { body?: unknown };
     if (!isValidCommentBody(body)) {
       res.status(400).json({ message: 'Invalid comment body.' });
       return;
@@ -87,10 +90,10 @@ export function createCommentRouter(gemService: GemService): express.Router {
         return;
       }
 
-      console.log(`Add comment failed: ${alphnumDashOnly(err)}`);
+      logError('Add comment failed', err);
       res.status(500).json({ message: 'Add comment failed.' });
     }
-  });
+  }));
 
   commentRouter.all('/', methodNotAllowed(['GET', 'POST']));
 

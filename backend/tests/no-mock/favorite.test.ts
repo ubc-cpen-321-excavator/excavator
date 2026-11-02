@@ -86,7 +86,7 @@ describe('Unmocked: GET /user/favorites', () => {
     const response = await request(createApp()).get('/user/favorites').set('Authorization', bearer());
 
     expect(response.status).toBe(200);
-    expect(names(response.body)).toEqual(['places/park', 'places/cafe']);
+    expect(names(response.body as { name: string }[])).toEqual(['places/park', 'places/cafe']);
     expect(response.body[0].place).toMatchObject({ name: 'places/park', ...UBC });
   });
 

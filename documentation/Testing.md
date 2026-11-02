@@ -21,23 +21,23 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 
 | **Interface** | **Describe Group Location, No Mocks** | **Describe Group Location, With Mocks** | **Mocked Components** |
 | --- | --- | --- | --- |
-| **GET /gem** | [`tests/no-mock/gem.test.ts#L24`](../backend/tests/no-mock/gem.test.ts#L24) | [`tests/mock/gem.test.ts#L58`](../backend/tests/mock/gem.test.ts#L58) | Gems DB |
-| **POST /gem** | [`tests/no-mock/gem.test.ts#L67`](../backend/tests/no-mock/gem.test.ts#L67)<br>[`tests/no-mock/gem.test.ts#L119`](../backend/tests/no-mock/gem.test.ts#L119) | [`tests/mock/gem.test.ts#L186`](../backend/tests/mock/gem.test.ts#L186)<br>[`tests/mock/gem.test.ts#L302`](../backend/tests/mock/gem.test.ts#L302)<br>[`tests/mock/gem.test.ts#L340`](../backend/tests/mock/gem.test.ts#L340) | Gems DB, Users DB (login check), Google Places API |
-| **GET /gem/nearby** | [`tests/no-mock/gem.test.ts#L161`](../backend/tests/no-mock/gem.test.ts#L161) | [`tests/mock/gem.test.ts#L401`](../backend/tests/mock/gem.test.ts#L401) | Gems DB |
-| **GET /gem/within** | [`tests/no-mock/gem.test.ts#L218`](../backend/tests/no-mock/gem.test.ts#L218) | [`tests/mock/gem.test.ts#L473`](../backend/tests/mock/gem.test.ts#L473) | Gems DB |
-| **GET /gem/newest** | [`tests/no-mock/gem.test.ts#L261`](../backend/tests/no-mock/gem.test.ts#L261) | [`tests/mock/gem.test.ts#L526`](../backend/tests/mock/gem.test.ts#L526) | Gems DB |
+| **GET /gem** | [`tests/no-mock/gem.test.ts#L24`](../backend/tests/no-mock/gem.test.ts#L24) | [`tests/mock/gem.test.ts#L59`](../backend/tests/mock/gem.test.ts#L59) | Gems DB |
+| **POST /gem** | [`tests/no-mock/gem.test.ts#L67`](../backend/tests/no-mock/gem.test.ts#L67), [`tests/no-mock/gem.test.ts#L119`](../backend/tests/no-mock/gem.test.ts#L119) | [`tests/mock/gem.test.ts#L187`](../backend/tests/mock/gem.test.ts#L187), [`tests/mock/gem.test.ts#L303`](../backend/tests/mock/gem.test.ts#L303), [`tests/mock/gem.test.ts#L341`](../backend/tests/mock/gem.test.ts#L341) | Gems DB, Users DB (login check), Google Places API |
+| **GET /gem/nearby** | [`tests/no-mock/gem.test.ts#L161`](../backend/tests/no-mock/gem.test.ts#L161) | [`tests/mock/gem.test.ts#L402`](../backend/tests/mock/gem.test.ts#L402) | Gems DB |
+| **GET /gem/within** | [`tests/no-mock/gem.test.ts#L218`](../backend/tests/no-mock/gem.test.ts#L218) | [`tests/mock/gem.test.ts#L474`](../backend/tests/mock/gem.test.ts#L474) | Gems DB |
+| **GET /gem/newest** | [`tests/no-mock/gem.test.ts#L261`](../backend/tests/no-mock/gem.test.ts#L261) | [`tests/mock/gem.test.ts#L527`](../backend/tests/mock/gem.test.ts#L527) | Gems DB |
 | **GET /gem/:pk/comments** | [`tests/no-mock/comment.test.ts#L68`](../backend/tests/no-mock/comment.test.ts#L68) | [`tests/mock/comment.test.ts#L51`](../backend/tests/mock/comment.test.ts#L51) | Comments DB, Gems DB |
 | **POST /gem/:pk/comments** | [`tests/no-mock/comment.test.ts#L17`](../backend/tests/no-mock/comment.test.ts#L17) | [`tests/mock/comment.test.ts#L150`](../backend/tests/mock/comment.test.ts#L150) | Comments DB, Gems DB, Users DB (login check) |
 | **PUT /gem/:pk/rating** | [`tests/no-mock/rating.test.ts#L20`](../backend/tests/no-mock/rating.test.ts#L20) | [`tests/mock/rating.test.ts#L55`](../backend/tests/mock/rating.test.ts#L55) | Ratings DB, Gems DB, Users DB (login check), Live Feed |
 | **GET /gem/:pk/rating** | [`tests/no-mock/rating.test.ts#L81`](../backend/tests/no-mock/rating.test.ts#L81) | [`tests/mock/rating.test.ts#L161`](../backend/tests/mock/rating.test.ts#L161) | Ratings DB, Gems DB, Users DB (login check) |
-| **GET /place/nearby** | [`tests/no-mock/place.test.ts#L11`](../backend/tests/no-mock/place.test.ts#L11)<br>[`tests/no-mock/place.test.ts#L34`](../backend/tests/no-mock/place.test.ts#L34) | [`tests/mock/place.test.ts#L40`](../backend/tests/mock/place.test.ts#L40) | Google Places API, Gems DB |
+| **GET /place/nearby** | [`tests/no-mock/place.test.ts#L11`](../backend/tests/no-mock/place.test.ts#L11), [`tests/no-mock/place.test.ts#L34`](../backend/tests/no-mock/place.test.ts#L34) | [`tests/mock/place.test.ts#L40`](../backend/tests/mock/place.test.ts#L40) | Google Places API, Gems DB |
 | **POST /user/auth/google** | [`tests/no-mock/auth.test.ts#L15`](../backend/tests/no-mock/auth.test.ts#L15) | [`tests/mock/auth.test.ts#L35`](../backend/tests/mock/auth.test.ts#L35) | Google Sign-In, Users DB |
 | **Login check (`reqJwt`, all routes requiring login)** | [`tests/no-mock/auth.test.ts#L47`](../backend/tests/no-mock/auth.test.ts#L47) | [`tests/mock/auth.test.ts#L119`](../backend/tests/mock/auth.test.ts#L119) | Users DB |
 | **GET /user/me** | [`tests/no-mock/profile.test.ts#L16`](../backend/tests/no-mock/profile.test.ts#L16) | [`tests/mock/auth.test.ts#L119`](../backend/tests/mock/auth.test.ts#L119) | Users DB |
 | **PATCH /user/me** | [`tests/no-mock/profile.test.ts#L39`](../backend/tests/no-mock/profile.test.ts#L39) | [`tests/mock/auth.test.ts#L146`](../backend/tests/mock/auth.test.ts#L146) | Users DB |
-| **GET /user/favorites** | [`tests/no-mock/favorite.test.ts#L75`](../backend/tests/no-mock/favorite.test.ts#L75) | [`tests/mock/favorite.test.ts#L48`](../backend/tests/mock/favorite.test.ts#L48) | Favorites DB, Gems DB, Users DB (login check) |
-| **POST /user/favorites** | [`tests/no-mock/favorite.test.ts#L25`](../backend/tests/no-mock/favorite.test.ts#L25) | [`tests/mock/favorite.test.ts#L108`](../backend/tests/mock/favorite.test.ts#L108) | Favorites DB, Gems DB, Users DB (login check) |
-| **DELETE /user/favorites/:placeId** | [`tests/no-mock/favorite.test.ts#L108`](../backend/tests/no-mock/favorite.test.ts#L108) | [`tests/mock/favorite.test.ts#L205`](../backend/tests/mock/favorite.test.ts#L205) | Favorites DB, Users DB (login check) |
+| **GET /user/favorites** | [`tests/no-mock/favorite.test.ts#L75`](../backend/tests/no-mock/favorite.test.ts#L75) | [`tests/mock/favorite.test.ts#L49`](../backend/tests/mock/favorite.test.ts#L49) | Favorites DB, Gems DB, Users DB (login check) |
+| **POST /user/favorites** | [`tests/no-mock/favorite.test.ts#L25`](../backend/tests/no-mock/favorite.test.ts#L25) | [`tests/mock/favorite.test.ts#L109`](../backend/tests/mock/favorite.test.ts#L109) | Favorites DB, Gems DB, Users DB (login check) |
+| **DELETE /user/favorites/:placeId** | [`tests/no-mock/favorite.test.ts#L108`](../backend/tests/no-mock/favorite.test.ts#L108) | [`tests/mock/favorite.test.ts#L206`](../backend/tests/mock/favorite.test.ts#L206) | Favorites DB, Users DB (login check) |
 | **WebSocket /feed** | [`tests/no-mock/feed.test.ts#L40`](../backend/tests/no-mock/feed.test.ts#L40) | [`tests/mock/feed.test.ts#L73`](../backend/tests/mock/feed.test.ts#L73) | Gems DB, Users DB, Google Places API (gems are added through POST /gem) |
 
 #### 2.1.2. Commit Hash Where Tests Run
@@ -66,15 +66,15 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 
 ### 2.3. Jest Coverage Report Screenshots With Mocks
 
-_(Placeholder for Jest coverage screenshot with mocks enabled)_
+Screenshot of the coverage report with mocks enabled: to be added.
 
 ### 2.4. Jest Coverage Report Screenshots Without Mocks
 
-_(Placeholder for Jest coverage screenshot without mocks)_
+Screenshot of the coverage report without mocks: to be added.
 
 ### 2.5. Jest Coverage Report Screenshots With and Without Mocks Combined
 
-_(Placeholder for the combined Jest coverage screenshot)_
+Screenshot of the combined coverage report: to be added.
 
 ---
 

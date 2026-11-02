@@ -28,8 +28,8 @@ const mockGetPlace = jest.fn();
 const mockSearchNearby = jest.fn();
 jest.mock('@googlemaps/places', () => ({
   PlacesClient: jest.fn().mockImplementation(() => ({
-    getPlace: (...args: unknown[]) => mockGetPlace(...args),
-    searchNearby: (...args: unknown[]) => mockSearchNearby(...args),
+    getPlace: (...args: unknown[]): unknown => mockGetPlace(...args),
+    searchNearby: (...args: unknown[]): unknown => mockSearchNearby(...args),
   })),
 }));
 
@@ -139,7 +139,7 @@ describe('Mocked: GemService.addGem', () => {
 
     await new GemService().addGem('places/bare', 'google-sub-123', { latitude: 20, longitude: 10 });
 
-    const doc = mockedGemModel.create.mock.calls[0][0];
+    const doc = mockedGemModel.create.mock.calls[0][0] as Record<string, unknown>;
     expect(Object.values(doc)).not.toContain(undefined);
     expect(Object.keys(doc).sort()).toEqual(['addedBy', 'name', 'nicheness', 'place', 'score', 'scoreTime']);
     expect(doc.score).toBe(computeGemScore({}).score);

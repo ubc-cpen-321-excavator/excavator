@@ -3,10 +3,10 @@ import type { NextFunction, Request, Response } from 'express';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { env } from '../config/env'
 import { UserModel, type UserDoc, type UserInput } from "../models/userModel";
-import { definedOnly } from "../utils/defined";
-import { alphnumDashOnly } from "../utils/trust";
+import { definedOnly, nonEmpty } from "../utils/defined";
+import { logError } from "../utils/log";
 
-const BEARER_PREFIX: string = 'Bearer ';
+const BEARER_PREFIX = 'Bearer ';
 
 /** How long a login token stays valid. jsonwebtoken reads strings like '7d'; a bare number would mean seconds. */
 export const TOKEN_LIFETIME = '7d';
@@ -17,18 +17,17 @@ const DISPLAY_NAME_MAX_LENGTH = 50;
 /** Used when a Google account has no name at all. */
 const FALLBACK_FULL_NAME = 'Excavator user';
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-    }
+// Adds `req.user`, set by `reqJwt` for routes that require login.
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: User;
   }
 }
 
 /**
  * Do not assume one has so-called 'family' or 'given' name parts, or if they do, the preferred ordering.
  */
-type Name = {
+interface Name {
   readonly full: string;
   readonly family?: string | undefined;
   readonly given?: string | undefined;
@@ -177,7 +176,7 @@ class AuthService {
         audience: env.google_client_id
       });
     } catch (err) {
-      console.log(`idToken rejected: ${alphnumDashOnly(err)}`);
+      logError('idToken rejected', err);
       throw new InvalidTokenError('idToken rejected.');
     }
 
@@ -187,9 +186,9 @@ class AuthService {
     }
 
     // Names require 'profile' in client req. scope
-    const given = payload.given_name || undefined;
-    const family = payload.family_name || undefined;
-    const full = payload.name || [given, family].filter(Boolean).join(' ') || FALLBACK_FULL_NAME;
+    const given = nonEmpty(payload.given_name);
+    const family = nonEmpty(payload.family_name);
+    const full = nonEmpty(payload.name) ?? nonEmpty([given, family].filter(Boolean).join(' ')) ?? FALLBACK_FULL_NAME;
 
     return new User(payload.sub, { full, family, given });
   }
@@ -257,7 +256,7 @@ class AuthService {
         next();
       })
       .catch((err: unknown) => {
-        console.log(`Login check failed: ${alphnumDashOnly(err)}`);
+        logError('Login check failed', err);
         res.status(500).json({ message: 'Login check failed.' });
       });
   }
@@ -359,10 +358,7 @@ class UserRepo {
       { upsert: true, returnDocument: 'after' },
     ).lean<UserDoc>();
 
-    if (!doc) {
-      throw new Error('User not created.');
-    }
-
+    // Never null: with `upsert` and `returnDocument: 'after'`, Mongo returns the found or inserted user.
     return fromDoc(doc);
   }
 

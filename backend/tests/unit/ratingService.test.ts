@@ -3,7 +3,7 @@ import { RatingModel } from '../../src/models/ratingModel';
 import GemService, { Gem, NoSuchGemError, Place } from '../../src/services/gemService';
 
 jest.mock('../../src/models/ratingModel', () => ({
-  ...jest.requireActual('../../src/models/ratingModel'),
+  ...jest.requireActual<Record<string, unknown>>('../../src/models/ratingModel'),
   RatingModel: {
     updateOne: jest.fn(),
     findOne: jest.fn(),

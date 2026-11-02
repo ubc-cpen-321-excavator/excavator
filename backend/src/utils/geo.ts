@@ -15,8 +15,12 @@ export interface Bounds {
 /** Mean Earth radius, in metres. */
 const EARTH_RADIUS_M = 6_371_000;
 
-/** A plain decimal number, e.g. `49.26` or `-123.25`; no exponents, spaces or hex. */
-const DECIMAL_PATTERN = /^-?\d+(\.\d+)?$/;
+/**
+ * A plain decimal number, e.g. `49`, `49.26` or `-123.25`; no exponents, spaces or hex.
+ * Two patterns rather than one with an optional `(\.\d+)?` group, which ReDoS checkers flag as a nested quantifier.
+ */
+const INTEGER_PATTERN = /^-?\d+$/;
+const DECIMAL_PATTERN = /^-?\d+\.\d+$/;
 
 /**
  * Reads a number from a query parameter or JSON field.
@@ -28,7 +32,7 @@ export function toNumber(value: unknown): number | undefined {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : undefined;
   }
-  if (typeof value === 'string' && DECIMAL_PATTERN.test(value)) {
+  if (typeof value === 'string' && (INTEGER_PATTERN.test(value) || DECIMAL_PATTERN.test(value))) {
     return Number(value);
   }
   return undefined;

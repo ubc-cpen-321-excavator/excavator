@@ -18,9 +18,9 @@ jest.mock('../../src/models/userModel', () => ({
 const mockVerifyIdToken = jest.fn();
 jest.mock('google-auth-library', () => ({
   // Keep the rest of the library: the Places client (loaded by the app) needs it.
-  ...jest.requireActual('google-auth-library'),
+  ...jest.requireActual<Record<string, unknown>>('google-auth-library'),
   OAuth2Client: jest.fn().mockImplementation(() => ({
-    verifyIdToken: (...args: unknown[]) => mockVerifyIdToken(...args),
+    verifyIdToken: (...args: unknown[]): unknown => mockVerifyIdToken(...args),
   })),
 }));
 
@@ -67,7 +67,7 @@ describe('Mocked: POST /user/auth/google', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ sessionId: expect.any(String) });
-    expect(jwt.verify(response.body.sessionId, process.env.JWT_SECRET ?? '')).toMatchObject({ sub: 'google-sub-123' });
+    expect(jwt.verify((response.body as { sessionId: string }).sessionId, process.env.JWT_SECRET ?? '')).toMatchObject({ sub: 'google-sub-123' });
     expect(mockedUserModel.findOneAndUpdate.mock.calls[0][0]).toEqual({ googleId: 'google-sub-123' });
   });
 

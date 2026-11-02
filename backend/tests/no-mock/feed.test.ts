@@ -144,8 +144,14 @@ describe('Unmocked: WS /feed', () => {
 
     await closeFeed(wss);
     const closed = await Promise.race([
-      new Promise<Error | undefined>(resolve => server.close(resolve)),
-      new Promise<string>(resolve => setTimeout(() => resolve('timed out'), 2000)),
+      new Promise<Error | undefined>(resolve => {
+        server.close(resolve);
+      }),
+      new Promise<string>(resolve => {
+        setTimeout(() => {
+          resolve('timed out');
+        }, 2000);
+      }),
     ]);
 
     expect(closed).toBeUndefined();

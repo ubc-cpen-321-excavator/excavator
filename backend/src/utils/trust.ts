@@ -1,24 +1,23 @@
-export function safeToString(input: any): string {
+export function safeToString(input: unknown): string {
   try {
-    return input.toString();
-  } catch (err) {
+    return String(input);
+  } catch {
     return 'input.toString() failed.';
   }
 }
 
-export function alphOnly(input: any): string {
+export function alphOnly(input: unknown): string {
   return safeToString(input).replace(/[^a-zA-Z]+/g, '')
 }
 
-export function numOnly(input: any): string {
+export function numOnly(input: unknown): string {
   return safeToString(input).replace(/[^0-9]+/g, '')
 }
 
-export function alphnumOnly(input: any): string {
+export function alphnumOnly(input: unknown): string {
   return safeToString(input).replace(/[^a-zA-Z0-9]+/g, '')
 }
 
-export function alphnumDashOnly(input: any): string {
-  return safeToString(input).replace(/[^a-zA-Z0-9\-\_]+/g, '')
+export function alphnumDashOnly(input: unknown): string {
+  return safeToString(input).replace(/[^a-zA-Z0-9_-]+/g, '')
 }
-

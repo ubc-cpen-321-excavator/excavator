@@ -2,8 +2,8 @@ import express, { type Request, type Response } from "express";
 import { currentUser } from "../services/authService";
 import FavoriteService, { TooManyFavoritesError } from "../services/favoriteService";
 import { NoSuchGemError, gemNameFromPlaceId, isValidGemName } from "../services/gemService";
-import { methodNotAllowed } from "../utils/http";
-import { alphnumDashOnly } from "../utils/trust";
+import { asyncHandler, methodNotAllowed } from "../utils/http";
+import { logError } from "../utils/log";
 import { authService } from "./authController";
 import { gemService } from "./gemController";
 
@@ -26,14 +26,14 @@ favoriteRouter.use(authService.reqJwt);
  * - 401 `{ message }`: not signed in (see `AuthService.reqJwt`).
  * - 500 `{ message: 'Get favorites failed.' }`: database error.
  */
-favoriteRouter.get('/', async (req, res) => {
+favoriteRouter.get('/', asyncHandler(async (req, res) => {
   try {
     res.json(await favoriteService.getFavorites(currentUser(req).id));
   } catch (err) {
-    console.log(`Get favorites failed: ${alphnumDashOnly(err)}`);
+    logError('Get favorites failed', err);
     res.status(500).json({ message: 'Get favorites failed.' });
   }
-});
+}));
 
 /**
  * POST /user/favorites with JSON body `{ gem: 'places/<place ID>' }`
@@ -47,8 +47,8 @@ favoriteRouter.get('/', async (req, res) => {
  * - 409 `{ message: 'Too many favorites.' }`: the user already has 500 favorites.
  * - 500 `{ message: 'Add favorite failed.' }`: database error.
  */
-favoriteRouter.post('/', async (req, res) => {
-  const gem: unknown = req.body?.gem;
+favoriteRouter.post('/', asyncHandler(async (req, res) => {
+  const { gem } = (req.body ?? {}) as { gem?: unknown };
   if (!isValidGemName(gem)) {
     res.status(400).json({ message: 'Invalid Gem name.' });
     return;
@@ -67,10 +67,10 @@ favoriteRouter.post('/', async (req, res) => {
       return;
     }
 
-    console.log(`Add favorite failed: ${alphnumDashOnly(err)}`);
+    logError('Add favorite failed', err);
     res.status(500).json({ message: 'Add favorite failed.' });
   }
-});
+}));
 
 /**
  * DELETE /user/favorites/:placeId
@@ -83,7 +83,7 @@ favoriteRouter.post('/', async (req, res) => {
  * - 404 `{ message: 'Not a favorite.' }`: the Gem isn't in the user's favorites.
  * - 500 `{ message: 'Remove favorite failed.' }`: database error.
  */
-favoriteRouter.delete('/:placeId', async (req: Request<{ placeId: string }>, res: Response) => {
+favoriteRouter.delete('/:placeId', asyncHandler(async (req: Request<{ placeId: string }>, res: Response) => {
   const gem = gemNameFromPlaceId(req.params.placeId);
   if (!gem) {
     res.status(400).json({ message: 'Invalid Gem ID.' });
@@ -97,10 +97,10 @@ favoriteRouter.delete('/:placeId', async (req: Request<{ placeId: string }>, res
       res.status(404).json({ message: 'Not a favorite.' });
     }
   } catch (err) {
-    console.log(`Remove favorite failed: ${alphnumDashOnly(err)}`);
+    logError('Remove favorite failed', err);
     res.status(500).json({ message: 'Remove favorite failed.' });
   }
-});
+}));
 
 favoriteRouter.all('/', methodNotAllowed(['GET', 'POST']));
 favoriteRouter.all('/:placeId', methodNotAllowed(['DELETE']));

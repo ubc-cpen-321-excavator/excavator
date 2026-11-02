@@ -7,7 +7,7 @@ import { gemRouter } from './controllers/gemController';
 import { placeRouter } from './controllers/placeController';
 import { authRouter } from './controllers/authController';
 import { favoriteRouter } from './controllers/favoriteController';
-import { alphnumDashOnly } from './utils/trust';
+import { logError } from "./utils/log";
 
 // import WebSocket from 'ws';
 
@@ -38,7 +38,13 @@ export function createApp(): Express {
 
   // Errors that reach Express instead of a route's own handling, e.g. malformed JSON rejected by
   // express.json(). Without this, Express answers with its default HTML error page.
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    // Too late to answer with JSON: Express closes the connection.
+    if (res.headersSent) {
+      next(err);
+      return;
+    }
+
     const { status, type } = (err ?? {}) as { status?: unknown; type?: unknown };
 
     if (type === 'entity.parse.failed') {
@@ -50,7 +56,7 @@ export function createApp(): Express {
       return;
     }
 
-    console.log(`Unhandled error: ${alphnumDashOnly(err)}`);
+    logError('Unhandled error', err);
     res.status(500).json({ message: 'Internal error.' });
   });
 

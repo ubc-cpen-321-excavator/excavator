@@ -28,7 +28,7 @@ jest.mock('../../src/models/gemModel', () => ({
 const mockGetPlace = jest.fn();
 jest.mock('@googlemaps/places', () => ({
   PlacesClient: jest.fn().mockImplementation(() => ({
-    getPlace: (...args: unknown[]) => mockGetPlace(...args),
+    getPlace: (...args: unknown[]): unknown => mockGetPlace(...args),
   })),
 }));
 
