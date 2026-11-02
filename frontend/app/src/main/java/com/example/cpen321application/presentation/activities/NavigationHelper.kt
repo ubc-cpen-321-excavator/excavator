@@ -4,14 +4,15 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import kotlin.jvm.java
-
+import com.example.cpen321application.presentation.activities.dashboard.DashboardActivity
+import com.example.cpen321application.presentation.activities.discovery.DiscoveryActivity
 
 fun navigateTo(context: Context, destination: NavDestination) {
     val target: Class<out Activity>? = when (destination) {
         NavDestination.DASHBOARD -> DashboardActivity::class.java
         NavDestination.DISCOVERY -> DiscoveryActivity::class.java
-        NavDestination.FAVORITES -> null // TODO: add FavoritesActivity when it exists
+        NavDestination.FAVORITES -> null
+    //TODO: add FavoritesActivity when it exists
     }
 
     if (target == null) {
