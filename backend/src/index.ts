@@ -1,14 +1,13 @@
 import { createApp } from './app';
 import { env } from './config/env';
-import https from 'https';
-import fs from "node:fs";
-
-// import WebSocket, {WebSocketServer} from "ws";
+import { connectDB, disconnectDB } from './config/db';
+import { logError, logInfo } from './utils/log';
+import { attachFeed, closeFeed } from './controllers/feedController';
 
 const app = createApp();
 
 
-// Readd the code below later once we implement HTTPS
+// Readd the code below later once we implement HTTPS (with `import https from 'https'` and `import fs from 'node:fs'`)
 
 // const server = https
 //     .createServer(
@@ -23,29 +22,37 @@ const app = createApp();
 //     })
 
 const server = app.listen(env.port, () => {
-    console.log(`Server listening on ${env.port}\nLink: http://localhost:${env.port}`);
-})
+  logInfo(`Server listening on port ${env.port}: http://localhost:${env.port}`);
+});
 
-// No websockets are needed for CP1, if needed later, this snippet will stay here but commented
+// Live feed of new Gems, as a WebSocket at ws://<server>/feed on the same port.
+const feed = attachFeed(server);
 
-// Websocket code
-// Might need to refactor this later
-// const wsServer = new WebSocketServer({server:server});
-// const socket = new WebSocket("wss://8.229.22.124")
-//
-// wsServer.on("connection", (websocket) => {
-//
-//     socket.onmessage = (message) => {
-//         websocket.send(message.data.toString());
-//     }
-//
-// })
-
+// Routes that don't touch the DB (e.g. /health) keep working if MongoDB is down.
+connectDB()
+  .then(() => {
+    logInfo('Connected to MongoDB.');
+  })
+  .catch((err: unknown) => {
+    logError('MongoDB connection failed', err);
+  });
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(signal, () => {
-    server.close(() => {
-      process.exit(0);
-    });
+  process.once(signal, () => {
+    // Clients first: the HTTP server won't finish closing while a feed connection is open.
+    closeFeed(feed)
+      .then(() => new Promise<void>(resolve => {
+        server.close(() => {
+          resolve();
+        });
+      }))
+      .then(() => disconnectDB())
+      .catch((err: unknown) => {
+        logError('Shutdown failed', err);
+      })
+      .finally(() => {
+        // Re-send the signal: with this one-time handler gone, Node's default handler ends the process.
+        process.kill(process.pid, signal);
+      });
   });
 }
