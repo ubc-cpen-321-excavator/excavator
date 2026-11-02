@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.byValue
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -112,7 +113,7 @@ fun NewCommentInput(modifier: Modifier = Modifier) {
             placeholder = {Text("New comment...")}
         )
 
-        IconButton(onClick = {}, modifier = Modifier.align(Alignment.CenterVertically)) {
+        IconButton(onClick = {commentState.clearText()}, modifier = Modifier.align(Alignment.CenterVertically)) {
             Icon(
                 painter = painterResource(R.drawable.arrow_circle_up_24),
                 contentDescription = "Send Comment",
