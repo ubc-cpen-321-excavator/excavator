@@ -3,10 +3,6 @@ package com.example.cpen321application.presentation.activities
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -14,13 +10,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.cpen321application.R
 
-enum class NavDestination(val icon: ImageVector, val description: String) {
-    DASHBOARD(Icons.Filled.Menu, "Dashboard"),
-    DISCOVERY(Icons.Filled.Place, "Discovery"),
-    FAVORITES(Icons.Filled.Star, "Favorites")
+
+enum class NavDestination(val iconResourceID: Int, val description: String) {
+    DASHBOARD(R.drawable.menu_24, "Dashboard"),
+    DISCOVERY(R.drawable.place_24, "Discovery"),
+    FAVORITES(R.drawable.star_banner_24, "Favorites")
 }
 
 @Composable
@@ -39,7 +37,7 @@ fun NavBar(
                 },
                 icon = {
                     Icon(
-                        imageVector = destination.icon,
+                        painter = painterResource(destination.iconResourceID),
                         contentDescription = destination.description
                     )
                 }
