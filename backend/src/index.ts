@@ -1,9 +1,10 @@
 import { createApp } from './app';
 import { env } from './config/env';
+import { connectDB, disconnectDB } from './config/db';
+import { alphnumDashOnly } from './utils/trust';
+import { attachFeed, closeFeed } from './controllers/feedController';
 import https from 'https';
 import fs from "node:fs";
-
-// import WebSocket, {WebSocketServer} from "ws";
 
 const app = createApp();
 
@@ -26,26 +27,21 @@ const server = app.listen(env.port, () => {
     console.log(`Server listening on ${env.port}\nLink: http://localhost:${env.port}`);
 })
 
-// No websockets are needed for CP1, if needed later, this snippet will stay here but commented
+// Live feed of new Gems, as a WebSocket at ws://<server>/feed on the same port.
+const feed = attachFeed(server);
 
-// Websocket code
-// Might need to refactor this later
-// const wsServer = new WebSocketServer({server:server});
-// const socket = new WebSocket("wss://8.229.22.124")
-//
-// wsServer.on("connection", (websocket) => {
-//
-//     socket.onmessage = (message) => {
-//         websocket.send(message.data.toString());
-//     }
-//
-// })
-
+// Routes that don't touch the DB (e.g. /health) keep working if MongoDB is down.
+connectDB()
+  .then(() => console.log('Connected to MongoDB.'))
+  .catch(err => console.log(`MongoDB connection failed: ${alphnumDashOnly(err)}`));
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
-    server.close(() => {
-      process.exit(0);
+    // Clients first: the HTTP server won't finish closing while a feed connection is open.
+    closeFeed(feed).finally(() => {
+      server.close(() => {
+        disconnectDB().finally(() => process.exit(0));
+      });
     });
   });
 }

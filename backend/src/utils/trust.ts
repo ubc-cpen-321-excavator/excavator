@@ -7,18 +7,18 @@ export function safeToString(input: any): string {
 }
 
 export function alphOnly(input: any): string {
-  return safeToString(input).replace(/[^a-zA-Z]+/, '')
+  return safeToString(input).replace(/[^a-zA-Z]+/g, '')
 }
 
 export function numOnly(input: any): string {
-  return safeToString(input).replace(/[^0-9]+/, '')
+  return safeToString(input).replace(/[^0-9]+/g, '')
 }
 
 export function alphnumOnly(input: any): string {
-  return safeToString(input).replace(/[^a-zA-Z0-9]+/, '')
+  return safeToString(input).replace(/[^a-zA-Z0-9]+/g, '')
 }
 
 export function alphnumDashOnly(input: any): string {
-  return safeToString(input).replace(/[^a-zA-Z0-9\-\_]+/, '')
+  return safeToString(input).replace(/[^a-zA-Z0-9\-\_]+/g, '')
 }
 
