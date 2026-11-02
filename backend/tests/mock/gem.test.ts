@@ -4,6 +4,7 @@ import { createApp } from '../../src/app';
 import { GemModel } from '../../src/models/gemModel';
 import { UserModel } from '../../src/models/userModel';
 import { TEST_USER_DOC, bearer } from '../helpers/auth';
+import { requestWith } from '../helpers/http';
 
 // The login check (AuthService.reqJwt) looks the signed-in user up.
 jest.mock('../../src/models/userModel', () => ({
@@ -24,7 +25,7 @@ jest.mock('../../src/models/gemModel', () => ({
 const mockGetPlace = jest.fn();
 jest.mock('@googlemaps/places', () => ({
   PlacesClient: jest.fn().mockImplementation(() => ({
-    getPlace: (...args: unknown[]) => mockGetPlace(...args),
+    getPlace: (...args: unknown[]): unknown => mockGetPlace(...args),
   })),
 }));
 
@@ -581,7 +582,7 @@ describe('Mocked: unsupported methods on gem paths', () => {
     ['patch', '/gem/newest', 'GET'],
     ['delete', '/gem/abc/comments', 'GET, POST'],
   ] as const)('%s %s', async (method, path, allow) => {
-    const response = await request(createApp())[method](path);
+    const response = await requestWith(createApp(), method, path);
 
     expect(response.status).toBe(405);
     expect(response.headers.allow).toBe(allow);

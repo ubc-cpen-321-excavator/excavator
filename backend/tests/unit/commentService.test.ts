@@ -3,7 +3,7 @@ import type GemService from '../../src/services/gemService';
 import { CommentModel } from '../../src/models/commentModel';
 
 jest.mock('../../src/models/commentModel', () => ({
-  ...jest.requireActual('../../src/models/commentModel'),
+  ...jest.requireActual<Record<string, unknown>>('../../src/models/commentModel'),
   CommentModel: {
     create: jest.fn(),
     find: jest.fn(),

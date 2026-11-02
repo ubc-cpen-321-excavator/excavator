@@ -9,7 +9,7 @@ import { computeGemScore } from '../../src/utils/gemScore';
 import { TEST_USER_DOC, TEST_USER_ID, bearer } from '../helpers/auth';
 
 jest.mock('../../src/models/ratingModel', () => ({
-  ...jest.requireActual('../../src/models/ratingModel'),
+  ...jest.requireActual<Record<string, unknown>>('../../src/models/ratingModel'),
   RatingModel: { updateOne: jest.fn(), findOne: jest.fn(), aggregate: jest.fn() },
 }));
 jest.mock('../../src/models/gemModel', () => ({

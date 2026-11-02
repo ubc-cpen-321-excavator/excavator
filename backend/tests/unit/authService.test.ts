@@ -25,9 +25,9 @@ jest.mock('../../src/models/userModel', () => ({
 const mockVerifyIdToken = jest.fn();
 jest.mock('google-auth-library', () => ({
   // Keep the rest of the library: the Places client needs it.
-  ...jest.requireActual('google-auth-library'),
+  ...jest.requireActual<Record<string, unknown>>('google-auth-library'),
   OAuth2Client: jest.fn().mockImplementation(() => ({
-    verifyIdToken: (...args: unknown[]) => mockVerifyIdToken(...args),
+    verifyIdToken: (...args: unknown[]): unknown => mockVerifyIdToken(...args),
   })),
 }));
 

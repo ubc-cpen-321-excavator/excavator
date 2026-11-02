@@ -179,7 +179,7 @@ describe('Unmocked: GET /gem/nearby', () => {
     const response = await request(createApp()).get('/gem/nearby').query(query);
 
     expect(response.status).toBe(200);
-    expect(names(response.body)).toEqual(expected);
+    expect(names(response.body as { name: string }[])).toEqual(expected);
   });
 
   // Input: GET /gem/nearby at UBC, radius 10000, limit 1
@@ -190,7 +190,7 @@ describe('Unmocked: GET /gem/nearby', () => {
       .query({ lat: String(UBC.latitude), lng: String(UBC.longitude), radius: '10000', limit: '1' });
 
     expect(response.status).toBe(200);
-    expect(names(response.body)).toEqual(['places/ubc']);
+    expect(names(response.body as { name: string }[])).toEqual(['places/ubc']);
   });
 
   // Input: GET /gem/nearby in Toronto
@@ -233,7 +233,7 @@ describe('Unmocked: GET /gem/within', () => {
     const response = await request(createApp()).get('/gem/within').query(AROUND_UBC);
 
     expect(response.status).toBe(200);
-    expect(names(response.body)).toEqual(['places/high', 'places/low']);
+    expect(names(response.body as { name: string }[])).toEqual(['places/high', 'places/low']);
   });
 
   // Input: the same viewport with limit 1
@@ -243,7 +243,7 @@ describe('Unmocked: GET /gem/within', () => {
     const response = await request(createApp()).get('/gem/within').query({ ...AROUND_UBC, limit: '1' });
 
     expect(response.status).toBe(200);
-    expect(names(response.body)).toEqual(['places/high']);
+    expect(names(response.body as { name: string }[])).toEqual(['places/high']);
   });
 
   // Input: a viewport with south above north
@@ -272,8 +272,8 @@ describe('Unmocked: GET /gem/newest', () => {
     const two = await request(createApp()).get('/gem/newest').query({ limit: '2' });
 
     expect(all.status).toBe(200);
-    expect(names(all.body)).toEqual(['places/third', 'places/second', 'places/first']);
-    expect(names(two.body)).toEqual(['places/third', 'places/second']);
+    expect(names(all.body as { name: string }[])).toEqual(['places/third', 'places/second', 'places/first']);
+    expect(names(two.body as { name: string }[])).toEqual(['places/third', 'places/second']);
   });
 
   // Input: GET /gem/newest with an empty database

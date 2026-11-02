@@ -12,7 +12,7 @@ jest.mock('../../src/models/userModel', () => ({
 }));
 
 jest.mock('../../src/models/commentModel', () => ({
-  ...jest.requireActual('../../src/models/commentModel'),
+  ...jest.requireActual<Record<string, unknown>>('../../src/models/commentModel'),
   CommentModel: {
     create: jest.fn(),
     find: jest.fn(),

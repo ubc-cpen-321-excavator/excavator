@@ -1,7 +1,7 @@
 import express from "express";
 import AuthService, { InvalidTokenError, currentUser, isValidDisplayName } from "../services/authService";
-import { methodNotAllowed } from "../utils/http";
-import { alphnumDashOnly } from "../utils/trust";
+import { asyncHandler, methodNotAllowed } from "../utils/http";
+import { logError } from "../utils/log";
 
 /** Routes mounted at `/user`. */
 export const authRouter = express.Router();
@@ -20,15 +20,16 @@ export const authService = new AuthService();
  * - 401 `{ message: 'Login failed.' }`: Google rejected the token.
  * - 500 `{ message: 'Login failed.' }`: database error, or `JWT_SECRET` not set.
  */
-authRouter.post('/auth/google', async (req, res) => {
+authRouter.post('/auth/google', asyncHandler(async (req, res) => {
   if (!req.body) {
     res.status(400).json({ message: 'Invalid request.' });
     return;
   }
 
-  const { idToken } = req.body;
-  if (!idToken || typeof (idToken) !== 'string') {
-    console.log(`Wrong OAuth idToken: ${alphnumDashOnly(idToken)}`);
+  const { idToken } = req.body as { idToken?: unknown };
+  if (typeof idToken !== 'string' || idToken === '') {
+    // Not logged: the value may be a credential.
+    logError('Wrong OAuth idToken: missing or not a string');
     res.status(400).json({ message: `Wrong OAuth idToken.` });
     return;
   }
@@ -37,10 +38,10 @@ authRouter.post('/auth/google', async (req, res) => {
     const token = await authService.login(idToken);
     res.json({ sessionId: token });
   } catch (err) {
-    console.log(`Login failed: ${alphnumDashOnly(err)}`);
+    logError('Login failed', err);
     res.status(err instanceof InvalidTokenError ? 401 : 500).json({ message: `Login failed.` });
   }
-});
+}));
 
 authRouter.all('/auth/google', methodNotAllowed(['POST']));
 
@@ -68,8 +69,8 @@ authRouter.get('/me', authService.reqJwt, (req, res) => {
  * - 401 `{ message }`: not signed in (see `AuthService.reqJwt`).
  * - 500 `{ message: 'Update profile failed.' }`: database error.
  */
-authRouter.patch('/me', authService.reqJwt, async (req, res) => {
-  const displayName: unknown = req.body?.displayName;
+authRouter.patch('/me', authService.reqJwt, asyncHandler(async (req, res) => {
+  const { displayName } = (req.body ?? {}) as { displayName?: unknown };
   if (!isValidDisplayName(displayName)) {
     res.status(400).json({ message: 'Invalid display name.' });
     return;
@@ -81,9 +82,9 @@ authRouter.patch('/me', authService.reqJwt, async (req, res) => {
     user.setDisplayName(displayName.trim());
     res.json(user);
   } catch (err) {
-    console.log(`Update profile failed: ${alphnumDashOnly(err)}`);
+    logError('Update profile failed', err);
     res.status(500).json({ message: 'Update profile failed.' });
   }
-});
+}));
 
 authRouter.all('/me', methodNotAllowed(['GET', 'PATCH']));

@@ -21,7 +21,7 @@ import { TestFeedClient, feedUrl } from '../helpers/feedClient';
 const mockGetPlace = jest.fn();
 jest.mock('@googlemaps/places', () => ({
   PlacesClient: jest.fn().mockImplementation(() => ({
-    getPlace: (...args: unknown[]) => mockGetPlace(...args),
+    getPlace: (...args: unknown[]): unknown => mockGetPlace(...args),
   })),
 }));
 
@@ -53,7 +53,9 @@ async function subscribeClients(count: number, at: typeof UBC): Promise<TestFeed
     clients.push(...await Promise.all(Array.from({ length: batch }, () => TestFeedClient.connect(feedUrl(server)))));
   }
   // Subscribing is rate-limited per client, not globally, so all can subscribe at once.
-  clients.forEach(c => c.send({ type: 'subscribe', ...at }));
+  for (const c of clients) {
+    c.send({ type: 'subscribe', ...at });
+  }
   await Promise.all(clients.map(c => c.next(5000)));
   return clients;
 }

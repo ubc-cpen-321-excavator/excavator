@@ -18,7 +18,7 @@ const mockSearchNearby = jest.fn();
 jest.mock('@googlemaps/places', () => ({
   PlacesClient: jest.fn().mockImplementation(() => ({
     getPlace: jest.fn(),
-    searchNearby: (...args: unknown[]) => mockSearchNearby(...args),
+    searchNearby: (...args: unknown[]): unknown => mockSearchNearby(...args),
   })),
 }));
 

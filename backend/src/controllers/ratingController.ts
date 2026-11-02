@@ -2,13 +2,16 @@ import express, { type Request, type Response } from "express";
 import { currentUser } from "../services/authService";
 import GemService, { NoSuchGemError, gemNameFromPlaceId } from "../services/gemService";
 import RatingService, { isValidStars } from "../services/ratingService";
-import { methodNotAllowed } from "../utils/http";
-import { alphnumDashOnly } from "../utils/trust";
+import type { ParamsDictionary } from "express-serve-static-core";
+import { asyncHandler, methodNotAllowed } from "../utils/http";
+import { logError } from "../utils/log";
 import { authService } from "./authController";
 import { feedService } from "./feedController";
 
 /** Route parameters inherited from the parent route `/gem/:pk`; `pk` is the Gem's place ID. */
-type GemParams = { pk: string };
+interface GemParams extends ParamsDictionary {
+  pk: string;
+}
 
 /**
  * Makes the router for the signed-in user's rating of a Gem, to be nested in the Gem router at `/:pk/rating`.
@@ -33,7 +36,7 @@ export function createRatingRouter(gemService: GemService): express.Router {
    * - 404 `{ message: 'No such Gem.' }` or `{ message: 'No rating.' }`: the Gem doesn't exist, or the user hasn't rated it.
    * - 500 `{ message: 'Get rating failed.' }`: database error.
    */
-  ratingRouter.get('/', async (req: Request<GemParams>, res: Response) => {
+  ratingRouter.get('/', asyncHandler(async (req: Request<GemParams>, res: Response) => {
     const gem = gemNameFromPlaceId(req.params.pk);
     if (!gem) {
       res.status(400).json({ message: 'Invalid Gem ID.' });
@@ -53,10 +56,10 @@ export function createRatingRouter(gemService: GemService): express.Router {
         return;
       }
 
-      console.log(`Get rating failed: ${alphnumDashOnly(err)}`);
+      logError('Get rating failed', err);
       res.status(500).json({ message: 'Get rating failed.' });
     }
-  });
+  }));
 
   /**
    * PUT /gem/:pk/rating with JSON body `{ stars }`
@@ -70,14 +73,14 @@ export function createRatingRouter(gemService: GemService): express.Router {
    * - 404 `{ message: 'No such Gem.' }`: nothing is stored.
    * - 500 `{ message: 'Rate Gem failed.' }`: database error.
    */
-  ratingRouter.put('/', async (req: Request<GemParams>, res: Response) => {
+  ratingRouter.put('/', asyncHandler(async (req: Request<GemParams>, res: Response) => {
     const gem = gemNameFromPlaceId(req.params.pk);
     if (!gem) {
       res.status(400).json({ message: 'Invalid Gem ID.' });
       return;
     }
 
-    const stars: unknown = req.body?.stars;
+    const { stars } = (req.body ?? {}) as { stars?: unknown };
     if (!isValidStars(stars)) {
       res.status(400).json({ message: 'Invalid stars.' });
       return;
@@ -90,7 +93,7 @@ export function createRatingRouter(gemService: GemService): express.Router {
       try {
         feedService.publishGemUpdated(updated);
       } catch (err) {
-        console.log(`Live feed publish failed: ${alphnumDashOnly(err)}`);
+        logError('Live feed publish failed', err);
       }
 
       res.json({ stars, gem: updated });
@@ -100,10 +103,10 @@ export function createRatingRouter(gemService: GemService): express.Router {
         return;
       }
 
-      console.log(`Rate Gem failed: ${alphnumDashOnly(err)}`);
+      logError('Rate Gem failed', err);
       res.status(500).json({ message: 'Rate Gem failed.' });
     }
-  });
+  }));
 
   ratingRouter.all('/', methodNotAllowed(['GET', 'PUT']));
 

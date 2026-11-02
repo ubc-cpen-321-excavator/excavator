@@ -57,6 +57,23 @@ class SocketClient implements FeedConnection {
 }
 
 /**
+ * Decodes a WebSocket message as UTF-8 text. `ws` hands messages over as a Buffer, an ArrayBuffer,
+ * or an array of Buffers (a fragmented message), depending on its `binaryType` setting.
+ *
+ * @param raw the message as received.
+ * @returns the message text.
+ */
+export function rawDataToText(raw: RawData): string {
+  if (Array.isArray(raw)) {
+    return Buffer.concat(raw).toString('utf8');
+  }
+  if (raw instanceof ArrayBuffer) {
+    return Buffer.from(raw).toString('utf8');
+  }
+  return raw.toString('utf8');
+}
+
+/**
  * Parses a raw WebSocket message.
  *
  * @param raw the message as received.
@@ -69,7 +86,7 @@ export function parseMessage(raw: RawData, isBinary: boolean): unknown {
   }
 
   try {
-    return JSON.parse(raw.toString()) as unknown;
+    return JSON.parse(rawDataToText(raw)) as unknown;
   } catch {
     return undefined;
   }
@@ -180,7 +197,9 @@ export function attachFeed(
   // Don't keep the process (or a test run) alive just for the heartbeat.
   heartbeat.unref();
 
-  wss.on('close', () => clearInterval(heartbeat));
+  wss.on('close', () => {
+    clearInterval(heartbeat);
+  });
 
   return wss;
 }
@@ -198,6 +217,10 @@ export function closeFeed(wss: WebSocketServer): Promise<void> {
     client.terminate();
   }
 
-  return new Promise(resolve => wss.close(() => resolve()));
+  return new Promise(resolve => {
+    wss.close(() => {
+      resolve();
+    });
+  });
 }
 

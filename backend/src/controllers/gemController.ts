@@ -11,9 +11,9 @@ import GemService, {
   isValidGemName,
 } from "../services/gemService";
 import { toBounds, toIntInRange, toLatLng } from "../utils/geo";
-import { methodNotAllowed } from "../utils/http";
+import { asyncHandler, methodNotAllowed } from "../utils/http";
 import { currentUser } from "../services/authService";
-import { alphnumDashOnly } from "../utils/trust";
+import { logError } from "../utils/log";
 import { authService } from "./authController";
 import { createCommentRouter } from "./commentController";
 import { createRatingRouter } from "./ratingController";
@@ -55,8 +55,8 @@ gemRouter.get('/', (req, res) => {
 
       res.json(gem);
     })
-    .catch(err => {
-      console.log(`Get Gem failed: ${alphnumDashOnly(err)}`);
+    .catch((err: unknown) => {
+      logError('Get Gem failed', err);
       res.status(500).json({ message: 'Get Gem failed.' });
     });
 });
@@ -78,14 +78,14 @@ gemRouter.get('/', (req, res) => {
  * - 500 `{ message: 'Add Gem failed.' }`: database error.
  * - 502 `{ message: 'Google Places unavailable.' }`: Google Places failed; nothing is stored.
  */
-gemRouter.post('/', authService.reqJwt, async (req, res) => {
-  const name: unknown = req.body?.name;
+gemRouter.post('/', authService.reqJwt, asyncHandler(async (req, res) => {
+  const { name, latitude, longitude } = (req.body ?? {}) as { name?: unknown; latitude?: unknown; longitude?: unknown };
   if (!isValidGemName(name)) {
     res.status(400).json({ message: 'Invalid place name.' });
     return;
   }
 
-  const userLocation = toLatLng(req.body?.latitude, req.body?.longitude);
+  const userLocation = toLatLng(latitude, longitude);
   if (!userLocation) {
     res.status(400).json({ message: 'Invalid location.' });
     return;
@@ -98,7 +98,7 @@ gemRouter.post('/', authService.reqJwt, async (req, res) => {
     try {
       feedService.publishGemAdded(gem);
     } catch (err) {
-      console.log(`Live feed publish failed: ${alphnumDashOnly(err)}`);
+      logError('Live feed publish failed', err);
     }
 
     res.status(201).location(`/gem?name=${encodeURIComponent(gem.name)}`).json(gem);
@@ -117,15 +117,15 @@ gemRouter.post('/', authService.reqJwt, async (req, res) => {
       return;
     }
     if (err instanceof PlacesUnavailableError) {
-      console.log(`Add Gem failed, Google Places: ${alphnumDashOnly(err.cause)}`);
+      logError('Add Gem failed, Google Places', err.cause);
       res.status(502).json({ message: 'Google Places unavailable.' });
       return;
     }
 
-    console.log(`Add Gem failed: ${alphnumDashOnly(err)}`);
+    logError('Add Gem failed', err);
     res.status(500).json({ message: 'Add Gem failed.' });
   }
-});
+}));
 
 /**
  * GET /gem/nearby?lat=…&lng=…[&radius=metres][&limit=n]
@@ -137,7 +137,7 @@ gemRouter.post('/', authService.reqJwt, async (req, res) => {
  * - 400 `{ message: 'Invalid radius.' }` / `{ message: 'Invalid limit.' }`: not a whole number in range.
  * - 500 `{ message: 'Get Gems failed.' }`: database error.
  */
-gemRouter.get('/nearby', async (req, res) => {
+gemRouter.get('/nearby', asyncHandler(async (req, res) => {
   const center = toLatLng(req.query.lat, req.query.lng);
   if (!center) {
     res.status(400).json({ message: 'Invalid location.' });
@@ -159,10 +159,10 @@ gemRouter.get('/nearby', async (req, res) => {
   try {
     res.json(await gemService.getNearbyGems(center, radius, limit));
   } catch (err) {
-    console.log(`Get nearby Gems failed: ${alphnumDashOnly(err)}`);
+    logError('Get nearby Gems failed', err);
     res.status(500).json({ message: 'Get Gems failed.' });
   }
-});
+}));
 
 /**
  * GET /gem/within?south=…&west=…&north=…&east=…[&limit=n]
@@ -174,7 +174,7 @@ gemRouter.get('/nearby', async (req, res) => {
  * - 400 `{ message: 'Invalid limit.' }`: not a whole number in range.
  * - 500 `{ message: 'Get Gems failed.' }`: database error.
  */
-gemRouter.get('/within', async (req, res) => {
+gemRouter.get('/within', asyncHandler(async (req, res) => {
   const { south, west, north, east } = req.query;
   const bounds = toBounds(south, west, north, east);
   if (!bounds) {
@@ -191,10 +191,10 @@ gemRouter.get('/within', async (req, res) => {
   try {
     res.json(await gemService.getGemsWithin(bounds, limit));
   } catch (err) {
-    console.log(`Get Gems within bounds failed: ${alphnumDashOnly(err)}`);
+    logError('Get Gems within bounds failed', err);
     res.status(500).json({ message: 'Get Gems failed.' });
   }
-});
+}));
 
 /**
  * GET /gem/newest[?limit=n]
@@ -205,7 +205,7 @@ gemRouter.get('/within', async (req, res) => {
  * - 400 `{ message: 'Invalid limit.' }`: not a whole number in range.
  * - 500 `{ message: 'Get Gems failed.' }`: database error.
  */
-gemRouter.get('/newest', async (req, res) => {
+gemRouter.get('/newest', asyncHandler(async (req, res) => {
   const limit = toIntInRange(req.query.limit, GEM_LIST_DEFAULT, 1, GEM_LIST_MAX);
   if (limit === undefined) {
     res.status(400).json({ message: 'Invalid limit.' });
@@ -215,10 +215,10 @@ gemRouter.get('/newest', async (req, res) => {
   try {
     res.json(await gemService.getNewestGems(limit));
   } catch (err) {
-    console.log(`Get newest Gems failed: ${alphnumDashOnly(err)}`);
+    logError('Get newest Gems failed', err);
     res.status(500).json({ message: 'Get Gems failed.' });
   }
-});
+}));
 
 // Other methods on these paths
 gemRouter.all('/', methodNotAllowed(['GET', 'POST']));

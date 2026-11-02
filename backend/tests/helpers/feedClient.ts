@@ -1,6 +1,7 @@
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import WebSocket, { type ClientOptions } from 'ws';
+import { rawDataToText } from '../../src/controllers/feedController';
 
 /**
  * A WebSocket client for tests: queues incoming JSON messages so a test can await them in order.
@@ -13,7 +14,7 @@ export class TestFeedClient {
 
   private constructor(readonly socket: WebSocket) {
     socket.on('message', (data) => {
-      const message: unknown = JSON.parse(data.toString());
+      const message: unknown = JSON.parse(rawDataToText(data));
       const waiter = this.waiting.shift();
       if (waiter) {
         waiter(message);
@@ -21,7 +22,11 @@ export class TestFeedClient {
         this.queue.push(message);
       }
     });
-    this.closed = new Promise(resolve => socket.on('close', (code) => resolve(code)));
+    this.closed = new Promise(resolve => {
+      socket.on('close', (code) => {
+        resolve(code);
+      });
+    });
   }
 
   /**
@@ -32,7 +37,9 @@ export class TestFeedClient {
   static connect(url: string, options?: ClientOptions): Promise<TestFeedClient> {
     const socket = new WebSocket(url, options);
     return new Promise((resolve, reject) => {
-      socket.once('open', () => resolve(new TestFeedClient(socket)));
+      socket.once('open', () => {
+        resolve(new TestFeedClient(socket));
+      });
       socket.once('error', reject);
     });
   }
@@ -99,12 +106,23 @@ export function feedUrl(server: Server): string {
  *
  * @throws if it is still false after `timeoutMs`.
  */
-export async function waitFor(check: () => boolean, timeoutMs = 2000): Promise<void> {
+export function waitFor(check: () => boolean, timeoutMs = 2000): Promise<void> {
   const start = Date.now();
-  while (!check()) {
-    if (Date.now() - start > timeoutMs) {
-      throw new Error('Condition not met within timeout.');
-    }
-    await new Promise(resolve => setTimeout(resolve, 10));
-  }
+
+  return new Promise((resolve, reject) => {
+    const poll = (): void => {
+      try {
+        if (check()) {
+          resolve();
+        } else if (Date.now() - start > timeoutMs) {
+          reject(new Error('Condition not met within timeout.'));
+        } else {
+          setTimeout(poll, 10);
+        }
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
+    };
+    poll();
+  });
 }

@@ -1,8 +1,8 @@
 import express from "express";
 import { InvalidPlaceTypeError, PlacesUnavailableError, isValidPlaceType } from "../services/gemService";
 import { toLatLng } from "../utils/geo";
-import { methodNotAllowed } from "../utils/http";
-import { alphnumDashOnly } from "../utils/trust";
+import { asyncHandler, methodNotAllowed } from "../utils/http";
+import { logError } from "../utils/log";
 import { gemService } from "./gemController";
 
 /** Routes mounted at `/place`: Google Places lookups that are not Gems yet. */
@@ -22,7 +22,7 @@ export const placeRouter = express.Router();
  * - 500 `{ message: 'Nearby search failed.' }`: database error.
  * - 502 `{ message: 'Google Places unavailable.' }`: Google Places failed.
  */
-placeRouter.get('/nearby', async (req, res) => {
+placeRouter.get('/nearby', asyncHandler(async (req, res) => {
   const location = toLatLng(req.query.lat, req.query.lng);
   if (!location) {
     res.status(400).json({ message: 'Invalid location.' });
@@ -43,14 +43,14 @@ placeRouter.get('/nearby', async (req, res) => {
       return;
     }
     if (err instanceof PlacesUnavailableError) {
-      console.log(`Nearby search failed, Google Places: ${alphnumDashOnly(err.cause)}`);
+      logError('Nearby search failed, Google Places', err.cause);
       res.status(502).json({ message: 'Google Places unavailable.' });
       return;
     }
 
-    console.log(`Nearby search failed: ${alphnumDashOnly(err)}`);
+    logError('Nearby search failed', err);
     res.status(500).json({ message: 'Nearby search failed.' });
   }
-});
+}));
 
 placeRouter.all('/nearby', methodNotAllowed(['GET']));
