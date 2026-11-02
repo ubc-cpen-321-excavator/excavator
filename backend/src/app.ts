@@ -1,8 +1,5 @@
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 
-import ipController from "./controllers/ipController";
-import nameController from "./controllers/nameController";
-import timeController from "./controllers/timeController";
 import { gemRouter } from './controllers/gemController';
 import { placeRouter } from './controllers/placeController';
 import { authRouter } from './controllers/authController';
@@ -19,10 +16,6 @@ export function createApp(): Express {
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
-
-  app.use("/ip", ipController);
-  app.use("/name", nameController);
-  app.use("/time", timeController);
 
   app.use('/gem', gemRouter);
 
