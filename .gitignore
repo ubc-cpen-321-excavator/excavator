@@ -1,9 +1,12 @@
+# mongodb
+**/mongodb/
+
 # kls
 **/kls_database.db
 
 # direnv
-**/.direnv
-**/.cache
+**/.direnv/
+**/.cache/
 
 # Node / TypeScript
 # These are repeated in backend/.gitignore, but are needed here too: the moment

@@ -12,6 +12,12 @@ if (Number.isNaN(port) || port < 1 || port > 65535) {
 
 export const env = {
   port,
-  google_client_id: process.env.GOOGLE_CLIENT_ID!,
-  google_client_secret: process.env.GOOGLE_CLIENT_SECRET!
+  mongodb_uri: process.env.MONGODB_URI ?? 'mongodb://localhost:27017/cpen321',
+  // Signs login tokens. Login fails (500) if it is missing or empty, rather than signing with an empty secret.
+  jwt_secret: process.env.JWT_SECRET,
+  // Empty when missing, so Google rejects every login instead of skipping the audience check.
+  google_client_id: process.env.GOOGLE_CLIENT_ID ?? '',
+  google_client_secret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+  // Google API key with Places API (New) enabled. Without it, the Places client falls back to Application Default Credentials.
+  google_api_key: process.env.GOOGLE_API_KEY,
 } as const;

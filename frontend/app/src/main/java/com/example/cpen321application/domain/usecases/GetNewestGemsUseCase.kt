@@ -9,7 +9,7 @@ class GetNewestGemsUseCase @Inject constructor(
     private val repository: GemRepository
 ) : BaseUseCase<Unit, Flow<List<Gem>>>() {
 
-    private val numNewestGems = 3u;
+    private val numNewestGems = 6u;
 
     override suspend fun invoke(parameters: Unit): Flow<List<Gem>> {
         return repository.getNewestGems(numNewestGems)
