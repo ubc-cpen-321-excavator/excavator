@@ -9,7 +9,7 @@ ipController.get('/', (req, res) => {
 
     ipService.getPublicIpAddress()
         .then(respJ => res.json({serverIP: respJ}))
-        .catch((err: unknown) => res.status(404).json({serverIP: String(err)}));
+        .catch(err => res.status(404).json({serverIP: err}));
 
 });
 

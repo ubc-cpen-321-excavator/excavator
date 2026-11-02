@@ -42,7 +42,7 @@ tags:
   - name: Favorites
     description: The signed-in user's favorite Gems
   - name: Misc
-    description: Health check and M1 endpoints
+    description: Health check
 
 paths:
   /gem:
@@ -623,63 +623,6 @@ paths:
                 type: object
                 properties:
                   status: { type: string, enum: [ok] }
-
-  /ip:
-    get:
-      tags: [Misc]
-      operationId: getServerIp
-      summary: The server's public IP address (M1)
-      responses:
-        '200':
-          description: The address.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  serverIP: { type: string }
-        '404':
-          description: The address could not be found; `serverIP` holds the error.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  serverIP: { type: string }
-
-  /name:
-    get:
-      tags: [Misc]
-      operationId: getName
-      summary: The developer's name (M1)
-      responses:
-        '200':
-          description: The name.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: object
-                    properties:
-                      firstName: { type: string }
-                      lastName: { type: string }
-
-  /time:
-    get:
-      tags: [Misc]
-      operationId: getTime
-      summary: The server's local time (M1)
-      responses:
-        '200':
-          description: The time, with its GMT offset.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  time: { type: string }
 
 components:
   schemas:
