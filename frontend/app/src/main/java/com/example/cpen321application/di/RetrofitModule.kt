@@ -1,13 +1,15 @@
 package com.example.cpen321application.di
 
 import com.example.cpen321application.BuildConfig
+import com.example.cpen321application.utils.auth.AuthAPIService
+import com.example.cpen321application.utils.interceptors.AuthInterceptor
 import com.example.cpen321application.data.remote.GemAPIService
 import com.example.cpen321application.utils.AuthAPIService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.InstallIn
-import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
@@ -18,8 +20,17 @@ object RetrofitModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(): Retrofit = Retrofit.Builder()
+    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient =
+        OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit =
+        Retrofit.Builder()
         .baseUrl(BuildConfig.API_BASE_URL)
+        .client(okHttpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 

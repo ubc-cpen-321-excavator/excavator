@@ -1,4 +1,4 @@
-package com.example.cpen321application.utils
+package com.example.cpen321application.utils.auth
 
 import retrofit2.Response
 import retrofit2.http.Body
