@@ -19,6 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 
 import com.example.cpen321application.R
+import com.example.cpen321application.presentation.activities.NavDestination
+import com.example.cpen321application.presentation.activities.navigateTo
 
 import com.example.cpen321application.utils.auth.AuthAPIService
 import com.example.cpen321application.utils.auth.AuthUtil
@@ -83,6 +85,7 @@ fun ButtonUI(authAPIService: AuthAPIService, tokenStore: TokenStore) {
                         // Can always expect a non-null body since server response is a placeholder value
                          jwtToken = tokenResponse.body()!!.sessionId
                          tokenStore.saveToken(jwtToken)
+                         navigateTo(context, NavDestination.DASHBOARD)
                      }
 
                 }  catch (e: IOException) {
