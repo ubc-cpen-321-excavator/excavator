@@ -1,6 +1,7 @@
 package com.example.cpen321application.presentation.activities.discovery.composables.gemmarker
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import com.example.cpen321application.R
 import com.example.cpen321application.domain.models.Gem
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
