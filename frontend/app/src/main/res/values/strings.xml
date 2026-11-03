@@ -6,4 +6,11 @@
     <string name="favorites_description">The favorites button</string>
     <string name="title_activity_discovery">DiscoveryActivity</string>
     <string name="title_activity_dashboard">DashboardActivity</string>
+
+    <!-- Shared Preferences File Names -->
+    <string name="prefs_auth">auth</string>
+
+    <!-- Shared Preferences Keys -->
+    <string name="prefs_auth_key">token</string>
+
 </resources>

@@ -1,4 +1,4 @@
-package com.example.cpen321application.utils
+package com.example.cpen321application.utils.auth
 
 import android.content.Context
 import android.util.Log
@@ -11,16 +11,12 @@ import androidx.credentials.exceptions.GetCredentialCustomException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.example.cpen321application.BuildConfig
-import com.example.cpen321application.R
-import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import java.security.SecureRandom
 import java.util.Base64
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
 
