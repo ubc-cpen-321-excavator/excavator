@@ -3,6 +3,8 @@ package com.example.cpen321application.di
 import com.example.cpen321application.BuildConfig
 import com.example.cpen321application.utils.auth.AuthAPIService
 import com.example.cpen321application.utils.interceptors.AuthInterceptor
+import com.example.cpen321application.data.remote.GemAPIService
+import com.example.cpen321application.utils.AuthAPIService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.components.SingletonComponent
@@ -36,6 +38,12 @@ object RetrofitModule {
     @Singleton
     fun provideAuthAPIService(retrofit: Retrofit) : AuthAPIService {
         return retrofit.create(AuthAPIService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGemAPIService(retrofit: Retrofit) : GemAPIService {
+        return retrofit.create(GemAPIService::class.java)
     }
 
 

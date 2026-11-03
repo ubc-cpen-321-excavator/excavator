@@ -1,6 +1,6 @@
 package com.example.cpen321application.domain.usecases
 
-import com.example.cpen321application.data.entities.Gem
+import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.domain.repositories.GemRepository
 import com.google.android.gms.maps.model.LatLng
 
@@ -12,7 +12,8 @@ class AddGemUseCase @Inject constructor(
 
     data class Params (
         val title: String,
-        val coords: LatLng
+        val coords: LatLng,
+        val placesName: String
     )
 
     override suspend fun invoke(parameters: Params): Result<Unit> {
@@ -20,7 +21,8 @@ class AddGemUseCase @Inject constructor(
         repository.addGem(
             Gem(
                 title = parameters.title,
-                coords = parameters.coords
+                coords = parameters.coords,
+                placesName = parameters.placesName
             )
         )
 

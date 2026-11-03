@@ -1,5 +1,7 @@
 package com.example.cpen321application.di
 
+import com.example.cpen321application.data.remote.GemAPIService
+import com.example.cpen321application.data.repositories.DummyGemRepositoryImpl
 import com.example.cpen321application.data.repositories.GemRepositoryImpl
 import com.example.cpen321application.domain.repositories.GemRepository
 import dagger.Module
@@ -21,8 +23,8 @@ object GemListModule {
 
     @Provides
     @Singleton
-    fun provideGemRepository(): GemRepository {
-        return GemRepositoryImpl()
+    fun provideGemRepository(gemAPIService: GemAPIService): GemRepository {
+        return GemRepositoryImpl(gemAPIService)
     }
 
 }
