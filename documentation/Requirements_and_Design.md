@@ -21,33 +21,52 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ## 3. Requirements Specification
 
 ### **3.1. List of Features**
-
+0. Authentication. (Google OAuth, JWT)
+0. Gem and GemScore, essentially a location and a score for its quality plus nichness.
+0. Feed for real-time updates of hidden gems around you, or other certain locations.
+0. Real-time feed of new Gems around you.
+0. In-app ratings (1–5).
+0. Comments.
 
 ### **3.2. Use Case Diagram**
-
+![Use case diagram](./images/use_case_diagram.png)
 
 ### **3.3. Actors Description**
-1. **[WRITE_NAME_HERE]**: ...
-2. **[WRITE_NAME_HERE]**: ...
+1. **User**: Generic user of the app.
+
+We do not have admin user or any other role planned.
 
 ### **3.4. Use Case Description**
-- Use cases for feature 1: [WRITE_FEATURE_1_NAME_HERE]
-1. **[WRITE_NAME_HERE]**: ...
-2. **[WRITE_NAME_HERE]**: ...
-- Use cases for feature 2: [WRITE_FEATURE_2_NAME_HERE]
-3. **[WRITE_NAME_HERE]**: ...
-4. **[WRITE_NAME_HERE]**: ...
-...
+- Use cases for feature 1: Authentication
+0. **Initialize session**: For the first time, or after last JWT expires, User authenticates via Google.
+0. **Authenticate API calls**: With a valid JWT, User's API calls are permitted.
+
+- Use cases for feature 2: GemScore
+0. **Add a Gem**: A User adds a Gem, the Gem is then scored.
+0. **View a Gem**: A User views a Gem, is shown a score.
+0. **Mark a Gem as favorite**: A User clicks a "favorite" button, adding it to their "favorite" list.
+
+- Use cases for feature 3: Live feed
+0. **View new nearby Gems**: A User opens a dashboard, immediately sees a list of last added Gems nearby.
+0. **View new Gems nearby**: With the dashboard open, the User sees new Gems nearby added to the list.
+
+- Use cases for feature 4: In-app ratings
+0. **Contribute to GemScore**: A User rates a Gem, after sometime, the Gem's GemScore is updated to reflect the change.
+
+- Use cases for feature 5: Comments
+0. **View comments**: A User views a Gem, sees comments in its view.
+0. **Make comments**: A User click a "comment" button while viewing a Gem, then text something, and posts a comment.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 <a name="uc1"></a>
 
-#### Use Case 1: [WRITE_USE_CASE_1_NAME_HERE]
+#### Use Case 1: View a Gem
+<!-- TODO -->
 
-**Description**: ...
+**Description**: A User sees entry of a Gem, then details of that Gem.
 
-**Primary actor(s)**: ... 
-    
+**Primary actor(s)**: User
+
 **Main success scenario**:
 1. ...
 2. ...
@@ -65,12 +84,10 @@ Excavator is an app designed to let you find niche, high quality locations in yo
     - 2a1. ...
     - 2a2. ...
 
-...
-
 <a name="uc2"></a>
 
 #### Use Case 2: [WRITE_USE_CASE_2_NAME_HERE]
-...
+<!-- TODO -->
 
 ### **3.6. Screen Mock-ups**
 ![Frontend Screens Diagram](images/frontend_screens_diagram.jpg)
@@ -198,16 +215,17 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 
 
 ### **4.5. Dependencies Diagram**
-
+<!-- TODO -->
 
 ### **4.6. Use Case Sequence Diagram (5 Most Major Use Cases)**
+<!-- TODO -->
 1. [**[WRITE_NAME_HERE]**](#uc1)\
 [SEQUENCE_DIAGRAM_HERE]
 2. ...
-
 
 ### **4.7. Design of Non-Functional Requirements**
 1. [**Live updates arrive within 1 second**](#nfr1)
     - **Implementation**: Updates are pushed over an open WebSocket rather than polled, so an update leaves the server as soon as the gem is stored. The feed keeps every connection's location in memory, and publishing is a single pass that checks each connection's distance to the gem and sends to those in range; it never touches the database. Publishing happens right after the write and never makes the request wait for or fail on it. Dead connections are dropped by a heartbeat so they don't slow publishing down. Verified by `backend/tests/nfr/feedLatency.test.ts` with 200 users in range and 50 out of range.
 2. [**The map stays fast with many gems**](#37-non-functional-requirements)
     - **Implementation**: Gem locations are stored as GeoJSON points with a 2dsphere index, so MongoDB answers "gems near this point" (`$nearSphere`) and "gems inside this map area" (`$geoWithin`) from the index instead of scanning every gem; gems are also indexed by Gem Score for the "best first" order. Every map query has a result limit (at most 50), so responses stay small however many gems match. Verified by `backend/tests/nfr/mapQueryTime.test.ts` with 10,000 gems.
+
