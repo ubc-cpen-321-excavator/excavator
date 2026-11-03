@@ -1,6 +1,5 @@
-package com.example.cpen321application.utils
+package com.example.cpen321application.utils.auth
 
-import com.example.cpen321application.BuildConfig
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.Headers

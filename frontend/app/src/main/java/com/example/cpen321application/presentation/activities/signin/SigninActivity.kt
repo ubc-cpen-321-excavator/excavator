@@ -20,9 +20,9 @@ import androidx.compose.ui.res.painterResource
 
 import com.example.cpen321application.R
 
-import com.example.cpen321application.utils.AuthAPIService
-import com.example.cpen321application.utils.AuthUtil
-import com.example.cpen321application.utils.GoogleSigninRequest
+import com.example.cpen321application.utils.auth.AuthAPIService
+import com.example.cpen321application.utils.auth.AuthUtil
+import com.example.cpen321application.utils.auth.GoogleSigninRequest
 
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -30,12 +30,14 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 import javax.inject.Inject
+import com.example.cpen321application.utils.auth.TokenStore
 
 
 @AndroidEntryPoint
 class SigninActivity : ComponentActivity() {
 
     @Inject lateinit var authAPIService: AuthAPIService
+    @Inject lateinit var tokenStore: TokenStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +46,7 @@ class SigninActivity : ComponentActivity() {
         setContent {
 
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                ButtonUI(authAPIService)
+                ButtonUI(authAPIService, tokenStore)
             }
 
         }
@@ -52,7 +54,7 @@ class SigninActivity : ComponentActivity() {
 }
 
 @Composable
-fun ButtonUI(authAPIService: AuthAPIService) {
+fun ButtonUI(authAPIService: AuthAPIService, tokenStore: TokenStore) {
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -67,7 +69,7 @@ fun ButtonUI(authAPIService: AuthAPIService) {
 
             if (authUtil.idToken != null) {
 
-                var displayMessage: String
+                var jwtToken: String
 
                 // TODO: The following block should be moved out into an OkHttp3 interceptor
                 // For more details see section 3.3 of: https://blog.codersee.com/retrofit-with-kotlin-the-ultimate-guide/
@@ -77,14 +79,11 @@ fun ButtonUI(authAPIService: AuthAPIService) {
                         GoogleSigninRequest(authUtil.idToken!!)
                     )
 
-                    displayMessage = if (tokenResponse.isSuccessful) {
+                     if (tokenResponse.isSuccessful) {
                         // Can always expect a non-null body since server response is a placeholder value
-                        tokenResponse.body()!!.sessionId
-                    } else {
-                        "Error: Code ${tokenResponse.code()}"
-                    }
-
-                    Toast.makeText(context, displayMessage, Toast.LENGTH_LONG).show()
+                         jwtToken = tokenResponse.body()!!.sessionId
+                         tokenStore.saveToken(jwtToken)
+                     }
 
                 }  catch (e: IOException) {
                     Toast.makeText(context,
@@ -92,7 +91,6 @@ fun ButtonUI(authAPIService: AuthAPIService) {
                         Toast.LENGTH_SHORT)
                         .show()
                 }
-
             } // Signin error conditions are handled in AuthUtil
         }
     }
