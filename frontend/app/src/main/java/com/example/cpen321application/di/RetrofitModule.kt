@@ -1,11 +1,13 @@
 package com.example.cpen321application.di
 
 import com.example.cpen321application.BuildConfig
+import com.example.cpen321application.data.remote.GemAPIService
 import com.example.cpen321application.utils.AuthAPIService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.InstallIn
+import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
@@ -25,6 +27,12 @@ object RetrofitModule {
     @Singleton
     fun provideAuthAPIService(retrofit: Retrofit) : AuthAPIService {
         return retrofit.create(AuthAPIService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGemAPIService(retrofit: Retrofit) : GemAPIService {
+        return retrofit.create(GemAPIService::class.java)
     }
 
 

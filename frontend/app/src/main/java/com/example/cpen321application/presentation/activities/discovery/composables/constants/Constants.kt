@@ -1,6 +1,6 @@
 package com.example.cpen321application.presentation.activities.discovery.composables.constants
 
-import com.example.cpen321application.data.entities.Gem
+import com.example.cpen321application.domain.models.Gem
 import com.google.android.gms.maps.model.LatLng
 
 class Constants {

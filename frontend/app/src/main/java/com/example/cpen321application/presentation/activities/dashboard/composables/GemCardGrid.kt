@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.cpen321application.data.entities.Gem
+import com.example.cpen321application.domain.models.Gem
 import com.google.android.gms.maps.model.LatLng
 
 @Composable

@@ -1,6 +1,6 @@
 package com.example.cpen321application.presentation.viewmodels
 
-import com.example.cpen321application.data.entities.Gem
+import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.domain.usecases.AddGemUseCase
 import com.example.cpen321application.domain.usecases.GetGemsUseCase
 import com.example.cpen321application.domain.usecases.GetNewestGemsUseCase
