@@ -6,11 +6,12 @@ import { reset, seed } from './seed';
 /**
  * Fills the database with the demo data in `demoData.ts`, or removes it.
  *
- *   npm run seed              add (or refresh) the demo data
+ *   npm run seed              add whichever demo data is missing
  *   npm run seed -- --reset   remove the demo data only
  *
- * Uses MONGODB_URI, like the server. Safe to run again: seeded documents are matched by their
- * `seed-` IDs and overwritten, and nothing else in the database is touched.
+ * Uses MONGODB_URI, like the server. Safe to run again, and the deploy workflow runs it on every
+ * deploy: demo documents already stored are left as they are, and nothing else is touched.
+ * To reload changed demo data, run with `--reset` first.
  */
 
 /**
@@ -25,7 +26,7 @@ async function run(resetOnly: boolean): Promise<void> {
       + `${removed.favorites} favorites and ${removed.users} users.`);
   } else {
     const written = await seed();
-    logInfo(`Seeded ${written.users} users, ${written.gems} Gems and ${written.comments} comments.`);
+    logInfo(`Added ${written.users} users, ${written.gems} Gems and ${written.comments} comments (the rest were already there).`);
   }
 }
 

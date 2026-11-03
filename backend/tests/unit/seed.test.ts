@@ -45,15 +45,30 @@ describe('Demo data seeding', () => {
     expect(many.body).toContainEqual(expect.objectContaining({ author: 'seed-user-2', authorName: 'priya.explores' }));
   });
 
-  // Input: seed() twice
-  // Expected behavior: the second run overwrites the first; nothing is duplicated
-  test('Running twice changes nothing', async () => {
+  // Input: seed(), a change to a demo Gem (as a rating would make), then seed() again, as on every deploy
+  // Expected behavior: the second run adds nothing and keeps the stored Gems' dates and the change
+  test('Running again adds nothing and keeps changes', async () => {
+    const newestName = DEMO_GEMS[DEMO_GEMS.length - 1]?.name ?? '';
     await seed();
-    await seed();
+    const before = await GemModel.findOne({ name: newestName }).lean();
+    await GemModel.updateOne({ name: newestName }, { $set: { score: 1, ratingCount: 1, ratingAverage: 1 } });
 
+    expect(await seed()).toEqual({ users: 0, gems: 0, comments: 0 });
     expect(await GemModel.countDocuments()).toBe(10);
     expect(await CommentModel.countDocuments()).toBe(10);
     expect(await UserModel.countDocuments()).toBe(3);
+    expect(await GemModel.findOne({ name: newestName }).lean())
+      .toMatchObject({ createdAt: before?.createdAt, score: 1, ratingCount: 1, ratingAverage: 1 });
+  });
+
+  // Input: seed() after one demo Gem was deleted
+  // Expected behavior: only the missing Gem is added back
+  test('Adds back only what is missing', async () => {
+    await seed();
+    await GemModel.deleteOne({ name: DEMO_GEMS[0]?.name ?? '' });
+
+    expect(await seed()).toEqual({ users: 0, gems: 1, comments: 0 });
+    expect(await GemModel.countDocuments()).toBe(10);
   });
 
   // Input: a real Gem and user, then seed() and reset()
