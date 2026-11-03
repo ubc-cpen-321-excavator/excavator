@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import com.example.cpen321application.data.entities.Gem
+import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.dashboard.DashboardActivity
 import com.example.cpen321application.presentation.activities.discovery.DiscoveryActivity
 
