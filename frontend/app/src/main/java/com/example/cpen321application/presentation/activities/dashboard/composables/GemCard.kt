@@ -40,9 +40,3 @@ fun GemCard(
         }
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun GemCardPreview() {
-    GemCard(gem = Gem("Sample Gem", LatLng(12.123,123.123)), onClick = {})
-}

@@ -39,17 +39,3 @@ fun GemCardGrid(
         }
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun GemCardGridPreview() {
-    GemCardGrid(gems = listOf(
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12)),
-        Gem("gem 1", LatLng(12.12,12.12))
-    ),onGemClick = {}, title = "Recently Added")
-
-}

@@ -19,11 +19,11 @@ class DummyGemRepositoryImpl : GemRepository {
 
     private val gems = MutableStateFlow<List<Gem>>(
         listOf(
-            Gem("gem1",genRandomLatLng()),
-            Gem("gem2", genRandomLatLng()),
-            Gem("gem3", genRandomLatLng()),
-            Gem("gem4", genRandomLatLng()),
-            Gem("gem5", genRandomLatLng()),
+            Gem("gem1",genRandomLatLng(), placesName=""),
+            Gem("gem2", genRandomLatLng(),placesName=""),
+            Gem("gem3", genRandomLatLng(),placesName=""),
+            Gem("gem4", genRandomLatLng(),placesName=""),
+            Gem("gem5", genRandomLatLng(),placesName=""),
         )
     )
 

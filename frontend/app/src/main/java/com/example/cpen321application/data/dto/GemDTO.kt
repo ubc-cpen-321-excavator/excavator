@@ -9,7 +9,7 @@ data class Place(
 data class GemDTO(
     val name: String, val place: Place,
     val addedBy: String?=null, val score: Double?=null,
-    val scoreTime: Int?=null, val nicheness: Double?=null,
+    val scoreTime: Long?=null, val nicheness: Double?=null,
     val quality: Double?=null, val reviewCount: Int?=null,
     val ratingCount: Int?=null, val ratingAverage: Double?=null
 )

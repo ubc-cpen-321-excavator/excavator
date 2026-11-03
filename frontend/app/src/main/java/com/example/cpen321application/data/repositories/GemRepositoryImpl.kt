@@ -1,6 +1,7 @@
 package com.example.cpen321application.data.repositories
 
 import com.example.cpen321application.data.dto.GemDTO
+import com.example.cpen321application.data.mappers.GemMapper
 import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.data.remote.GemAPIService
 import com.example.cpen321application.di.InjectGemMapper
