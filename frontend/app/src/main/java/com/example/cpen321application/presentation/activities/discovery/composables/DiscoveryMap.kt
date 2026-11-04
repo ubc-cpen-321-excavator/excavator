@@ -1,6 +1,5 @@
 package com.example.cpen321application.presentation.activities.discovery.composables
 
-import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -13,10 +12,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cpen321application.presentation.activities.discovery.GemRequest
+import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.BUILDING_LEVEL_ZOOM
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.CAMERA_INIT_ZOOM_FACTOR
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.CAMERA_PAN_DURATION_MS
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.PLACEHOLDER_COORDINATES
@@ -27,17 +26,12 @@ import com.example.cpen321application.presentation.activities.discovery.composab
 import com.example.cpen321application.presentation.activities.discovery.composables.newgembutton.NewGemButton
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 
 @Composable
@@ -53,17 +47,15 @@ fun DiscoveryMap(
     var showNewGemSheet by remember {mutableStateOf(false)}
     var selectedGem by remember {mutableStateOf(PLACEHOLDER_SELECTED_GEM)}
 
+    // Has the camera already been auto-positioned (on the user, or on a requested gem)?
+    // Starts true when we were opened for a specific gem, so the user's fix never
+    // overrides it. rememberSaveable so rotation doesn't re-center the map.
+    var hasCenteredCamera by rememberSaveable { mutableStateOf(gemRequest.gem != null) }
 
-    LaunchedEffect(gemRequest) {
-        val gem = gemRequest.gem
-
-        showGemInfoSheet = gem != null
-        selectedGem = gem ?: PLACEHOLDER_SELECTED_GEM
-    }
-
-
+    // null until the first real fix arrives (or while permission/location is unavailable).
     val userLatLng: LatLng? = coordinates?.let { LatLng(it.latitude, it.longitude) }
 
+    // Only used as the camera's starting position, before we have a fix.
     val coord: LatLng = userLatLng ?: PLACEHOLDER_COORDINATES
 
 
@@ -73,21 +65,6 @@ fun DiscoveryMap(
             position = CameraPosition.fromLatLngZoom(coord, CAMERA_INIT_ZOOM_FACTOR)
         }
 
-        // Center on the user ONCE, on the first real fix. Re-centering on every update
-        // (every few seconds) would cancel the gem pan animation below and yank the map
-        // back while the user is panning it. If we were opened for a specific gem, never
-        // auto-center. For continuous follow, drop this flag and animate on every change.
-        var hasCenteredOnUser by rememberSaveable { mutableStateOf(gemRequest.gem != null) }
-        LaunchedEffect(userLatLng) {
-            val target = userLatLng ?: return@LaunchedEffect
-            if (!hasCenteredOnUser) {
-                hasCenteredOnUser = true
-                cameraPositionState.animate(
-                    update = CameraUpdateFactory.newLatLngZoom(target, CAMERA_INIT_ZOOM_FACTOR),
-                    durationMs = CAMERA_PAN_DURATION_MS
-                )
-            }
-        }
 
         GemInfoSheetContent(
             gem = selectedGem,
@@ -105,29 +82,46 @@ fun DiscoveryMap(
             cameraPositionState = cameraPositionState
         ) {
 
+            // Reacts to the gem the screen was opened for (or its absence).
             LaunchedEffect(gemRequest) {
+
                 val gem = gemRequest.gem
 
-                if (gemRequest.gem != null) {
+                showGemInfoSheet = gem != null
+                selectedGem = gem ?: PLACEHOLDER_SELECTED_GEM
+
+                if (gem != null) {
+                    // A requested gem takes priority: never auto-center on the user after this.
+                    hasCenteredCamera = true
                     cameraPositionState.animate(
-                        update = CameraUpdateFactory.newLatLng(gem.coords),
+                        update = CameraUpdateFactory.newLatLngZoom(gem.coords, BUILDING_LEVEL_ZOOM),
                         durationMs = CAMERA_PAN_DURATION_MS
                     )
                 }
             }
 
-            // TODO: Change this to use a special marker with a custom image
-            // that indicate to the user where they are
+            // Reacts to the user's location. Keyed on userLatLng so it runs again when the
+            // first real fix arrives, which is after the effect above has already run.
+            // (Previously the centering lived in the gemRequest effect, which only ran once,
+            // at first composition, while `coord` was still the placeholder.)
+            LaunchedEffect(userLatLng) {
+                val target = userLatLng ?: return@LaunchedEffect
 
-            // Visible, live indicator of the position coming from GemViewModel.
-            // Moves every time a new fix arrives, independent of the camera.
+                if (!hasCenteredCamera) {
+                    hasCenteredCamera = true
+                    cameraPositionState.animate(
+                        update = CameraUpdateFactory.newLatLngZoom(target, CAMERA_INIT_ZOOM_FACTOR),
+                        durationMs = CAMERA_PAN_DURATION_MS
+                    )
+                }
+            }
+
+
             userLatLng?.let { position ->
-
                 Marker(
                     state = rememberUpdatedMarkerState(position),
                     title = "Your Location",
                 )
-
             }
 
             gems.forEach { gem ->
