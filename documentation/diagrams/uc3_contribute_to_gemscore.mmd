@@ -1,32 +1,35 @@
 sequenceDiagram
-  autonumber
-  actor U as User
-  participant App as Android app
-  participant Gems
-  participant Users
-  participant RDB as Ratings DB
-  participant GDB as Gems DB
-  participant Feed as Live Feed
+  actor U as Signed-in User
+  participant F as :Frontend
+  participant G as :Gems
+  participant US as :Users
+  participant RDB as :Ratings DB
+  participant GDB as :Gems DB
+  participant LF as :Live Feed
+  participant OF as :Frontend (other users)
 
-  U->>App: Choose 1–5 stars on a gem
-  App->>Gems: PUT /gem/:pk/rating { stars } (Bearer JWT)
-  Gems->>Users: reqJwt(req)
-  Users-->>Gems: req.user
-  alt stars not a whole number 1–5
-    Gems-->>App: 400 { message: "Invalid stars." }
-  else Valid
-    Gems->>GDB: Gem exists?
-    alt No such gem
-      Gems-->>App: 404 { message: "No such Gem." }
-    else Gem exists
-      Gems->>RDB: Store the user's rating (replaces an earlier one)
-      Gems->>RDB: Count and average this gem's ratings
-      RDB-->>Gems: count, average
-      Gems->>Gems: Recompute GemScore
-      Gems->>GDB: Save rating totals and GemScore
-      Gems->>Feed: publishGemUpdated(gem)
-      Feed-->>Feed: Send { type: "gem.updated", gem } to apps whose area contains it
-      Gems-->>App: 200 { stars, gem }
-      App-->>U: Show the new GemScore
-    end
+  U->>+F: choose S stars (1–5) on gem places/{pk}
+  F->>+G: PUT /gem/{pk}/rating { stars: S } + Bearer JWT
+  G->>+US: reqJwt(JWT)
+  US-->>-G: user (401 to Frontend if the JWT is invalid)
+  G->>+GDB: gems.exists({ name })
+  GDB-->>-G: true or false
+  alt gem exists
+    G->>+RDB: ratings.updateOne({ gem: name, user: user.id }, { $set: { stars: S } }, { upsert: true })
+    RDB-->>-G: stored (replaces the user's earlier rating)
+    G->>+RDB: ratings.aggregate([{ $match: { gem: name } }, { $group: count, avg(stars) }])
+    RDB-->>-G: { count, average }
+    G->>+GDB: gems.findOne({ name })
+    GDB-->>-G: gem (Google rating and review count)
+    G->>G: computeGemScore(rating, reviewCount, average, count)
+    G->>+GDB: gems.updateOne({ name }, { $set: { ratingCount, ratingAverage, score } })
+    GDB-->>-G: updated
+    G->>+LF: publishGemUpdated(gem)
+    LF-)OF: { type: "gem.updated", gem } (each app whose area contains the gem)
+    LF-->>-G: number of apps notified
+    G-->>F: 200 { stars: S, gem }
+    F-->>U: the gem's new Gem Score
+  else no such gem
+    G-->>-F: 404 { message: "No such Gem." }
+    F-->>-U: "This gem is no longer available"
   end

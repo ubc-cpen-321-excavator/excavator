@@ -14,6 +14,7 @@
 | 2026-11-03 | 4.1 | Corrected the interfaces to match the code: `GET /user/me` returns `name` as an object; feed messages over 1024 bytes close the connection; rating and favorites routes answer 401 before 405; added default and maximum values (radius, limit, comment and display-name length) and the missing 400, 401 and 404 responses. |
 | 2026-11-04 | 4.1 | `GET /place/nearby` now takes several place types in `type`, so the app can search with all the filters the user selected. |
 | 2026-11-04 | 3.1, 3.2, 3.3, 3.4 | Updated the features, use case diagram, actors and use cases to match the implemented app: added Favorites, Browse Gems on the map, Choose a place to add, Sign out and Edit display name; removed the nicheness API (nicheness is computed by the Gem Score formula) and "Authenticate API calls" (the app does it on every request; it is not a user goal); described the Google actors. |
+| 2026-11-04 | 4.5, 4.6 | Redid the diagrams to the course conventions: every synchronous call has a labelled return, WebSocket messages are asynchronous, database calls are the real queries, error cases are in `alt` frames, values flow from earlier messages, and lifeline and actor names match 3.3 and 4.5 (Frontend, Google Places API, Signed-in User, Guest). |
 
 ---
 
@@ -235,10 +236,16 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ### **4.5. Dependencies Diagram**
 ![Dependencies diagram](images/dependencies.png)
 
-Boxes are components, cylinders are MongoDB collections, and an arrow A → B means A calls B through the interfaces on the arrow (listed in 4.1). The app and the Live Feed call each other (A ↔ B): the app sends `subscribe` messages, and the feed pushes `gem.added` and `gem.updated` to the app. All four back-end components run in one Node.js server; Gems, Favorites and Users call each other's interfaces directly in code. Only the back end calls Google Places, so the API key stays on the server. The diagram source is `documentation/diagrams/dependencies.mmd` (Mermaid).
+Boxes are components (the Frontend, the four back-end components and the two Google services) and cylinders are the MongoDB collections. An arrow A → B means A calls B through the interfaces written on it (defined in 4.1). The Frontend and the Live Feed call each other (A ↔ B) over a WebSocket: the Frontend sends `subscribe`, and the Live Feed pushes `subscribed`, `gem.added` and `gem.updated` back. The four back-end components run in one Node.js server and call each other's interfaces directly in code. The Frontend never talks to a database; only the back end calls Google Places, so the API key stays on the server. Source: `documentation/diagrams/dependencies.mmd` (Mermaid).
 
 ### **4.6. Use Case Sequence Diagram (5 Most Major Use Cases)**
-Lifelines are the components and databases of the dependencies diagram (4.5); messages are their interfaces from 4.1. Error replies are shown where they change what the user sees. The diagram sources are in `documentation/diagrams/`.
+The lifelines are the actors of 3.3 and the components of the dependencies diagram (4.5); the user only talks to the Frontend. Messages are the interfaces of 4.1, and database calls are written as the MongoDB queries the back end runs. Notation:
+- A **solid arrow with a filled head** is a synchronous call; its result comes back on the **dashed arrow** below it, labelled with what is returned (HTTP status and body for REST calls).
+- A **solid arrow with an open head** is an asynchronous message with no reply: WebSocket messages between the Frontend and the Live Feed, and updates the Frontend shows without the user asking.
+- Every value a message uses comes from an earlier message (e.g. the place name picked from `GET /place/nearby` is what `POST /gem` adds). Error cases are shown in `alt` frames.
+- `reqJwt` is shown as one call and return: it checks the login token and loads the user, and answers 401 itself if the token is invalid (see 4.1, Users).
+
+Sources: `documentation/diagrams/`.
 
 1. [**View a Gem**](#uc1)\
 ![View a Gem](images/uc1_view_a_gem.png)

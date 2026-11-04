@@ -1,35 +1,47 @@
 sequenceDiagram
-  autonumber
-  actor U as User
-  participant App as Android app
-  participant Gems
-  participant Users
-  participant P as Google Places API
-  participant GDB as Gems DB
-  participant UDB as Users DB
-  participant Feed as Live Feed
+  actor U as Signed-in User
+  participant F as :Frontend
+  participant G as :Gems
+  participant US as :Users
+  participant P as :Google Places API
+  participant GDB as :Gems DB
+  participant LF as :Live Feed
+  participant OF as :Frontend (other users)
 
-  U->>App: Tap "Add gem"
-  App->>Gems: GET /place/nearby?lat&lng[&type]
-  Gems->>P: Nearby Search (200 m around the user)
-  P-->>Gems: Places
-  Gems->>GDB: Which of these are already gems?
-  GDB-->>Gems: Gem names
-  Gems-->>App: 200 [places, nearest first, with isGem]
-  U->>App: Pick a place
-  App->>Gems: POST /gem { name, latitude, longitude } (Bearer JWT)
-  Gems->>Users: reqJwt(req)
-  Users->>UDB: Find user by token subject
-  UDB-->>Users: User
-  Users-->>Gems: req.user
-  Gems->>GDB: Gem with this name exists?
-  GDB-->>Gems: No
-  Gems->>P: Place Details (name, location, type, rating, review count)
-  P-->>Gems: Place
-  Gems->>Gems: Check place is within 200 m, compute GemScore
-  Gems->>GDB: Insert gem
-  Gems->>Feed: publishGemAdded(gem)
-  Feed-->>Feed: Send { type: "gem.added", gem } to apps whose area contains it
-  Gems-->>App: 201 gem
-  App-->>U: Show the new gem on the map
-  Note over Gems,App: Errors: 401 not signed in, 409 already a gem,<br/>422 no such place / too far, 502 Google Places unavailable
+  Note over U,P: Choose a place to add (included use case)
+  U->>+F: tap "Add gem", select type filters T
+  F->>+G: GET /place/nearby?lat&lng&type=T (user's location)
+  G->>+P: searchNearby(center: lat, lng, radius: 200 m, includedTypes: T)
+  P-->>-G: places
+  G->>+GDB: gems.find({ name: { $in: place names } }, { name: 1 })
+  GDB-->>-G: names that are already gems
+  G-->>-F: 200 [{ name, displayName, distance, isGem }]
+  F-->>-U: nearby places, nearest first
+
+  U->>+F: pick place "places/{id}"
+  F->>+G: POST /gem { name, latitude, longitude } + Bearer JWT
+  G->>+US: reqJwt(JWT)
+  US-->>-G: user (401 to Frontend if the JWT is invalid)
+  G->>+GDB: gems.exists({ name })
+  GDB-->>-G: true or false
+  alt already a gem
+    G-->>F: 409 { message: "Gem already exists." }
+    F-->>U: "This place is already a gem"
+  else not a gem yet
+    G->>+P: getPlace(name)
+    P-->>-G: place { location, primaryType, rating, userRatingCount }
+    alt place within 200 m of the user
+      G->>G: computeGemScore(rating, userRatingCount)
+      G->>+GDB: gems.insertOne({ name, place, score, addedBy: user.id, ... })
+      GDB-->>-G: inserted
+      G->>+LF: publishGemAdded(gem)
+      LF-)OF: { type: "gem.added", gem } (each app whose area contains the gem)
+      LF-->>-G: number of apps notified
+      G-->>F: 201 gem
+      F-->>U: the new gem on the map
+    else too far, or no such place
+      G-->>-F: 422 { message: "Too far from place." | "Place does not exist." }
+      F-->>-U: "Move closer to the place" or "This place can't be added"
+    end
+  end
+  Note over G,P: If Google Places is unavailable: 502, nothing is stored

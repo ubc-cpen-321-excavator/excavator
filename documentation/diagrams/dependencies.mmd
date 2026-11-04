@@ -5,18 +5,18 @@ config:
     curve: linear
 ---
 flowchart TB
-  App["Excavator Android app (front end)"]
+  App["Frontend<br/>(Android app)"]
   SignIn["Google Sign-In"]
 
   subgraph Backend["Back end: one Node.js / Express server"]
     direction LR
     Users["Users"]
     Favs["Favorites"]
-    Gems["Gems (incl. comments, ratings)"]
-    Feed["Live Feed (WebSocket /feed)"]
+    Gems["Gems<br/>(incl. comments, ratings)"]
+    Feed["Live Feed"]
   end
 
-  Places["Google Places API (New)"]
+  Places["Google Places API"]
 
   subgraph DBs["MongoDB"]
     direction LR
@@ -27,19 +27,19 @@ flowchart TB
     RatingsDB[("Ratings DB")]
   end
 
-  App -->|"get ID token"| SignIn
-  App -->|"/user/auth/google, /user/me"| Users
-  App -->|"/user/favorites"| Favs
-  App -->|"/gem, /gem/nearby, /within, /newest,<br/>/place/nearby, /gem/:pk/comments, /gem/:pk/rating"| Gems
-  App <-->|"subscribe ⇄ gem.added, gem.updated"| Feed
+  App -->|"getCredential (Google ID token)"| SignIn
+  App -->|"POST /user/auth/google<br/>GET, PATCH /user/me"| Users
+  App -->|"GET, POST /user/favorites<br/>DELETE /user/favorites/:placeId"| Favs
+  App -->|"GET, POST /gem; GET /gem/nearby, /within, /newest<br/>GET /place/nearby<br/>GET, POST /gem/:pk/comments<br/>GET, PUT /gem/:pk/rating"| Gems
+  App <-->|"WebSocket /feed: subscribe ⇄<br/>subscribed, gem.added, gem.updated"| Feed
 
   Favs -->|"reqJwt, currentUser"| Users
   Gems -->|"reqJwt, currentUser"| Users
   Favs -->|"hasGem, getGems"| Gems
   Gems -->|"publishGemAdded, publishGemUpdated"| Feed
 
-  Users -->|"verify ID token"| SignIn
-  Gems -->|"Place Details, Nearby Search"| Places
+  Users -->|"verifyIdToken"| SignIn
+  Gems -->|"getPlace, searchNearby"| Places
 
   Users --> UsersDB
   Favs --> FavsDB

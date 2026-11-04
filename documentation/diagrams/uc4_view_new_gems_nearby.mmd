@@ -1,27 +1,32 @@
 sequenceDiagram
-  autonumber
-  actor U as User
-  actor O as Other user
-  participant App as Android app
-  participant Gems
-  participant GDB as Gems DB
-  participant Feed as Live Feed
+  actor U as Signed-in User
+  participant F as :Frontend
+  participant G as :Gems
+  participant GDB as :Gems DB
+  participant LF as :Live Feed
+  participant OF as :Frontend (another user)
 
-  U->>App: Open the dashboard
-  App->>Gems: GET /gem/newest[?limit]
-  Gems->>GDB: Latest gems, newest first
-  GDB-->>Gems: Gems
-  Gems-->>App: 200 [gems]
-  App->>Feed: WebSocket /feed { type: "subscribe", latitude, longitude, radius }
-  alt Location or radius invalid
-    Feed-->>App: { type: "error", message } (connection stays open)
-  else Valid
-    Feed-->>App: { type: "subscribed", latitude, longitude, radius }
+  U->>+F: open the dashboard
+  F->>+G: GET /gem/newest?limit
+  G->>+GDB: gems.find({}).sort({ createdAt: -1 }).limit(limit)
+  GDB-->>-G: gems
+  G-->>-F: 200 [gems]
+  F-->>-U: the newest gems
+
+  F-)LF: WebSocket /feed: { type: "subscribe", latitude, longitude, radius }
+  alt location and radius valid
+    LF-)F: { type: "subscribed", latitude, longitude, radius }
+  else invalid
+    LF-)F: { type: "error", message }
   end
-  App-->>U: Show the latest gems
-  O->>Gems: POST /gem (adds a gem within the user's radius)
-  Gems->>GDB: Insert gem
-  Gems->>Feed: publishGemAdded(gem)
-  Feed-->>App: { type: "gem.added", gem } (only to apps whose area contains it)
-  App-->>U: Add the new gem to the top of the list, no refresh
-  Note over Feed: Connections that stop answering the heartbeat are dropped,<br/>so publishing only reaches live apps
+
+  Note over OF,G: Another user adds a gem within the radius (Add a Gem)
+  OF->>+G: POST /gem { name, latitude, longitude } + Bearer JWT
+  G->>+GDB: gems.insertOne(gem)
+  GDB-->>-G: inserted
+  G->>+LF: publishGemAdded(gem)
+  LF-)F: { type: "gem.added", gem }
+  LF-->>-G: number of apps notified
+  G-->>-OF: 201 gem
+  F-)U: the new gem appears at the top of the list (no refresh)
+  Note over F,LF: Rating a gem in the area sends { type: "gem.updated", gem } the same way
