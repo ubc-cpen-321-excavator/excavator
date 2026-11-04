@@ -12,6 +12,7 @@
 | 2026-11-03 | 4.5 | Added the dependencies diagram: front end, the four back-end components, the five MongoDB collections and the two Google services, with the interfaces each arrow uses. |
 | 2026-11-03 | 4.6 | Added sequence diagrams for the five major use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Initialize session), using the components and interfaces of 4.1 and 4.5. |
 | 2026-11-03 | 4.1 | Corrected the interfaces to match the code: `GET /user/me` returns `name` as an object; feed messages over 1024 bytes close the connection; rating and favorites routes answer 401 before 405; added default and maximum values (radius, limit, comment and display-name length) and the missing 400, 401 and 404 responses. |
+| 2026-11-04 | 4.1 | `GET /place/nearby` now takes several place types in `type`, so the app can search with all the filters the user selected. |
 
 ---
 
@@ -127,8 +128,8 @@ We do not have admin user or any other role planned.
             - **Purpose**: Reads and adds the comments of the gem whose place ID is `pk`. A new comment records the signed-in user and their display name. The body is trimmed and must then be 1–1000 characters with no control characters. Both return 400 if `pk` is not a valid place ID and 404 if no gem has it; posting also returns 400 for an invalid body and 401 if not signed in.
         7. `PUT /gem/:pk/rating { stars }` → `{ stars, gem }`; `GET /gem/:pk/rating` → `{ stars }` (both require login)
             - **Purpose**: Sets the signed-in user's 1–5 star rating of the gem, returning the gem with its new rating totals and Gem Score; or reads their rating. Both return 400 if `pk` is not a valid place ID, 401 if not signed in, and 404 if no gem has that place ID. `PUT` also returns 400 if `stars` is not a whole number from 1 to 5; `GET` returns 404 if the user hasn't rated the gem.
-        8. `GET /place/nearby?lat&lng[&type]` → up to 20 places within 200 m, nearest first, each with `isGem`
-            - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem; the app then sends its `name` to `POST /gem`. `type` is an optional Google Places type such as `cafe`. Returns 400 if the location is invalid or `type` is malformed or unknown to Google, and 502 if Google Places is unavailable.
+        8. `GET /place/nearby?lat&lng[&type=cafe,park]` → up to 20 places within 200 m, nearest first, each with `isGem`
+            - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem; the app then sends its `name` to `POST /gem`. `type` optionally limits the list to one or more Google Places types, comma-separated (`type=cafe,park`) or repeated (`type=cafe&type=park`), so the app can send all the filters the user selected; a place matching any of them is listed. Returns 400 if the location is invalid, or a type is empty, malformed or unknown to Google, or there are more than 50, and 502 if Google Places is unavailable.
         9. `boolean hasGem(String name)`
             - **Purpose**: Used by Favorites and by comments and ratings to check a gem exists before acting on it.
         10. `List<Gem> getGems(List<String> names)`
