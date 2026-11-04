@@ -22,6 +22,7 @@ import com.example.cpen321application.presentation.activities.discovery.composab
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.NewCommentInput
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
 import java.util.Locale.getDefault
+import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.localrating.LocalRating
 
 //@Composable
 //fun GemInfoSheet() {
@@ -59,6 +60,14 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                     )
                     Spacer(modifier=Modifier.weight(1f))
                     FavoriteButton()
+                }
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Text(text = "Personal rating", fontSize = 14.sp)
+                    LocalRating(
+                        initialRating = null,
+                        onRatingSelected = { rating -> /* TODO: API call by Filip */ }
+                    )
                 }
 
                 CommentCardList(modifier = Modifier.weight(1f))
