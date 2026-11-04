@@ -18,10 +18,9 @@ fun LatestGemsGrid(
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.getNewestGems() // Later this will do an API call
+        viewModel.getNewestGems()
     }
 
-    // TODO: Pass a lambda into onGemClick to open the DiscoveryActivity
     GemCardGrid(uiState,context,modifier,"Latest Gems:")
 
 

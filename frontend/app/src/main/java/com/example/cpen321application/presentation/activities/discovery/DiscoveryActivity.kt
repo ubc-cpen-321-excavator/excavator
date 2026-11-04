@@ -38,11 +38,9 @@ class DiscoveryActivity : AuthenticatedActivity() {
             gemRequest = GemRequest(parseGem(intent))
         }
 
-
         setContent {
             CPEN321ApplicationTheme {
                 val context = LocalContext.current
-
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
