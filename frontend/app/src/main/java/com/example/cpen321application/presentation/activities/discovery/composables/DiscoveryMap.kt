@@ -28,7 +28,9 @@ import com.example.cpen321application.presentation.viewmodels.GemViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
@@ -59,12 +61,25 @@ fun DiscoveryMap(
     val coord: LatLng = userLatLng ?: PLACEHOLDER_COORDINATES
 
 
+    val mapProperties = remember {
+        MapProperties(
+            mapStyleOptions = MapStyleOptions(
+                """
+            [
+              { "featureType": "poi", "elementType": "labels", "stylers": [{ "visibility": "off" }] },
+              { "featureType": "transit.station", "elementType": "labels", "stylers": [{ "visibility": "off" }] }
+            ]
+            """.trimIndent()
+            )
+        )
+    }
+
+
     Box(modifier = Modifier.fillMaxSize()){
 
         val cameraPositionState = rememberCameraPositionState {
             position = CameraPosition.fromLatLngZoom(coord, CAMERA_INIT_ZOOM_FACTOR)
         }
-
 
         GemInfoSheetContent(
             gem = selectedGem,
@@ -79,7 +94,8 @@ fun DiscoveryMap(
 
         GoogleMap (
             modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState
+            cameraPositionState = cameraPositionState,
+            properties = mapProperties
         ) {
 
             // Reacts to the gem the screen was opened for (or its absence).

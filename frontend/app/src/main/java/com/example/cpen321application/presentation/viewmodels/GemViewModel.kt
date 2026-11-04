@@ -2,9 +2,11 @@ package com.example.cpen321application.presentation.viewmodels
 
 import android.util.Log
 import androidx.lifecycle.viewModelScope
+import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.domain.usecases.AddGemUseCase
-import com.example.cpen321application.domain.usecases.GetGemsUseCase
+import com.example.cpen321application.domain.usecases.GetGemCandidatesUseCase
+import com.example.cpen321application.domain.usecases.GetNearestGemsUseCase
 import com.example.cpen321application.domain.usecases.GetNewestGemsUseCase
 import com.example.cpen321application.utils.location.Coordinates
 import com.example.cpen321application.utils.location.LocationUtil
@@ -18,6 +20,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -27,15 +31,32 @@ import javax.inject.Inject
 @HiltViewModel
 class GemViewModel @Inject constructor(
     private val locationUtil: LocationUtil,
-    private val getGemsUseCase: GetGemsUseCase,
+    private val getNearestGemsUseCase: GetNearestGemsUseCase,
     private val getNewestGemsUseCase: GetNewestGemsUseCase,
-    private val addGemUseCase: AddGemUseCase
+    private val addGemUseCase: AddGemUseCase,
+    private val getGemCandidatesUseCase: GetGemCandidatesUseCase
 ): BaseViewModel() {
 
     private val _uiState = MutableStateFlow<List<Gem>>(emptyList())
+
+    private val _gemCandidates = MutableStateFlow<List<GemCandidate>> (emptyList())
+
     val uiState: StateFlow<List<Gem>> = _uiState.asStateFlow()
+    val gemCandidate: StateFlow<List<GemCandidate>> = _gemCandidates.asStateFlow()
+
 
     private val _access = MutableStateFlow(locationUtil.currentAccess())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val coordinates: StateFlow<Coordinates?> = _access
+        // Restarts the stream when access changes, e.g. APPROXIMATE -> PRECISE after
+        // the user accepts the upgrade prompt, so the better priority takes effect.
+        .flatMapLatest { trackingFlow(it) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            initialValue = null
+        )
 
     init {
         getGems()
@@ -47,10 +68,38 @@ class GemViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Loads the gems nearest to the user, using their first real fix.
+     *
+     * Reading `coordinates.value` here would not work: at init it is always null (the
+     * stream only runs while something collects it), so the lookup would be silently
+     * skipped. Instead we suspend until the first non-null fix arrives.
+     *
+     * Collecting here also keeps the location stream alive until that fix, which is
+     * what lets this work even if the permission result arrives after the ViewModel
+     * is created. `first()` then cancels the collection, so the stream can shut down
+     * when no UI is watching.
+     */
     private fun getGems() {
         launch {
-            getGemsUseCase(Unit).collect { gems ->
+            val firstFix = coordinates.filterNotNull().first()
+
+            getNearestGemsUseCase(
+                GetNearestGemsUseCase.Params(LatLng(firstFix.latitude, firstFix.longitude))
+            ).collect { gems ->
                 _uiState.value = gems
+            }
+        }
+    }
+
+    private fun getGemCandidates() {
+        launch {
+            val firstFix = coordinates.filterNotNull().first()
+
+            getGemCandidatesUseCase(
+                GetGemCandidatesUseCase.Params(LatLng(firstFix.latitude, firstFix.longitude))
+            ).collect { gemCandidates->
+                _gemCandidates.value = gemCandidates
             }
         }
     }
@@ -82,23 +131,6 @@ class GemViewModel @Inject constructor(
     override fun handleError(error: Exception) {
         throw error // Propagate the error for now
     }
-
-
-    /**
-     * Latest known coordinates, or null if we have none (no permission, no fix yet,
-     * or the location stream failed). Approximate and precise are both plain
-     * coordinates here; only their accuracy differs.
-     */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val coordinates: StateFlow<Coordinates?> = _access
-        // Restarts the stream when access changes, e.g. APPROXIMATE -> PRECISE after
-        // the user accepts the upgrade prompt, so the better priority takes effect.
-        .flatMapLatest { trackingFlow(it) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-            initialValue = null
-        )
 
     /** Call this from the permission callback. Safe to call repeatedly. */
     fun onLocationAccess(newAccess: LocationAccess) {
