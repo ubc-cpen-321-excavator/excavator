@@ -11,6 +11,7 @@
 | 2026-10-31 | 4.4 | Added the backend frameworks and libraries. |
 | 2026-11-03 | 4.5 | Added the dependencies diagram: front end, the four back-end components, the five MongoDB collections and the two Google services, with the interfaces each arrow uses. |
 | 2026-11-03 | 4.6 | Added sequence diagrams for the five major use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Initialize session), using the components and interfaces of 4.1 and 4.5. |
+| 2026-11-03 | 4.1 | Corrected the interfaces to match the code: `GET /user/me` returns `name` as an object; feed messages over 1024 bytes close the connection; rating and favorites routes answer 401 before 405; added default and maximum values (radius, limit, comment and display-name length) and the missing 400, 401 and 404 responses. |
 
 ---
 
@@ -113,31 +114,31 @@ We do not have admin user or any other role planned.
     - **Purpose**: Adds, validates, scores and lists gems, and holds their comments and ratings. A gem is a Google Places place, identified by its Google name `places/<place ID>`. A place can only be added by a signed-in user, if it exists on Google Places and is within 200 m of them. Each gem has a Gem Score from 0 to 100 that rewards places that are both well rated and little known. The Google ratings and Excavator users' ratings are pulled together toward 3.0 when there are few of them: R_adj = (v·rating + u·r_app + 15·3.0) / (v + u + 15), where v is the Google review count and rating its average, and u is the number of Excavator ratings and r_app their average. Quality is Q = (R_adj − 1) / 4, nicheness is N = 1 / (1 + v / 200), and the score is 100 · Q^0.6 · N^0.4. Excavator ratings change quality only, since nicheness measures how well known a place is in general. A Google rating that is missing counts as no rated reviews, but its review count still sets N. Users rate a gem 1–5 stars, once each (rating again replaces their rating); after every rating the gem's rating totals are recounted from all its ratings, its score is recomputed, and the updated gem is pushed to nearby users through the Live Feed.
     - **Interfaces**:
         1. `GET /gem?name=places/<place ID>` → the gem
-            - **Purpose**: Gets one gem, for its info sheet.
+            - **Purpose**: Gets one gem, for its info sheet. Returns 400 if `name` is missing or not `places/<place ID>` (the database is not queried), and 404 if no gem has that name.
         2. `POST /gem { name, latitude, longitude }` → 201 with the new gem (requires login)
             - **Purpose**: Adds a place as a gem, recording the signed-in user as `addedBy`. `latitude` / `longitude` are the user's location; the place must be within 200 m. The new gem is scored and pushed to nearby users through the Live Feed. Returns 400 if `name` or the location is malformed, 401 if not signed in, 409 if the gem already exists, 422 if the place doesn't exist or is too far away, and 502 if Google Places is unavailable.
         3. `GET /gem/nearby?lat&lng[&radius][&limit]` → gems, nearest first
-            - **Purpose**: Gems around the user, for the dashboard and discovery screen.
+            - **Purpose**: Gems around the user, for the dashboard and discovery screen. `radius` is in metres, 5000 by default and at most 50000; `limit` is 20 by default and at most 50. Returns 400 if the location is missing or out of range, or if `radius` or `limit` is not a whole number in range.
         4. `GET /gem/within?south&west&north&east[&limit]` → gems, highest Gem Score first
-            - **Purpose**: Gems inside the visible map area, for the discovery screen.
+            - **Purpose**: Gems inside the visible map area, for the discovery screen. `limit` is 20 by default and at most 50. The area must not cross the antimeridian. Returns 400 if a bound is missing or out of range, south ≥ north, west ≥ east, or `limit` is invalid.
         5. `GET /gem/newest[?limit]` → gems, newest first
-            - **Purpose**: The latest gems, for the dashboard.
+            - **Purpose**: The latest gems, for the dashboard. `limit` is 20 by default and at most 50; 400 if it is invalid.
         6. `GET /gem/:pk/comments` → `[{ id, body, author, authorName }]`, oldest first; `POST /gem/:pk/comments { body }` → 201 `{ id, body, author, authorName }` (posting requires login)
-            - **Purpose**: Reads and adds the comments of the gem whose place ID is `pk`. A new comment records the signed-in user and their display name.
+            - **Purpose**: Reads and adds the comments of the gem whose place ID is `pk`. A new comment records the signed-in user and their display name. The body is trimmed and must then be 1–1000 characters with no control characters. Both return 400 if `pk` is not a valid place ID and 404 if no gem has it; posting also returns 400 for an invalid body and 401 if not signed in.
         7. `PUT /gem/:pk/rating { stars }` → `{ stars, gem }`; `GET /gem/:pk/rating` → `{ stars }` (both require login)
-            - **Purpose**: Sets the signed-in user's 1–5 star rating of the gem, returning the gem with its new rating totals and Gem Score; or reads their rating (404 if they haven't rated it).
+            - **Purpose**: Sets the signed-in user's 1–5 star rating of the gem, returning the gem with its new rating totals and Gem Score; or reads their rating. Both return 400 if `pk` is not a valid place ID, 401 if not signed in, and 404 if no gem has that place ID. `PUT` also returns 400 if `stars` is not a whole number from 1 to 5; `GET` returns 404 if the user hasn't rated the gem.
         8. `GET /place/nearby?lat&lng[&type]` → up to 20 places within 200 m, nearest first, each with `isGem`
-            - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem; the app then sends its `name` to `POST /gem`.
+            - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem; the app then sends its `name` to `POST /gem`. `type` is an optional Google Places type such as `cafe`. Returns 400 if the location is invalid or `type` is malformed or unknown to Google, and 502 if Google Places is unavailable.
         9. `boolean hasGem(String name)`
             - **Purpose**: Used by Favorites and by comments and ratings to check a gem exists before acting on it.
         10. `List<Gem> getGems(List<String> names)`
             - **Purpose**: Used by Favorites to load a user's favorite gems in one query, in the order given; names with no gem are left out.
-    - Any other method on these paths gets 405 with an `Allow` header.
+    - Any other method on these paths gets 405 with an `Allow` header. The rating routes check login first, so another method on `/gem/:pk/rating` without a valid token gets 401 instead.
 2. **Live Feed**
     - **Purpose**: Pushes newly added gems, and gems whose Gem Score changed after a rating, to the users near them as they happen, so other users' actions appear on the map without refreshing. It runs as a WebSocket on the same server as the REST API. Each connected app tells the server where it is, and when a gem is added or changes, the server sends it to every app whose area contains it. A WebSocket was chosen over polling because new gems should show up immediately and an idle connection costs almost nothing, while polling would mean many empty requests.
     - **Interfaces**:
         1. WebSocket `/feed`, client → server: `{ type: "subscribe", latitude, longitude, radius? }`; server → client: `{ type: "subscribed", latitude, longitude, radius }`
-            - **Purpose**: Starts listening for new gems within `radius` metres of the user (default 5000, max 50000). Sending it again moves the area, at most once a second. Invalid messages get `{ type: "error", message }` and the connection stays open.
+            - **Purpose**: Starts listening for new gems within `radius` metres of the user (default 5000, max 50000). Sending it again moves the area, at most once a second. An invalid message (not JSON, a binary message, an unknown `type`, a location or radius out of range, or a second subscribe within a second) gets `{ type: "error", message }` and the connection stays open. A message over 1024 bytes closes the connection instead (WebSocket close code 1009).
         2. WebSocket `/feed`, server → client: `{ type: "gem.added", gem }`
             - **Purpose**: A gem was just added within the client's area; `gem` is the same gem JSON that `POST /gem` returns.
         3. WebSocket `/feed`, server → client: `{ type: "gem.updated", gem }`
@@ -148,9 +149,9 @@ We do not have admin user or any other role planned.
     - **Purpose**: Signs users in with Google and keeps their profile (Google name and display name). After verifying the Google ID token, the server issues its own JSON Web Token (JWT), valid for 7 days, which the app sends as `Authorization: Bearer <token>`. A JWT was chosen over server-side sessions because it survives server restarts and needs no session store; the server still checks the user exists on every request.
     - **Interfaces**:
         1. `POST /user/auth/google { idToken }` → `{ sessionId }`
-            - **Purpose**: Signs in with a Google ID token, creating the user on their first sign-in. `sessionId` holds the JWT.
-        2. `GET /user/me` → `{ id, name, displayName }`; `PATCH /user/me { displayName }` → the updated profile (both require login)
-            - **Purpose**: Reads the signed-in user's profile, and sets the display name other users see on their comments (1–50 characters). Signing out is done on the app by discarding the token.
+            - **Purpose**: Signs in with a Google ID token, creating the user on their first sign-in. `sessionId` holds the JWT. Returns 400 if there is no JSON body or `idToken` is missing or not a string, and 401 if Google rejects the token.
+        2. `GET /user/me` → `{ id, name: { full, given?, family? }, displayName }`; `PATCH /user/me { displayName }` → the updated profile (both require login)
+            - **Purpose**: Reads the signed-in user's profile, and sets the display name other users see on their comments. `name` is the user's name from Google; `given` and `family` are left out when Google doesn't have them. The display name is trimmed and must then be 1–50 characters with no control characters, or `PATCH` returns 400. Both return 401 if not signed in. Signing out is done on the app by discarding the token.
         3. `void reqJwt(Request req, Response res, NextFunction next)`
             - **Purpose**: Express middleware for routes that need a signed-in user: checks the Bearer JWT, loads the user into `req.user`, and answers 401 otherwise. Used by Gems, Favorites and Users.
         4. `User currentUser(Request req)`
@@ -161,9 +162,10 @@ We do not have admin user or any other role planned.
         1. `GET /user/favorites` → the favorite gems, most recently added first (requires login)
             - **Purpose**: Loads the favorites screen.
         2. `POST /user/favorites { gem }` → 201 `{ gem }`, or 200 if it already was a favorite (requires login)
-            - **Purpose**: Adds a gem to the user's favorites. Returns 404 if the gem doesn't exist and 409 at the 500-favorite limit.
+            - **Purpose**: Adds a gem to the user's favorites. Returns 400 if `gem` is missing or not `places/<place ID>`, 404 if the gem doesn't exist, and 409 at the 500-favorite limit.
         3. `DELETE /user/favorites/:placeId` → 204 (requires login)
-            - **Purpose**: Removes a gem from the user's favorites; 404 if it wasn't one.
+            - **Purpose**: Removes a gem from the user's favorites. Returns 400 if `placeId` is not a valid place ID, and 404 if the gem wasn't a favorite.
+    - All three return 401 if not signed in. Login is checked first, so another method on these paths without a valid token gets 401; with a valid token it gets 405 with an `Allow` header.
 
 
 ### **4.2. Databases**

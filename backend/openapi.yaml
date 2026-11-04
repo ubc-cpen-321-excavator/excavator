@@ -794,7 +794,9 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
           example: { message: No such Gem. }
     MethodNotAllowed:
-      description: The path does not support this method.
+      description: >-
+        The path does not support this method. The rating and favorites routes check login first, so there a request
+        without a valid token gets 401 instead.
       headers:
         Allow:
           description: The methods the path supports, e.g. `GET, POST`.
