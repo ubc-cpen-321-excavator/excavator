@@ -43,7 +43,10 @@ class DashboardActivity : AuthenticatedActivity() {
 
                     Column(modifier = Modifier.padding(innerPadding)) {
                         Text("Dashboard", fontSize = 30.sp)
-                        LatestGemsGrid(Modifier.padding(innerPadding))
+                        LatestGemsGrid(
+                            Modifier.padding(innerPadding),
+                            context = LocalContext.current
+                        )
                     }
                 }
             }

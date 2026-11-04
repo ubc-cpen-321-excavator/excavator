@@ -1,5 +1,6 @@
 package com.example.cpen321application.presentation.activities.dashboard.composables
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -11,7 +12,8 @@ import com.example.cpen321application.presentation.viewmodels.GemViewModel
 @Composable
 fun LatestGemsGrid(
     modifier: Modifier = Modifier,
-    viewModel: GemViewModel = hiltViewModel()
+    viewModel: GemViewModel = hiltViewModel(),
+    context: Context
 ){
     val uiState by viewModel.uiState.collectAsState()
 
@@ -20,7 +22,7 @@ fun LatestGemsGrid(
     }
 
     // TODO: Pass a lambda into onGemClick to open the DiscoveryActivity
-    GemCardGrid(uiState,{},modifier,"Latest Gems:")
+    GemCardGrid(uiState,context,modifier,"Latest Gems:")
 
 
 }

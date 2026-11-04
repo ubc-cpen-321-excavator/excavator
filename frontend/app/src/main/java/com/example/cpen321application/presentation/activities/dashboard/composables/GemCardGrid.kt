@@ -1,5 +1,6 @@
 package com.example.cpen321application.presentation.activities.dashboard.composables
 
+import android.content.Context
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +20,7 @@ import com.google.android.gms.maps.model.LatLng
 @Composable
 fun GemCardGrid(
     gems: List<Gem>,
-    onGemClick: (Gem) -> Unit,
+    context: Context,
     modifier: Modifier = Modifier,
     title: String? = null
 ) {
@@ -33,7 +34,7 @@ fun GemCardGrid(
                 modifier = Modifier.heightIn(max = 400.dp)
             ) {
                 items(gems) { gem ->
-                    GemCard(gem = gem, onClick = { onGemClick(gem) })
+                    GemCard(gem = gem, context = context)
                 }
             }
         }
