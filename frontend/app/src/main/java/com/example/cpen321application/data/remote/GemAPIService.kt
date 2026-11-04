@@ -1,5 +1,6 @@
 package com.example.cpen321application.data.remote
 
+import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.dto.GemDTO
 import retrofit2.Response
 import retrofit2.http.Body
@@ -13,6 +14,8 @@ private const val GEM_BASE_ENDPOINT = "/gem"
 private const val NEWEST_GEMS_ENDPOINT = "$GEM_BASE_ENDPOINT/newest"
 
 private const val NEARBY_GEMS_ENDPOINT = "$GEM_BASE_ENDPOINT/nearby"
+
+private const val NEARBY_PLACES_ENDPOINT = "/places/nearby"
 interface GemAPIService {
 
     @GET(NEWEST_GEMS_ENDPOINT)
@@ -30,6 +33,13 @@ interface GemAPIService {
         @Query("lat") latitude: Double,
         @Query("lng") longitude: Double,
     ) : Response<List<GemDTO>>
+
+
+    @GET(NEARBY_PLACES_ENDPOINT)
+    suspend fun getNearestGemCandidates(
+        @Query("lat") latitude: Double,
+        @Query("lng") longitude: Double,
+    ) : Response<List<GemCandidate>>
 
 }
 

@@ -34,13 +34,7 @@ import java.util.Locale
 import kotlin.math.ceil
 
 
-private fun convertToApiFilters(filterList: MutableObjectList<String>): List<String> {
 
-    return filterList.asList().map { filter ->
-        filter.lowercase(Locale.getDefault()).replace(" ", "_")
-    }
-
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +46,7 @@ fun GemCreationSheet(onShowChange: (Boolean)-> Unit, showBottomSheet: Boolean) {
 
     val filterList = MutableObjectList<String>()
 
-    var showFilters by remember { mutableStateOf(false) }
+    var showNearbyGems by remember { mutableStateOf(false) }
 
     if (showBottomSheet) {
         ModalBottomSheet(
@@ -60,28 +54,13 @@ fun GemCreationSheet(onShowChange: (Boolean)-> Unit, showBottomSheet: Boolean) {
             sheetState = sheetState,
             onDismissRequest = { onShowChange(false) }
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-
-                Text(
-                    text = "Add New Gem",
-                    fontSize = 20.sp,
-                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp),
-                    textDecoration = TextDecoration.Underline
-                )
-
-                Button(
-                    onClick = { showFilters = !showFilters },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(if (!showFilters) "Filters (Tap to expand)" else "Filters") }
-
-                GemFilterChoices(showFilters, currentFilters = filterList)
-
-                //TODO: Make HTTP request when we click
-                Button(onClick = { Log.d("TESTING SUBMIT", convertToApiFilters(filterList).toString())},
-                    modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    Text("Submit")
+            if (!showNearbyGems) {
+                NewGemFiltersForm(filterList) { showNearbyGems = it }
+            } else {
+                NearbyGemsOptionsList(){
+                    showNearbyGems = it
+                    onShowChange(it)
                 }
-
             }
 
         }
@@ -180,7 +159,7 @@ fun GemAttributeFilterCategory(modifier: Modifier = Modifier, label: String,
         Grid(
             config = {
                 repeat (NUM_COLUMNS) {
-                    column(1/3.0f)
+                    column(1/NUM_COLUMNS.toFloat())
                 }
 
                 repeat(ceil(filters.size/NUM_COLUMNS.toFloat()).toInt()) {
