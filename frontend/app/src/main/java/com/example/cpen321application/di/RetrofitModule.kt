@@ -3,6 +3,7 @@ package com.example.cpen321application.di
 import com.example.cpen321application.BuildConfig
 import com.example.cpen321application.data.remote.GemAPIService
 import com.example.cpen321application.utils.auth.AuthAPIService
+import com.example.cpen321application.utils.auth.SessionAuthenticator
 import com.example.cpen321application.utils.interceptors.AuthInterceptor
 import dagger.Module
 import dagger.Provides
@@ -19,9 +20,13 @@ object RetrofitModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient =
+    fun provideOkHttpClient(
+        authInterceptor: AuthInterceptor,
+        sessionAuthenticator: SessionAuthenticator
+    ): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .authenticator(sessionAuthenticator)
             .build()
 
     @Provides

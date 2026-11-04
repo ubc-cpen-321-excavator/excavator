@@ -19,10 +19,11 @@ import com.example.cpen321application.presentation.activities.NavDestination
 import com.example.cpen321application.presentation.activities.dashboard.composables.LatestGemsGrid
 import com.example.cpen321application.presentation.activities.dashboard.ui.theme.CPEN321ApplicationTheme
 import com.example.cpen321application.presentation.activities.navigateTo
+import com.example.cpen321application.utils.auth.AuthenticatedActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class DashboardActivity : ComponentActivity() {
+class DashboardActivity : AuthenticatedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

@@ -8,6 +8,8 @@ import android.widget.Toast
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.dashboard.DashboardActivity
 import com.example.cpen321application.presentation.activities.discovery.DiscoveryActivity
+import com.example.cpen321application.presentation.activities.signin.SigninActivity
+import kotlin.jvm.java
 
 // Keys shared by the sender (here) and whichever activity reads the data
 object GemExtras {
@@ -49,4 +51,11 @@ fun navigateToDiscovery(context: Context, gem: Gem? = null) {
         }
     }
     navigateTo(context, NavDestination.DISCOVERY, extras)
+}
+
+fun navigateToSignin(context: Context) {
+    context.startActivity(
+        Intent(context, SigninActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+    )
 }
