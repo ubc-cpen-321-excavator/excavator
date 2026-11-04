@@ -24,18 +24,11 @@ import com.example.cpen321application.presentation.activities.discovery.composab
 import java.util.Locale.getDefault
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.localrating.LocalRating
 
-//@Composable
-//fun GemInfoSheet() {
-//
-//    var showBottomSheet by remember { mutableStateOf(true) }
-//
-//    GemInfoSheetContent(
-//        gem = Gem("Sample Gem Title"),
-//        onShowChange = {showBottomSheet = it},
-//        showBottomSheet = showBottomSheet
-//    )
-//
-//}
+private fun removePrefix(s: String, prefix: String): String {
+    return if (s.startsWith(prefix)) {
+        s.substring(prefix.length)
+    } else s
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,12 +63,13 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                     )
                 }
 
-                CommentCardList(modifier = Modifier.weight(1f))
+                CommentCardList(modifier = Modifier.weight(1f), gemID = removePrefix(gem.placesName,"places/"))
                 NewCommentInput(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .imePadding()
+                        .imePadding(),
+                    gemID = removePrefix(gem.placesName,"places/")
                 )
 
             }

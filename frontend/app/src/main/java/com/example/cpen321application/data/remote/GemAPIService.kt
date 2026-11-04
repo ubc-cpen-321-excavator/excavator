@@ -2,20 +2,18 @@ package com.example.cpen321application.data.remote
 
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.dto.GemDTO
+import com.example.cpen321application.data.remote.Constants.Companion.GEM_BASE_ENDPOINT
+import com.example.cpen321application.data.remote.Constants.Companion.NEARBY_GEMS_ENDPOINT
+import com.example.cpen321application.data.remote.Constants.Companion.NEARBY_PLACES_ENDPOINT
+import com.example.cpen321application.data.remote.Constants.Companion.NEWEST_GEMS_ENDPOINT
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.Header
 import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.Query
 
-private const val GEM_BASE_ENDPOINT = "/gem"
-private const val NEWEST_GEMS_ENDPOINT = "$GEM_BASE_ENDPOINT/newest"
 
-private const val NEARBY_GEMS_ENDPOINT = "$GEM_BASE_ENDPOINT/nearby"
-
-private const val NEARBY_PLACES_ENDPOINT = "/places/nearby"
 interface GemAPIService {
 
     @GET(NEWEST_GEMS_ENDPOINT)
