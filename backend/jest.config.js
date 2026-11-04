@@ -2,7 +2,7 @@ module.exports = {
   // ts-jest with source maps on: tsconfig.json turns them off for the build, and without them coverage
   // reports the CommonJS import helpers TypeScript adds at the top of each file as uncovered lines.
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: { sourceMap: true } }],
+    '^.+\\.tsx?$': ['ts-jest', { tsconfig: { sourceMap: true } }]
   },
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/tests'],
