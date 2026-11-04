@@ -65,6 +65,26 @@ describe('Mocked: GET /place/nearby', () => {
   });
 
   // Mocked behavior: Google returns no places
+  // Input: GET requests with several types, comma-separated ("cafe,park", with spaces and a duplicate)
+  //        or as a repeated parameter (type=cafe&type=park)
+  // Expected status code: 200
+  // Expected behavior: Google is searched for places of any of the types, each type sent once
+  // Expected output: []
+  test.each([
+    '&type=cafe,park',
+    '&type=cafe,%20park,cafe',
+    '&type=cafe&type=park',
+  ])('Several types %s', async (types) => {
+    mockSearchNearby.mockResolvedValue([{ places: [] }]);
+
+    const response = await request(createApp()).get(`/place/nearby?lat=${USER.lat}&lng=${USER.lng}${types}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+    expect(mockSearchNearby.mock.calls[0][0].includedTypes).toEqual(['cafe', 'park']);
+  });
+
+  // Mocked behavior: Google returns no places
   // Input: GET request with the user's lat and lng
   // Expected status code: 200
   // Expected output: []
@@ -78,7 +98,7 @@ describe('Mocked: GET /place/nearby', () => {
   });
 
   // Mocked behavior: none
-  // Input: GET requests with a missing or out-of-range location, or a malformed type
+  // Input: GET requests with a missing or out-of-range location, a malformed type, or an empty type in a list
   // Expected status code: 400
   // Expected behavior: Google is not called
   // Expected output: the matching message
@@ -86,6 +106,8 @@ describe('Mocked: GET /place/nearby', () => {
     [{ lat: '49.26' }, 'Invalid location.'],
     [{ lat: '49.26', lng: '200' }, 'Invalid location.'],
     [{ ...USER, type: 'Cafe!' }, 'Invalid place type.'],
+    [{ ...USER, type: 'cafe,Park!' }, 'Invalid place type.'],
+    [{ ...USER, type: 'cafe,' }, 'Invalid place type.'],
   ])('Invalid query %p', async (query, message) => {
     const response = await request(createApp()).get('/place/nearby').query(query);
 

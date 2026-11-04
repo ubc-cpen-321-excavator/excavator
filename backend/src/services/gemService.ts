@@ -34,6 +34,9 @@ export const GEM_NEARBY_RADIUS_MAX_M = 50_000;
 /** Google Places type, e.g. `cafe`, `hiking_area`. */
 const PLACE_TYPE_PATTERN = /^[a-z_]{1,50}$/;
 
+/** Most place types one nearby search can filter by; Google Places allows up to 50 `includedTypes`. */
+export const MAX_PLACE_TYPES = 50;
+
 /** gRPC status codes the Places API returns when the place ID is malformed or unknown. */
 const GRPC_INVALID_ARGUMENT = 3;
 const GRPC_NOT_FOUND = 5;
@@ -78,6 +81,29 @@ export function gemNameFromPlaceId(placeId: unknown): string | undefined {
  */
 export function isValidPlaceType(type: unknown): type is string {
   return typeof type === 'string' && PLACE_TYPE_PATTERN.test(type);
+}
+
+/**
+ * Reads the place types to filter a nearby search by, from the `type` query parameter. Several types
+ * can be given comma-separated (`type=cafe,park`), as a repeated parameter (`type=cafe&type=park`),
+ * or both. Spaces around each type are ignored and duplicates are dropped.
+ *
+ * @param value the `type` query parameter: missing, a string, or an array of strings.
+ * @returns the types (`[]` if the parameter is missing, meaning no filter), or `undefined` if any
+ *   type is empty or malformed, or there are more than `MAX_PLACE_TYPES`.
+ */
+export function parsePlaceTypes(value: unknown): string[] | undefined {
+  if (value === undefined) {
+    return [];
+  }
+
+  const parts = Array.isArray(value) ? value : [value];
+  if (!parts.every(part => typeof part === 'string')) {
+    return undefined;
+  }
+
+  const types = [...new Set(parts.flatMap(part => part.split(',').map(type => type.trim())))];
+  return types.length <= MAX_PLACE_TYPES && types.every(isValidPlaceType) ? types : undefined;
 }
 
 /** Thrown when a user adds a place further than `MAX_ADD_DISTANCE_M` from them. The client's fault (422). */
@@ -595,14 +621,16 @@ class GemService {
    * Only places within `MAX_ADD_DISTANCE_M` are listed, since only those can be added.
    *
    * @param location where the user is.
-   * @param type optional Google Places type to limit the search to, e.g. `cafe`.
+   * @param types Google Places types to limit the search to, e.g. `['cafe', 'park']`; a place
+   *   matching any of them is listed. Empty or left out: all places.
    * @returns up to 20 places, each marked with whether it is already a Gem.
-   * @throws `InvalidPlaceTypeError` if `type` is malformed or Google does not know it.
+   * @throws `InvalidPlaceTypeError` if a type is malformed, there are more than `MAX_PLACE_TYPES`,
+   *   or Google does not know one of them.
    * @throws `PlacesUnavailableError` if Google Places fails otherwise.
    * @throws the database error if stored Gems cannot be checked.
    */
-  async findNearbyPlaces(location: LatLng, type?: string): Promise<PlaceCandidate[]> {
-    if (type !== undefined && !isValidPlaceType(type)) {
+  async findNearbyPlaces(location: LatLng, types: string[] = []): Promise<PlaceCandidate[]> {
+    if (types.length > MAX_PLACE_TYPES || !types.every(isValidPlaceType)) {
       throw new InvalidPlaceTypeError('Invalid place type.');
     }
 
@@ -613,7 +641,7 @@ class GemService {
           maxResultCount: NEARBY_MAX_RESULTS,
           rankPreference: 'DISTANCE',
           locationRestriction: { circle: { center: location, radius: MAX_ADD_DISTANCE_M } },
-          ...(type === undefined ? {} : { includedTypes: [type] }),
+          ...(types.length === 0 ? {} : { includedTypes: types }),
         },
         { otherArgs: { headers: { 'X-Goog-FieldMask': NEARBY_FIELD_MASK } } },
       );
