@@ -12,7 +12,9 @@ import com.example.cpen321application.presentation.activities.discovery.Discover
 // Keys shared by the sender (here) and whichever activity reads the data
 object GemExtras {
     const val TITLE = "gem_title"
-    const val COORDS = "gem_coords"
+    const val LATITUDE = "gem_coords_latitude"
+    const val LONGITUDE = "gem_coords_longitude"
+    const val PLACES_NAME = "gem_places_name"
 }
 
 fun navigateTo(
@@ -41,7 +43,9 @@ fun navigateToDiscovery(context: Context, gem: Gem? = null) {
     val extras = gem?.let {
         Bundle().apply {
             putString(GemExtras.TITLE, it.title)
-            putParcelable(GemExtras.COORDS, it.coords)
+            putDouble(GemExtras.LATITUDE, it.coords.latitude)
+            putDouble(GemExtras.LONGITUDE, it.coords.longitude)
+            putString(GemExtras.PLACES_NAME, it.placesName)
         }
     }
     navigateTo(context, NavDestination.DISCOVERY, extras)
