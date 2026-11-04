@@ -1,0 +1,35 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant App as Android app
+  participant Gems
+  participant Users
+  participant P as Google Places API
+  participant GDB as Gems DB
+  participant UDB as Users DB
+  participant Feed as Live Feed
+
+  U->>App: Tap "Add gem"
+  App->>Gems: GET /place/nearby?lat&lng[&type]
+  Gems->>P: Nearby Search (200 m around the user)
+  P-->>Gems: Places
+  Gems->>GDB: Which of these are already gems?
+  GDB-->>Gems: Gem names
+  Gems-->>App: 200 [places, nearest first, with isGem]
+  U->>App: Pick a place
+  App->>Gems: POST /gem { name, latitude, longitude } (Bearer JWT)
+  Gems->>Users: reqJwt(req)
+  Users->>UDB: Find user by token subject
+  UDB-->>Users: User
+  Users-->>Gems: req.user
+  Gems->>GDB: Gem with this name exists?
+  GDB-->>Gems: No
+  Gems->>P: Place Details (name, location, type, rating, review count)
+  P-->>Gems: Place
+  Gems->>Gems: Check place is within 200 m, compute GemScore
+  Gems->>GDB: Insert gem
+  Gems->>Feed: publishGemAdded(gem)
+  Feed-->>Feed: Send { type: "gem.added", gem } to apps whose area contains it
+  Gems-->>App: 201 gem
+  App-->>U: Show the new gem on the map
+  Note over Gems,App: Errors: 401 not signed in, 409 already a gem,<br/>422 no such place / too far, 502 Google Places unavailable

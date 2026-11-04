@@ -1,0 +1,27 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  actor O as Other user
+  participant App as Android app
+  participant Gems
+  participant GDB as Gems DB
+  participant Feed as Live Feed
+
+  U->>App: Open the dashboard
+  App->>Gems: GET /gem/newest[?limit]
+  Gems->>GDB: Latest gems, newest first
+  GDB-->>Gems: Gems
+  Gems-->>App: 200 [gems]
+  App->>Feed: WebSocket /feed { type: "subscribe", latitude, longitude, radius }
+  alt Location or radius invalid
+    Feed-->>App: { type: "error", message } (connection stays open)
+  else Valid
+    Feed-->>App: { type: "subscribed", latitude, longitude, radius }
+  end
+  App-->>U: Show the latest gems
+  O->>Gems: POST /gem (adds a gem within the user's radius)
+  Gems->>GDB: Insert gem
+  Gems->>Feed: publishGemAdded(gem)
+  Feed-->>App: { type: "gem.added", gem } (only to apps whose area contains it)
+  App-->>U: Add the new gem to the top of the list, no refresh
+  Note over Feed: Connections that stop answering the heartbeat are dropped,<br/>so publishing only reaches live apps

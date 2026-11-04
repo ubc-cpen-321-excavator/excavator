@@ -9,6 +9,8 @@
 | 2026-10-31 | 4.1 | Gems: ratings, login on writes, internal interfaces. Live Feed: `gem.updated`. Users: profile routes. New Favorites component. Matches the implemented backend. |
 | 2026-10-31 | 4.2 | Added the Favorites and Ratings collections; Gems store rating totals; comments store their author. |
 | 2026-10-31 | 4.4 | Added the backend frameworks and libraries. |
+| 2026-11-03 | 4.5 | Added the dependencies diagram: front end, the four back-end components, the five MongoDB collections and the two Google services, with the interfaces each arrow uses. |
+| 2026-11-03 | 4.6 | Added sequence diagrams for the five major use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Initialize session), using the components and interfaces of 4.1 and 4.5. |
 
 ---
 
@@ -215,13 +217,23 @@ We do not have admin user or any other role planned.
 
 
 ### **4.5. Dependencies Diagram**
-<!-- TODO -->
+![Dependencies diagram](images/dependencies.png)
+
+Boxes are components, cylinders are MongoDB collections, and an arrow A → B means A calls B through the interfaces on the arrow (listed in 4.1). The app and the Live Feed call each other (A ↔ B): the app sends `subscribe` messages, and the feed pushes `gem.added` and `gem.updated` to the app. All four back-end components run in one Node.js server; Gems, Favorites and Users call each other's interfaces directly in code. Only the back end calls Google Places, so the API key stays on the server. The diagram source is `documentation/diagrams/dependencies.mmd` (Mermaid).
 
 ### **4.6. Use Case Sequence Diagram (5 Most Major Use Cases)**
-<!-- TODO -->
-1. [**[WRITE_NAME_HERE]**](#uc1)\
-[SEQUENCE_DIAGRAM_HERE]
-2. ...
+Lifelines are the components and databases of the dependencies diagram (4.5); messages are their interfaces from 4.1. Error replies are shown where they change what the user sees. The diagram sources are in `documentation/diagrams/`.
+
+1. [**View a Gem**](#uc1)\
+![View a Gem](images/uc1_view_a_gem.png)
+2. [**Add a Gem**](#uc2)\
+![Add a Gem](images/uc2_add_a_gem.png)
+3. [**Contribute to GemScore**](#uc3)\
+![Contribute to GemScore](images/uc3_contribute_to_gemscore.png)
+4. [**View new Gems nearby**](#uc4)\
+![View new Gems nearby](images/uc4_view_new_gems_nearby.png)
+5. [**Initialize session**](#uc5)\
+![Initialize session](images/uc5_initialize_session.png)
 
 ### **4.7. Design of Non-Functional Requirements**
 1. [**Live updates arrive within 1 second**](#nfr1)

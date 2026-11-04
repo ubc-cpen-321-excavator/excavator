@@ -1,0 +1,33 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant App as Android app
+  participant Gems
+  participant GDB as Gems DB
+  participant CDB as Comments DB
+
+  U->>App: Open the discovery map
+  App->>Gems: GET /gem/within?south&west&north&east[&limit]
+  Gems->>GDB: Gems inside the map area, highest GemScore first (2dsphere index)
+  GDB-->>Gems: Gems
+  Gems-->>App: 200 [gems]
+  App-->>U: Show a marker per gem
+  U->>App: Tap a gem
+  App->>Gems: GET /gem?name=places/<place ID>
+  alt Name malformed
+    Gems-->>App: 400 { message: "Invalid Gem name." }
+  else
+    Gems->>GDB: Find gem by name
+    alt No such gem (e.g. deleted)
+      GDB-->>Gems: none
+      Gems-->>App: 404 { message: "No such Gem." }
+    else Found
+      GDB-->>Gems: Gem
+      Gems-->>App: 200 gem (name, place, type, description, GemScore, ratings)
+      App->>Gems: GET /gem/:pk/comments
+      Gems->>CDB: Comments of this gem, oldest first
+      CDB-->>Gems: Comments
+      Gems-->>App: 200 [{ id, body, author, authorName }]
+      App-->>U: Show the gem's details, GemScore and comments
+    end
+  end

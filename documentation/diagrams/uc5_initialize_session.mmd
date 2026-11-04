@@ -1,0 +1,24 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant App as Android app
+  participant SI as Google Sign-In
+  participant Users
+  participant UDB as Users DB
+
+  U->>App: Tap "Sign in with Google"
+  App->>SI: Request Google ID token
+  SI-->>App: ID token
+  App->>Users: POST /user/auth/google { idToken }
+  Users->>SI: Verify ID token (signature, audience, expiry)
+  alt Token valid
+    SI-->>Users: Google account ID and name
+    Users->>UDB: Find user by Google ID, create on first sign-in
+    UDB-->>Users: User
+    Users-->>App: 200 { sessionId: JWT, valid 7 days }
+    App-->>U: Show dashboard
+  else Token rejected
+    SI-->>Users: Invalid token
+    Users-->>App: 401 { message: "Login failed." }
+    App-->>U: Show sign-in error
+  end

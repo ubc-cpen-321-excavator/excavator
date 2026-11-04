@@ -1,0 +1,48 @@
+---
+config:
+  layout: elk
+  flowchart:
+    curve: linear
+---
+flowchart TB
+  App["Excavator Android app (front end)"]
+  SignIn["Google Sign-In"]
+
+  subgraph Backend["Back end: one Node.js / Express server"]
+    direction LR
+    Users["Users"]
+    Favs["Favorites"]
+    Gems["Gems (incl. comments, ratings)"]
+    Feed["Live Feed (WebSocket /feed)"]
+  end
+
+  Places["Google Places API (New)"]
+
+  subgraph DBs["MongoDB"]
+    direction LR
+    UsersDB[("Users DB")]
+    FavsDB[("Favorites DB")]
+    GemsDB[("Gems DB")]
+    CommentsDB[("Comments DB")]
+    RatingsDB[("Ratings DB")]
+  end
+
+  App -->|"get ID token"| SignIn
+  App -->|"/user/auth/google, /user/me"| Users
+  App -->|"/user/favorites"| Favs
+  App -->|"/gem, /gem/nearby, /within, /newest,<br/>/place/nearby, /gem/:pk/comments, /gem/:pk/rating"| Gems
+  App <-->|"subscribe ⇄ gem.added, gem.updated"| Feed
+
+  Favs -->|"reqJwt, currentUser"| Users
+  Gems -->|"reqJwt, currentUser"| Users
+  Favs -->|"hasGem, getGems"| Gems
+  Gems -->|"publishGemAdded, publishGemUpdated"| Feed
+
+  Users -->|"verify ID token"| SignIn
+  Gems -->|"Place Details, Nearby Search"| Places
+
+  Users --> UsersDB
+  Favs --> FavsDB
+  Gems --> GemsDB
+  Gems --> CommentsDB
+  Gems --> RatingsDB

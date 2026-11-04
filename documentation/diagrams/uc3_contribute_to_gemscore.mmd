@@ -1,0 +1,32 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant App as Android app
+  participant Gems
+  participant Users
+  participant RDB as Ratings DB
+  participant GDB as Gems DB
+  participant Feed as Live Feed
+
+  U->>App: Choose 1–5 stars on a gem
+  App->>Gems: PUT /gem/:pk/rating { stars } (Bearer JWT)
+  Gems->>Users: reqJwt(req)
+  Users-->>Gems: req.user
+  alt stars not a whole number 1–5
+    Gems-->>App: 400 { message: "Invalid stars." }
+  else Valid
+    Gems->>GDB: Gem exists?
+    alt No such gem
+      Gems-->>App: 404 { message: "No such Gem." }
+    else Gem exists
+      Gems->>RDB: Store the user's rating (replaces an earlier one)
+      Gems->>RDB: Count and average this gem's ratings
+      RDB-->>Gems: count, average
+      Gems->>Gems: Recompute GemScore
+      Gems->>GDB: Save rating totals and GemScore
+      Gems->>Feed: publishGemUpdated(gem)
+      Feed-->>Feed: Send { type: "gem.updated", gem } to apps whose area contains it
+      Gems-->>App: 200 { stars, gem }
+      App-->>U: Show the new GemScore
+    end
+  end
