@@ -4,10 +4,10 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.domain.models.Gem
-import com.example.cpen321application.domain.usecases.AddGemUseCase
-import com.example.cpen321application.domain.usecases.GetGemCandidatesUseCase
-import com.example.cpen321application.domain.usecases.GetNearestGemsUseCase
-import com.example.cpen321application.domain.usecases.GetNewestGemsUseCase
+import com.example.cpen321application.domain.usecases.gem.AddGemUseCase
+import com.example.cpen321application.domain.usecases.gem.GetGemCandidatesUseCase
+import com.example.cpen321application.domain.usecases.gem.GetNearestGemsUseCase
+import com.example.cpen321application.domain.usecases.gem.GetNewestGemsUseCase
 import com.example.cpen321application.utils.location.Coordinates
 import com.example.cpen321application.utils.location.LocationUtil
 import com.example.cpen321application.utils.permissions.LocationAccess

@@ -1,6 +1,7 @@
 package com.example.cpen321application.di
 
 import com.example.cpen321application.BuildConfig
+import com.example.cpen321application.data.remote.CommentAPIService
 import com.example.cpen321application.data.remote.GemAPIService
 import com.example.cpen321application.utils.auth.AuthAPIService
 import com.example.cpen321application.utils.auth.SessionAuthenticator
@@ -49,6 +50,13 @@ object RetrofitModule {
     fun provideGemAPIService(retrofit: Retrofit) : GemAPIService {
         return retrofit.create(GemAPIService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideCommentAPIService(retrofit: Retrofit) : CommentAPIService {
+        return retrofit.create(CommentAPIService::class.java)
+    }
+
 
 
 }

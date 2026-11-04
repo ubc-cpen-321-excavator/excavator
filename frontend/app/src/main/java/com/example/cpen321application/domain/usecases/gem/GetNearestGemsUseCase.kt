@@ -1,7 +1,8 @@
-package com.example.cpen321application.domain.usecases
+package com.example.cpen321application.domain.usecases.gem
 
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.domain.repositories.GemRepository
+import com.example.cpen321application.domain.usecases.BaseUseCase
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject

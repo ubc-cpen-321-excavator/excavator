@@ -30,7 +30,6 @@ class GemRepositoryImpl @Inject constructor(
 
     override suspend fun getNearbyGems(coords: LatLng): Flow<List<Gem>> {
 
-        // TODO: Change this to grab the user's location if they give permission
         val response: Response<List<GemDTO>> = service.getNearestGems(
             coords.latitude,
             coords.longitude
