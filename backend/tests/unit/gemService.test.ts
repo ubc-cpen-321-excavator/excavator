@@ -3,11 +3,13 @@ import GemService, {
   InvalidPlaceError,
   InvalidPlaceTypeError,
   MAX_ADD_DISTANCE_M,
+  MAX_PLACE_TYPES,
   NoSuchGemError,
   PlacesUnavailableError,
   TooFarError,
   gemNameFromPlaceId,
   isValidGemName,
+  parsePlaceTypes,
 } from '../../src/services/gemService';
 import { GemModel } from '../../src/models/gemModel';
 import { computeGemScore } from '../../src/utils/gemScore';
@@ -303,11 +305,17 @@ describe('Mocked: GemService.addGem distance check', () => {
   });
 });
 
+/** @returns MAX_PLACE_TYPES + 1 distinct, well-formed place types, e.g. `type_aa`, `type_ab`, ... */
+function tooManyTypes(): string[] {
+  return Array.from({ length: MAX_PLACE_TYPES + 1 }, (_, i) =>
+    `type_${String.fromCharCode(97 + Math.floor(i / 26))}${String.fromCharCode(97 + (i % 26))}`);
+}
+
 // Interface GemService.findNearbyPlaces
 describe('Mocked: GemService.findNearbyPlaces', () => {
   // Mocked behavior: Google returns three places (one without a location); one of the valid two is already a gem
-  // Input: the user's location and type "cafe"
-  // Expected behavior: Google is asked for up to 20 places within MAX_ADD_DISTANCE_M, nearest first, of that type, with a field mask;
+  // Input: the user's location and types ["cafe", "park"]
+  // Expected behavior: Google is asked for up to 20 places within MAX_ADD_DISTANCE_M, nearest first, of those types, with a field mask;
   //                    the place without a location is skipped; stored gems are looked up by name in one query
   // Expected output: two candidates with name, display name, type, address, location, rounded distance and isGem
   test('Places found', async () => {
@@ -320,14 +328,14 @@ describe('Mocked: GemService.findNearbyPlaces', () => {
     }]);
     mockedGemModel.find.mockReturnValue({ lean: () => Promise.resolve([{ name: 'places/next' }]) });
 
-    const places = await new GemService().findNearbyPlaces(AT_PLACE, 'cafe');
+    const places = await new GemService().findNearbyPlaces(AT_PLACE, ['cafe', 'park']);
 
     expect(mockSearchNearby).toHaveBeenCalledWith(
       {
         maxResultCount: 20,
         rankPreference: 'DISTANCE',
         locationRestriction: { circle: { center: AT_PLACE, radius: MAX_ADD_DISTANCE_M } },
-        includedTypes: ['cafe'],
+        includedTypes: ['cafe', 'park'],
       },
       { otherArgs: { headers: { 'X-Goog-FieldMask': expect.stringContaining('places.location') } } },
     );
@@ -355,11 +363,14 @@ describe('Mocked: GemService.findNearbyPlaces', () => {
   });
 
   // Mocked behavior: none
-  // Input: a malformed type
+  // Input: a list with a malformed type, or more than MAX_PLACE_TYPES types
   // Expected behavior: Google is not called
   // Expected output: rejects with InvalidPlaceTypeError
-  test('Malformed type', async () => {
-    await expect(new GemService().findNearbyPlaces(AT_PLACE, 'Cafe!')).rejects.toBeInstanceOf(InvalidPlaceTypeError);
+  test.each([
+    [['cafe', 'Cafe!']],
+    [tooManyTypes()],
+  ])('Malformed types %#', async (types) => {
+    await expect(new GemService().findNearbyPlaces(AT_PLACE, types)).rejects.toBeInstanceOf(InvalidPlaceTypeError);
 
     expect(mockSearchNearby).not.toHaveBeenCalled();
   });
@@ -370,7 +381,7 @@ describe('Mocked: GemService.findNearbyPlaces', () => {
   test('Unknown type', async () => {
     mockSearchNearby.mockRejectedValue(placesError(3));
 
-    await expect(new GemService().findNearbyPlaces(AT_PLACE, 'not_a_type')).rejects.toBeInstanceOf(InvalidPlaceTypeError);
+    await expect(new GemService().findNearbyPlaces(AT_PLACE, ['not_a_type'])).rejects.toBeInstanceOf(InvalidPlaceTypeError);
   });
 
   // Mocked behavior: Google rejects with UNAVAILABLE (14)
@@ -381,6 +392,36 @@ describe('Mocked: GemService.findNearbyPlaces', () => {
     mockSearchNearby.mockRejectedValue(err);
 
     await expect(new GemService().findNearbyPlaces(AT_PLACE)).rejects.toMatchObject({ name: 'PlacesUnavailableError', cause: err });
+  });
+});
+
+// Function parsePlaceTypes, the `type` query parameter of GET /place/nearby
+describe('parsePlaceTypes', () => {
+  // Input: the parameter missing, one type, comma-separated types with spaces and a duplicate,
+  //        a repeated parameter (an array), and both combined
+  // Expected output: the list of distinct types, [] when missing
+  test.each([
+    [undefined, []],
+    ['cafe', ['cafe']],
+    ['cafe, park,cafe', ['cafe', 'park']],
+    [['cafe', 'park'], ['cafe', 'park']],
+    [['cafe,bar', 'park'], ['cafe', 'bar', 'park']],
+  ])('%p', (value, expected) => {
+    expect(parsePlaceTypes(value)).toEqual(expected);
+  });
+
+  // Input: an empty value or empty entry, a malformed type, a non-string, or more than MAX_PLACE_TYPES types
+  // Expected output: undefined
+  test.each([
+    [''],
+    ['cafe,'],
+    ['cafe,,park'],
+    ['Cafe!'],
+    [['cafe', 3]],
+    [{ type: 'cafe' }],
+    [tooManyTypes().join(',')],
+  ])('Invalid %#', (value) => {
+    expect(parsePlaceTypes(value)).toBeUndefined();
   });
 });
 

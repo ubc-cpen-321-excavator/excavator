@@ -376,14 +376,23 @@ paths:
       summary: Places within 200 m of the user that they could add as a Gem
       description: |
         For places that are not labelled on the map. Lists up to 20 places, nearest first; the user picks one
-        and the app sends its `name` to `POST /gem`. To retry, change `type` rather than widening the search.
+        and the app sends its `name` to `POST /gem`. To narrow the list, pass one or more Google Places types in
+        `type`; a place matching any of them is listed.
       parameters:
         - { $ref: '#/components/parameters/Lat' }
         - { $ref: '#/components/parameters/Lng' }
         - name: type
           in: query
-          description: Google Places type to search for, e.g. `cafe`, `park`.
-          schema: { type: string, pattern: '^[a-z_]{1,50}$' }
+          description: >-
+            Google Places types to search for, e.g. `cafe`, `park`: comma-separated (`type=cafe,park`) or as a
+            repeated parameter (`type=cafe&type=park`). Up to 50; spaces around each type and duplicates are ignored.
+          style: form
+          explode: false
+          schema:
+            type: array
+            maxItems: 50
+            items: { type: string, pattern: '^[a-z_]{1,50}$' }
+          example: [cafe, park]
       responses:
         '200':
           description: Up to 20 places, nearest first; empty if there are none.
@@ -394,7 +403,7 @@ paths:
                 maxItems: 20
                 items: { $ref: '#/components/schemas/PlaceCandidate' }
         '400':
-          description: Invalid location, or a `type` that is malformed or unknown to Google.
+          description: Invalid location, or a type that is empty, malformed or unknown to Google, or more than 50 types.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
