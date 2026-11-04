@@ -15,6 +15,7 @@
 | 2026-11-04 | 4.1 | `GET /place/nearby` now takes several place types in `type`, so the app can search with all the filters the user selected. |
 | 2026-11-04 | 3.1, 3.2, 3.3, 3.4 | Updated the features, use case diagram, actors and use cases to match the implemented app: added Favorites, Browse Gems on the map, Choose a place to add, Sign out and Edit display name; removed the nicheness API (nicheness is computed by the Gem Score formula) and "Authenticate API calls" (the app does it on every request; it is not a user goal); described the Google actors. |
 | 2026-11-04 | 4.5, 4.6 | Redid the diagrams to the course conventions: every synchronous call has a labelled return, WebSocket messages are asynchronous, database calls are the real queries, error cases are in `alt` frames, values flow from earlier messages, and lifeline and actor names match 3.3 and 4.5 (Frontend, Google Places API, Signed-in User, Guest). |
+| 2026-11-04 | 4.5, 4.6 | Simplified the diagrams to a high level: one database, plain-language labels instead of function names. Every failure is now an `alt` branch at the step where it happens. Add a Gem is split into Choose a place to add and adding the picked place, so a failed search ends the flow. |
 
 ---
 
@@ -236,21 +237,22 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ### **4.5. Dependencies Diagram**
 ![Dependencies diagram](images/dependencies.png)
 
-Boxes are components (the Frontend, the four back-end components and the two Google services) and cylinders are the MongoDB collections. An arrow A → B means A calls B through the interfaces written on it (defined in 4.1). The Frontend and the Live Feed call each other (A ↔ B) over a WebSocket: the Frontend sends `subscribe`, and the Live Feed pushes `subscribed`, `gem.added` and `gem.updated` back. The four back-end components run in one Node.js server and call each other's interfaces directly in code. The Frontend never talks to a database; only the back end calls Google Places, so the API key stays on the server. Source: `documentation/diagrams/dependencies.mmd` (Mermaid).
+A high-level view: boxes are components, and an arrow A → B means A calls B for what is written on the arrow (the exact interfaces are listed in 4.1). The Frontend and the Live Feed call each other (A ↔ B) over a WebSocket: the Frontend subscribes, and the Live Feed pushes live gem updates back. The four back-end components run in one server. All data is in one MongoDB database, in the collections listed in 4.2. The Frontend never talks to the database, and only the back end calls Google Places, so the API key stays on the server. Source: `documentation/diagrams/dependencies.mmd` (Mermaid).
 
 ### **4.6. Use Case Sequence Diagram (5 Most Major Use Cases)**
-The lifelines are the actors of 3.3 and the components of the dependencies diagram (4.5); the user only talks to the Frontend. Messages are the interfaces of 4.1, and database calls are written as the MongoDB queries the back end runs. Notation:
-- A **solid arrow with a filled head** is a synchronous call; its result comes back on the **dashed arrow** below it, labelled with what is returned (HTTP status and body for REST calls).
+The lifelines are the actors of 3.3 and the components of the dependencies diagram (4.5); the user only talks to the Frontend. Messages are the REST interfaces of 4.1; database and internal calls are described in words, at the level of what is read or written. Notation:
+- A **solid arrow with a filled head** is a synchronous call. Its result comes back on the **dashed arrow** after it, labelled with what is returned (HTTP status and body for REST calls).
 - A **solid arrow with an open head** is an asynchronous message with no reply: WebSocket messages between the Frontend and the Live Feed, and updates the Frontend shows without the user asking.
-- Every value a message uses comes from an earlier message (e.g. the place name picked from `GET /place/nearby` is what `POST /gem` adds). Error cases are shown in `alt` frames.
-- `reqJwt` is shown as one call and return: it checks the login token and loads the user, and answers 401 itself if the token is invalid (see 4.1, Users).
+- Every failure the use case can run into is an `alt` branch at the step where it happens, with what the user then sees. A failure that applies to every request, the server not being reachable, is written once per diagram as a note. An invalid or expired login token is an `alt` branch in the use cases that need sign-in (it sends the user back to sign in). Requests the app never sends (e.g. a malformed place name) are rejected with 400; see 4.1.
+- Values flow from earlier messages: e.g. the place picked in *Choose a place to add* is the place *Add a Gem* adds.
 
 Sources: `documentation/diagrams/`.
 
 1. [**View a Gem**](#uc1)\
 ![View a Gem](images/uc1_view_a_gem.png)
-2. [**Add a Gem**](#uc2)\
-![Add a Gem](images/uc2_add_a_gem.png)
+2. [**Add a Gem**](#uc2), in two parts: first the included use case *Choose a place to add*, then adding the picked place.\
+![Choose a place to add](images/uc2a_choose_a_place.png)
+![Add a Gem](images/uc2b_add_a_gem.png)
 3. [**Contribute to GemScore**](#uc3)\
 ![Contribute to GemScore](images/uc3_contribute_to_gemscore.png)
 4. [**View new Gems nearby**](#uc4)\

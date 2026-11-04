@@ -2,31 +2,41 @@ sequenceDiagram
   actor U as Signed-in User
   participant F as :Frontend
   participant G as :Gems
-  participant GDB as :Gems DB
+  participant DB as :Database
   participant LF as :Live Feed
   participant OF as :Frontend (another user)
 
   U->>+F: open the dashboard
-  F->>+G: GET /gem/newest?limit
-  G->>+GDB: gems.find({}).sort({ createdAt: -1 }).limit(limit)
-  GDB-->>-G: gems
-  G-->>-F: 200 [gems]
-  F-->>-U: the newest gems
-
-  F-)LF: WebSocket /feed: { type: "subscribe", latitude, longitude, radius }
-  alt location and radius valid
-    LF-)F: { type: "subscribed", latitude, longitude, radius }
-  else invalid
-    LF-)F: { type: "error", message }
+  F->>+G: GET /gem/newest
+  G->>+DB: find the newest gems
+  alt database available
+    DB-->>G: gems
+    G-->>F: 200 [gems]
+    F-->>U: the newest gems
+  else database error
+    DB-->>-G: error
+    G-->>-F: 500 "Get Gems failed."
+    F-->>-U: "Couldn't load gems, try again"
   end
 
-  Note over OF,G: Another user adds a gem within the radius (Add a Gem)
-  OF->>+G: POST /gem { name, latitude, longitude } + Bearer JWT
-  G->>+GDB: gems.insertOne(gem)
-  GDB-->>-G: inserted
-  G->>+LF: publishGemAdded(gem)
-  LF-)F: { type: "gem.added", gem }
-  LF-->>-G: number of apps notified
-  G-->>-OF: 201 gem
-  F-)U: the new gem appears at the top of the list (no refresh)
-  Note over F,LF: Rating a gem in the area sends { type: "gem.updated", gem } the same way
+  alt location permission granted
+    F-)LF: subscribe (user's location, radius)
+    alt location and radius valid
+      LF-)F: subscribed
+    else invalid
+      LF-)F: error (connection stays open)
+    end
+    Note over OF,G: Another user adds a gem within the radius (Add a Gem)
+    OF->>+G: POST /gem
+    G->>+DB: insert the gem
+    DB-->>-G: inserted
+    G->>+LF: publish the new gem
+    LF-)F: gem.added
+    LF-->>-G: done
+    G-->>-OF: 201 gem
+    F-)U: the new gem appears at the top of the list (no refresh)
+    Note over F,LF: A rating in the area sends gem.updated the same way
+  else location permission denied
+    F-)U: dialog: location is needed for live updates, the list shows only the newest gems
+  end
+  Note over U,OF: If the server can't be reached, the Frontend shows "No connection, try again". If the live-feed connection drops, live updates stop until the app reconnects

@@ -8,41 +8,31 @@ flowchart TB
   App["Frontend<br/>(Android app)"]
   SignIn["Google Sign-In"]
 
-  subgraph Backend["Back end: one Node.js / Express server"]
+  subgraph Backend["Back end (one server)"]
     direction LR
     Users["Users"]
     Favs["Favorites"]
-    Gems["Gems<br/>(incl. comments, ratings)"]
+    Gems["Gems<br/>(incl. comments and ratings)"]
     Feed["Live Feed"]
   end
 
   Places["Google Places API"]
+  DB[("Database<br/>(MongoDB)")]
 
-  subgraph DBs["MongoDB"]
-    direction LR
-    UsersDB[("Users DB")]
-    FavsDB[("Favorites DB")]
-    GemsDB[("Gems DB")]
-    CommentsDB[("Comments DB")]
-    RatingsDB[("Ratings DB")]
-  end
+  App -->|"get Google ID token"| SignIn
+  App -->|"sign in, profile"| Users
+  App -->|"favorites"| Favs
+  App -->|"gems, nearby places,<br/>comments, ratings"| Gems
+  App <-->|"subscribe /<br/>live gem updates"| Feed
 
-  App -->|"getCredential (Google ID token)"| SignIn
-  App -->|"POST /user/auth/google<br/>GET, PATCH /user/me"| Users
-  App -->|"GET, POST /user/favorites<br/>DELETE /user/favorites/:placeId"| Favs
-  App -->|"GET, POST /gem; GET /gem/nearby, /within, /newest<br/>GET /place/nearby<br/>GET, POST /gem/:pk/comments<br/>GET, PUT /gem/:pk/rating"| Gems
-  App <-->|"WebSocket /feed: subscribe ⇄<br/>subscribed, gem.added, gem.updated"| Feed
+  Favs -->|"check login"| Users
+  Gems -->|"check login"| Users
+  Favs -->|"check and load gems"| Gems
+  Gems -->|"publish new and<br/>updated gems"| Feed
 
-  Favs -->|"reqJwt, currentUser"| Users
-  Gems -->|"reqJwt, currentUser"| Users
-  Favs -->|"hasGem, getGems"| Gems
-  Gems -->|"publishGemAdded, publishGemUpdated"| Feed
+  Users -->|"verify ID token"| SignIn
+  Gems -->|"nearby search,<br/>place details"| Places
 
-  Users -->|"verifyIdToken"| SignIn
-  Gems -->|"getPlace, searchNearby"| Places
-
-  Users --> UsersDB
-  Favs --> FavsDB
-  Gems --> GemsDB
-  Gems --> CommentsDB
-  Gems --> RatingsDB
+  Users -->|"users"| DB
+  Favs -->|"favorites"| DB
+  Gems -->|"gems, comments, ratings"| DB
