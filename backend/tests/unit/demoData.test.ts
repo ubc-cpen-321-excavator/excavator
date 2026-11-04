@@ -62,22 +62,22 @@ describe('Demo data', () => {
 
   // Input: the documents the seed script stores
   // Expected behavior: each passes the Mongoose schema it is stored with
-  test('Documents match the schemas', () => {
+  test('Documents match the schemas', async () => {
     const at = new Date('2026-11-02T12:00:00Z');
 
     for (const gem of DEMO_GEMS) {
       const doc = gemDoc(gem, at);
-      expect(new GemModel(doc).validateSync()).toBeUndefined();
+      await expect(new GemModel(doc).validate()).resolves.toBeUndefined();
       expect(doc.score).toEqual(expect.any(Number));
       expect(doc.place).toMatchObject({ location: { coordinates: [gem.longitude, gem.latitude] } });
     }
     for (const comment of DEMO_COMMENTS) {
       const doc = commentDoc(comment, at);
-      expect(new CommentModel(doc).validateSync()).toBeUndefined();
+      await expect(new CommentModel(doc).validate()).resolves.toBeUndefined();
       expect(doc.authorName).toEqual(expect.any(String));
     }
     for (const user of DEMO_USERS) {
-      expect(new UserModel(user).validateSync()).toBeUndefined();
+      await expect(new UserModel(user).validate()).resolves.toBeUndefined();
     }
   });
 });
