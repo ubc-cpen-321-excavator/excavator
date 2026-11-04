@@ -25,12 +25,12 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ## 3. Requirements Specification
 
 ### **3.1. List of Features**
-0. Authentication. (Google OAuth, JWT)
-0. Gem and GemScore, essentially a location and a score for its quality plus nichness.
-0. Feed for real-time updates of hidden gems around you, or other certain locations.
-0. Real-time feed of new Gems around you.
-0. In-app ratings (1–5).
-0. Comments.
+1. Authentication. (Google OAuth, JWT)
+2. Gem and GemScore, essentially a location and a score for its quality plus nichness.
+3. Feed for real-time updates of hidden gems around you, or other certain locations.
+4. Real-time feed of new Gems around you.
+5. In-app ratings (1–5).
+6. Comments.
 
 ### **3.2. Use Case Diagram**
 ![Use case diagram](./images/use_case_diagram.png)
@@ -42,56 +42,60 @@ We do not have admin user or any other role planned.
 
 ### **3.4. Use Case Description**
 - Use cases for feature 1: Authentication
-0. **Initialize session**: For the first time, or after last JWT expires, User authenticates via Google.
-0. **Authenticate API calls**: With a valid JWT, User's API calls are permitted.
+1. **Initialize session**: For the first time, or after last JWT expires, User authenticates via Google.
+2. **Authenticate API calls**: With a valid JWT, User's API calls are permitted.
 
 - Use cases for feature 2: GemScore
-0. **Add a Gem**: A User adds a Gem, the Gem is then scored.
-0. **View a Gem**: A User views a Gem, is shown a score.
-0. **Mark a Gem as favorite**: A User clicks a "favorite" button, adding it to their "favorite" list.
+3. **Add a Gem**: A User adds a Gem, the Gem is then scored.
+4. **View a Gem**: A User views a Gem, is shown a score.
+5. **Mark a Gem as favorite**: A User clicks a "favorite" button, adding it to their "favorite" list.
 
 - Use cases for feature 3: Live feed
-0. **View new nearby Gems**: A User opens a dashboard, immediately sees a list of last added Gems nearby.
-0. **View new Gems nearby**: With the dashboard open, the User sees new Gems nearby added to the list.
+6. **View new nearby Gems**: A User opens a dashboard, immediately sees a list of last added Gems nearby.
+7. **View new Gems nearby**: With the dashboard open, the User sees new Gems nearby added to the list.
 
 - Use cases for feature 4: In-app ratings
-0. **Contribute to GemScore**: A User rates a Gem, after sometime, the Gem's GemScore is updated to reflect the change.
+8. **Contribute to GemScore**: A User rates a Gem, after sometime, the Gem's GemScore is updated to reflect the change.
 
 - Use cases for feature 5: Comments
-0. **View comments**: A User views a Gem, sees comments in its view.
-0. **Make comments**: A User click a "comment" button while viewing a Gem, then text something, and posts a comment.
+9. **View comments**: A User views a Gem, sees comments in its view.
+10. **Make comments**: A User click a "comment" button while viewing a Gem, then text something, and posts a comment.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
+
 <a name="uc1"></a>
-
 #### Use Case 1: View a Gem
-<!-- TODO -->
-
 **Description**: A User sees entry of a Gem, then details of that Gem.
 
 **Primary actor(s)**: User
 
 **Main success scenario**:
-1. ...
-2. ...
+1. User taps a Gem entry, either on the Map view or the Dashboard view.
+2. A half-height panel displaying partial Gem information appears.
+3. User pulls up the panel to have it occupy the entire screen, and display full Gem information.
 
 **Failure scenario(s)**:
-- 1a. ...
-    - 1a1. ...
-    - 1a2. ...
-
-- 1b. ...
-    - 1b1. ...
-    - 1b2. ...
-                
-- 2a. ...
-    - 2a1. ...
-    - 2a2. ...
+- 1a. The app cannot connect to the server, and that Gem is not cached.
+    - 1a1. The panel appears, with text informing the user of the error, prompting a retry.
 
 <a name="uc2"></a>
+#### Use Case 2: Add a Gem
+**Description**: A User selects a place on the Map, and adds it as a Gem.
 
-#### Use Case 2: [WRITE_USE_CASE_2_NAME_HERE]
-<!-- TODO -->
+**Primary actor(s)**: User
+
+**Main success scenario**:
+1. User taps a location that is not a Gem in the Map view.
+2. A panel presents option to add the place as a Gem.
+3. User taps the button.
+4. The server creates the Gem, adds it to DB.
+5. The server publishes the new Gem, the app gets it and updates the Map view.
+
+**Failure scenario(s)**:
+- 4a. The Gem already exists on the server, perhaps another User added it at just about the same time.
+    - 4a1. The server returns 409 to tell the app the Gem exists.
+    - 4a2. A popup shows the user that the Gem already exists.
+    - 4a3. The Map view is updated with new Gem data, so the place shows up as a Gem.
 
 ### **3.6. Screen Mock-ups**
 ![Frontend Screens Diagram](images/frontend_screens_diagram.jpg)
