@@ -18,10 +18,11 @@ import com.example.cpen321application.presentation.activities.NavDestination
 import com.example.cpen321application.presentation.activities.discovery.composables.DiscoveryMap
 import com.example.cpen321application.presentation.activities.discovery.ui.theme.CPEN321ApplicationTheme
 import com.example.cpen321application.presentation.activities.navigateTo
+import com.example.cpen321application.utils.auth.AuthenticatedActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class DiscoveryActivity : ComponentActivity() {
+class DiscoveryActivity : AuthenticatedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

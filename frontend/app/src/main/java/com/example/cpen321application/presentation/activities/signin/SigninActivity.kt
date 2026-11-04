@@ -25,6 +25,7 @@ import com.example.cpen321application.presentation.activities.navigateTo
 import com.example.cpen321application.utils.auth.AuthAPIService
 import com.example.cpen321application.utils.auth.AuthUtil
 import com.example.cpen321application.utils.auth.GoogleSigninRequest
+import com.example.cpen321application.utils.auth.SessionEventBus
 
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -40,15 +41,22 @@ class SigninActivity : ComponentActivity() {
 
     @Inject lateinit var authAPIService: AuthAPIService
     @Inject lateinit var tokenStore: TokenStore
+    @Inject lateinit var sessionEventBus: SessionEventBus
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        if (tokenStore.getToken() != null) {
+            navigateTo(this@SigninActivity, NavDestination.DASHBOARD)
+        }
+
         setContent {
 
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                ButtonUI(authAPIService, tokenStore)
+                ButtonUI(authAPIService, tokenStore, sessionEventBus) {
+                    finish()
+                }
             }
 
         }
@@ -56,7 +64,12 @@ class SigninActivity : ComponentActivity() {
 }
 
 @Composable
-fun ButtonUI(authAPIService: AuthAPIService, tokenStore: TokenStore) {
+fun ButtonUI(
+    authAPIService: AuthAPIService,
+    tokenStore: TokenStore,
+    sessionEventBus: SessionEventBus,
+    onFinish: () -> Unit
+) {
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -84,8 +97,12 @@ fun ButtonUI(authAPIService: AuthAPIService, tokenStore: TokenStore) {
                      if (tokenResponse.isSuccessful) {
                         // Can always expect a non-null body since server response is a placeholder value
                          jwtToken = tokenResponse.body()!!.sessionId
+
                          tokenStore.saveToken(jwtToken)
+                         sessionEventBus.clearPending()
+
                          navigateTo(context, NavDestination.DASHBOARD)
+                         onFinish()
                      }
 
                 }  catch (e: IOException) {
