@@ -13,6 +13,7 @@
 | 2026-11-03 | 4.6 | Added sequence diagrams for the five major use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Initialize session), using the components and interfaces of 4.1 and 4.5. |
 | 2026-11-03 | 4.1 | Corrected the interfaces to match the code: `GET /user/me` returns `name` as an object; feed messages over 1024 bytes close the connection; rating and favorites routes answer 401 before 405; added default and maximum values (radius, limit, comment and display-name length) and the missing 400, 401 and 404 responses. |
 | 2026-11-04 | 4.1 | `GET /place/nearby` now takes several place types in `type`, so the app can search with all the filters the user selected. |
+| 2026-11-04 | 3.1, 3.2, 3.3, 3.4 | Updated the features, use case diagram, actors and use cases to match the implemented app: added Favorites, Browse Gems on the map, Choose a place to add, Sign out and Edit display name; removed the nicheness API (nicheness is computed by the Gem Score formula) and "Authenticate API calls" (the app does it on every request; it is not a user goal); described the Google actors. |
 
 ---
 
@@ -25,41 +26,49 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ## 3. Requirements Specification
 
 ### **3.1. List of Features**
-0. Authentication. (Google OAuth, JWT)
-0. Gem and GemScore, essentially a location and a score for its quality plus nichness.
-0. Feed for real-time updates of hidden gems around you, or other certain locations.
-0. Real-time feed of new Gems around you.
-0. In-app ratings (1–5).
-0. Comments.
+1. **Authentication**: Users sign in with their Google account (Google OAuth). The server then issues its own login token (JWT), which the app sends with every request. Users can set the display name other users see.
+2. **Gems and Gem Score**: A gem is a real place that users add from nearby places. Each gem has a Gem Score from 0 to 100 that rewards places that are both well rated and little known. Users browse gems on a map and open a gem to see its details and score.
+3. **Live feed**: New gems, and gems whose Gem Score changed, appear in real time for users near them, without refreshing.
+4. **In-app ratings**: Users rate gems from 1 to 5 stars, and their ratings feed into the gem's Gem Score.
+5. **Comments**: Users read and write comments on gems.
+6. **Favorites**: Users save gems to a favorites list that follows their account.
 
 ### **3.2. Use Case Diagram**
 ![Use case diagram](./images/use_case_diagram.png)
 
 ### **3.3. Actors Description**
-1. **User**: Generic user of the app.
-
-We do not have admin user or any other role planned.
+1. **Guest**: Someone who has opened the app but not signed in. The only thing they can do is sign in.
+2. **Signed-in User**: Someone signed in with their Google account. They use every feature of the app. There is no admin or other role.
+3. **Google Sign-In**: Google's authentication service. It signs the user in and gives the app an ID token, which the server verifies.
+4. **Google Places API**: Google's place database. It lists the places near a user who is adding a gem, and gives the chosen place's location, rating and review count.
 
 ### **3.4. Use Case Description**
 - Use cases for feature 1: Authentication
-0. **Initialize session**: For the first time, or after last JWT expires, User authenticates via Google.
-0. **Authenticate API calls**: With a valid JWT, User's API calls are permitted.
+1. **Initialize session**: A Guest signs in with Google, the first time or after their login has expired, and becomes a Signed-in User.
+2. **Sign out**: The User signs out, and the app forgets their login.
+3. **Edit display name**: The User sets the name other users see on their comments.
 
-- Use cases for feature 2: GemScore
-0. **Add a Gem**: A User adds a Gem, the Gem is then scored.
-0. **View a Gem**: A User views a Gem, is shown a score.
-0. **Mark a Gem as favorite**: A User clicks a "favorite" button, adding it to their "favorite" list.
+- Use cases for feature 2: Gems and Gem Score
+4. **Browse Gems on the map**: The User sees the gems in the area shown on the map, highest Gem Score first.
+5. **View a Gem**: The User opens a gem and sees its details, its Gem Score and its comments.
+6. **Add a Gem**: The User adds a place within 200 m of them as a gem; the gem is then scored and shared with nearby users.
+7. **Choose a place to add**: While adding a gem, the User picks from the places near them, optionally filtered by type (e.g. café, park).
 
 - Use cases for feature 3: Live feed
-0. **View new nearby Gems**: A User opens a dashboard, immediately sees a list of last added Gems nearby.
-0. **View new Gems nearby**: With the dashboard open, the User sees new Gems nearby added to the list.
+8. **View newest Gems**: The User opens the dashboard and sees the most recently added gems.
+9. **View new Gems nearby**: With the app open, gems added near the User, and gems whose Gem Score changed, appear without refreshing.
 
 - Use cases for feature 4: In-app ratings
-0. **Contribute to GemScore**: A User rates a Gem, after sometime, the Gem's GemScore is updated to reflect the change.
+10. **Contribute to GemScore**: The User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
 
 - Use cases for feature 5: Comments
-0. **View comments**: A User views a Gem, sees comments in its view.
-0. **Make comments**: A User click a "comment" button while viewing a Gem, then text something, and posts a comment.
+11. **View comments**: The User sees a gem's comments, oldest first, while viewing it.
+12. **Make comments**: While viewing a gem, the User writes a comment and posts it; it shows their display name.
+
+- Use cases for feature 6: Favorites
+13. **Mark a Gem as favorite**: The User taps "favorite" on a gem to add it to their favorites.
+14. **View favorites**: The User opens the favorites screen and sees their favorite gems, most recently added first.
+15. **Remove a favorite**: The User removes a gem from their favorites.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 <a name="uc1"></a>
