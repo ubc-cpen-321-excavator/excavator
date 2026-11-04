@@ -6,6 +6,7 @@
 | ----------------- | --------------------- | ------------- |
 | 2026-10-31 | 2.1, 2.2, 2.5 | Listed every backend interface's test groups, how to run them, and the CI workflow. |
 | 2026-10-31 | 3 | Added the two non-functional requirement tests and how they verify the requirements. |
+| 2026-11-03 | 2.3, 2.4, 2.5 | Added the coverage of the mocked, unmocked and combined interface tests, and why the remaining lines are not covered. Coverage now maps to the TypeScript source lines (source maps enabled for the tests). |
 
 ---
 
@@ -66,15 +67,40 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 
 ### 2.3. Jest Coverage Report Screenshots With Mocks
 
-Screenshot of the coverage report with mocks enabled: to be added.
+`tests/mock/` only: 88.1% of lines, 81.6% of branches.
+
+![Coverage with mocks](images/coverage_mock.png)
 
 ### 2.4. Jest Coverage Report Screenshots Without Mocks
 
-Screenshot of the coverage report without mocks: to be added.
+`tests/no-mock/` only: 73.9% of lines, 60.1% of branches. Lower than with mocks because database and Google failures can only be produced with mocks.
+
+![Coverage without mocks](images/coverage_no_mock.png)
 
 ### 2.5. Jest Coverage Report Screenshots With and Without Mocks Combined
 
-Screenshot of the combined coverage report: to be added.
+`tests/mock/` and `tests/no-mock/` together: 90.9% of lines, 84.3% of branches. All five models are at 100% and all seven controllers except the Live Feed at 100% of lines. The backend's unit tests (`tests/unit/`, not part of these interface runs) cover most of the remaining lines: with them, the whole suite reaches 95.6% of lines and 93.6% of branches.
+
+**Why the remaining lines are not covered by the interface tests** (line numbers from the combined run above):
+
+| File | Lines | Why not covered |
+| ---- | ----- | --------------- |
+| `src/index.ts` | all | Starts the real server: listens on `PORT`, connects to the production MongoDB and handles `SIGINT`/`SIGTERM`. The tests import the app from `createApp()` in `app.ts` instead, so every route is still tested without opening a port or a real database. |
+| `src/config/db.ts` | all | Connects to `MONGODB_URI`; only called by `index.ts`. The no-mock tests connect Mongoose to an in-memory MongoDB in `tests/helpers/db.ts`. |
+| `src/config/env.ts` | 10 | Throws when `PORT` is not a valid port. It runs once when the module loads, so testing it would stop the test process. |
+| `src/app.ts` | 37–38, 47–53 | The app-wide error handler's fallbacks. Every route catches its own errors and answers itself, so these only run for errors Express raises other than malformed JSON (which is tested in `tests/no-mock/errors.test.ts`), or for a response that was already started. |
+| `src/utils/http.ts` | 31 | Passes a rejected `async` handler to Express. No handler rejects: each catches its own errors. |
+| `src/utils/log.ts` | 31 | `logInfo`, only used by `index.ts` at start-up. |
+| `src/controllers/feedController.ts` | 68, 71, 85, 121–122, 133–134, 138–139 | Lines 68 and 71 decode WebSocket messages delivered as an array of Buffers or an ArrayBuffer; `ws` delivers a single Buffer with our settings. Lines 85–139 reject binary messages, unknown message types, invalid radii and too-frequent subscriptions; the interface tests cover invalid JSON and locations, and these four cases are covered by the unit tests of `handleFeedMessage` in `tests/unit/feedMessage.test.ts`. |
+| `src/services/gemService.ts` | 466, 491, 505, 526, 606 | Input checks the controllers already make: the routes answer 400 before calling the service, so the service's own check can't be reached through the API. Kept so the service is safe when called from other code; covered by `tests/unit/gemService.test.ts` (except 466 and 505, which their callers always check first). |
+| `src/services/gemService.ts` | 359, 376, 404, 705, 755, 757, 570 | Guards for cases the API can't produce on demand: Google returning a place without a name or location (359, 376, 404), a stored gem without coordinates (705; the schema requires them), two users adding the same gem at the same instant (755, 757), and a gem deleted while it is being rated (570). Covered by the unit tests with mocked Google and database responses, except 705. |
+| `src/services/gemService.ts` | 547–555 | `scoreGem`, which no route calls: gems are scored when added and when rated (`newGem`, `applyAppRatings`). Covered by the unit tests. |
+| `src/services/authService.ts` | 81, 147, 185, 246–247, 261–262, 271, 285, 290, 97–98 | Guards the API can't reach: `currentUser` before `reqJwt` (81, a programming error), `JWT_SECRET` missing (147; the tests set it), a Google token without an account ID (185), a valid token without a user ID (246–247; the server never issues one), a database failure during the login check (261–262), `getUser`, which no route calls (271), and an invalid display name or a user deleted mid-request in the service (97–98, 285, 290; the route checks first). All are covered by `tests/unit/authService.test.ts`. |
+| `src/services/commentService.ts`, `ratingService.ts` | 30–31, 149; 17–18, 59 | The services' own body and star checks and their error classes; the routes reject invalid input with 400 first. Covered by the unit tests. |
+| `src/services/favoriteService.ts` | 124–127 | Two requests adding the same favorite at the same instant (duplicate-key error). Covered by the unit tests. |
+| `src/services/feedService.ts` | 108 | Drops a client whose socket throws while sending, which a real socket in the tests doesn't do. Covered by the unit tests. |
+
+Branch-only gaps (lines that run, with one side of a condition never taken) are of the same kinds: `req.body ?? {}` when a request has no JSON body (`authController.ts` 73, `ratingController.ts` 83), a Google API key always being set in CI (`gemService.ts` 424), and optional fields Google or MongoDB always return in the tests.
 
 ---
 
