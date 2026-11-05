@@ -1,0 +1,55 @@
+sequenceDiagram
+  actor U as Signed-in User
+  participant F as :Frontend
+  participant FV as :Favorites
+  participant US as :Users
+  participant G as :Gems
+  participant DB as :Database
+
+  U->>+F: tap "favorite" on gem places/{pk}
+  F->>+FV: POST /user/favorites { gem: places/{pk} } + login token
+  FV->>+US: check login token
+  alt token invalid or expired
+    US-->>FV: invalid
+    FV-->>F: 401 "Invalid token."
+    F-->>U: back to the sign-in screen
+  else token valid
+    US-->>-FV: user
+    FV->>+G: does the gem exist
+    G->>+DB: find gem by name
+    DB-->>-G: yes, no, or error
+    G-->>-FV: yes, no, or error
+    alt gem exists
+      FV->>+DB: is it already one of the user's favorites
+      DB-->>-FV: yes or no
+      alt already a favorite
+        FV-->>F: 200 { gem }
+        F-->>U: the favorite button stays on
+      else not a favorite yet
+        FV->>+DB: count the user's favorites
+        DB-->>-FV: count
+        alt fewer than 500
+          FV->>+DB: add the favorite (user, gem)
+          alt stored
+            DB-->>FV: added
+            FV-->>F: 201 { gem }
+            F-->>U: the favorite button turns on, the gem is in the Favorites screen
+          else database error
+            DB-->>-FV: error
+            FV-->>F: 500 "Add favorite failed."
+            F-->>U: "Couldn't add to favorites, try again", button stays off
+          end
+        else already 500 favorites
+          FV-->>F: 409 "Too many favorites."
+          F-->>U: "You have too many favorites, remove one first"
+        end
+      end
+    else no such gem (deleted)
+      FV-->>F: 404 "No such Gem."
+      F-->>U: "This gem is no longer available"
+    else database error
+      FV-->>-F: 500 "Add favorite failed."
+      F-->>-U: "Couldn't add to favorites, try again"
+    end
+  end
+  Note over U,DB: If the server can't be reached, the Frontend shows "No connection, try again"

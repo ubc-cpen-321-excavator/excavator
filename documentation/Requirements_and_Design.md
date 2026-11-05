@@ -16,6 +16,7 @@
 | 2026-11-04 | 3.1, 3.2, 3.3, 3.4 | Updated the features, use case diagram, actors and use cases to match the implemented app: added Favorites, Browse Gems on the map, Choose a place to add, Sign out and Edit display name; removed the nicheness API (nicheness is computed by the Gem Score formula) and "Authenticate API calls" (the app does it on every request; it is not a user goal); described the Google actors. |
 | 2026-11-04 | 4.5, 4.6 | Redid the diagrams to the course conventions: every synchronous call has a labelled return, WebSocket messages are asynchronous, database calls are the real queries, error cases are in `alt` frames, values flow from earlier messages, and lifeline and actor names match 3.3 and 4.5 (Frontend, Google Places API, Signed-in User, Guest). |
 | 2026-11-04 | 4.5, 4.6 | Simplified the diagrams to a high level: one database, plain-language labels instead of function names. Every failure is now an `alt` branch at the step where it happens. Add a Gem is split into Choose a place to add and adding the picked place, so a failed search ends the flow. |
+| 2026-11-04 | 3.5, 4.6 | Wrote the five formal use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Mark a Gem as favorite) with every failure scenario. Replaced Initialize session with Mark a Gem as favorite, since the formal use cases must exclude authentication. Add a Gem now matches the app: the place is picked from the list of nearby places. |
 
 ---
 
@@ -76,36 +77,134 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 
 <a name="uc1"></a>
 #### Use Case 1: View a Gem
-**Description**: A User sees entry of a Gem, then details of that Gem.
+**Description**: A Signed-in User finds a gem on the map or the dashboard and opens it to see its details, Gem Score and comments.
 
-**Primary actor(s)**: User
+**Primary actor(s)**: Signed-in User
 
 **Main success scenario**:
-1. User taps a Gem entry, either on the Map view or the Dashboard view.
-2. A half-height panel displaying partial Gem information appears.
-3. User pulls up the panel to have it occupy the entire screen, and sees full Gem information.
+1. The User opens the Discovery screen.
+2. The app shows a marker for each gem in the visible map area.
+3. The User taps a gem's marker (or a gem card on the Dashboard).
+4. A half-height panel appears with the gem's name, type and Gem Score.
+5. The User pulls up the panel to full screen.
+6. The app shows the gem's full details and its comments, oldest first.
 
 **Failure scenario(s)**:
-- 1a. The app cannot connect to the server, and that Gem is not cached.
-    - 1a1. The panel appears, with text informing the user of the error, prompting a retry.
+- 2a. The gems can't be loaded (no connection, or a server error).
+    - 2a1. The app shows "Couldn't load gems, try again" and a retry option.
+- 2b. The visible map area is too large to search (e.g. it crosses the date line).
+    - 2b1. The app asks the User to zoom in.
+- 4a. The gem no longer exists (it was deleted after the map loaded).
+    - 4a1. The app shows "This gem is no longer available".
+    - 4a2. The app removes the gem's marker from the map.
+- 4b. The gem can't be loaded (no connection, or a server error) and it is not cached.
+    - 4b1. The panel appears with a message about the error and a retry option.
+- 6a. The comments can't be loaded.
+    - 6a1. The app shows the gem's details with "Couldn't load comments" and a retry option.
 
 <a name="uc2"></a>
 #### Use Case 2: Add a Gem
-**Description**: A User selects a place on the Map, and adds it as a Gem.
+**Description**: A Signed-in User adds a place near them as a gem, picking it from a list of nearby places that can be filtered by type (this includes *Choose a place to add*). The new gem is scored and shown to nearby users.
 
-**Primary actor(s)**: User
+**Primary actor(s)**: Signed-in User
 
 **Main success scenario**:
-1. User taps a location that is not a Gem in the Map view.
-2. A panel presents option to add the place as a Gem.
-3. User taps the button.
-4. The app gets the new Gem and updates the Map view.
+1. The User taps "Add gem" on the Discovery screen.
+2. The app gets the User's location, asking for location permission if it hasn't been granted.
+3. The User optionally selects type filters (e.g. café, park).
+4. The app lists the places within 200 m of the User, nearest first, and marks the ones that are already gems.
+5. The User picks a place and confirms adding it.
+6. The app shows the new gem, with its Gem Score, on the map.
+7. Other users with that area open see the new gem appear without refreshing.
 
 **Failure scenario(s)**:
-- 4a. The Gem already exists on the server, perhaps another User added it at just about the same time.
-    - 4a1. The server returns 409 to tell the app the Gem exists.
-    - 4a2. A popup shows the user that the Gem already exists.
-    - 4a3. The Map view is updated with new Gem data, so the place shows up as a Gem.
+- 2a. The User denies location permission.
+    - 2a1. The app explains that the location is needed to add a gem.
+    - 2a2. The app returns to the Discovery screen.
+- 4a. There are no places within 200 m (for the selected filters).
+    - 4a1. The app shows "No places found within 200 m".
+    - 4a2. The User can change the filters or move and try again.
+- 4b. A selected filter is not a type Google Places knows.
+    - 4b1. The app shows "Unknown filter, try another".
+- 4c. Google Places is unavailable.
+    - 4c1. The app shows "Can't reach Google right now, try again later".
+- 5a. The place is already a gem (for example, another User added it at almost the same time).
+    - 5a1. The app shows that the place is already a gem.
+    - 5a2. The map is updated, so the place shows up as a gem.
+- 5b. The User is more than 200 m from the place.
+    - 5b1. The app shows "Move closer to the place to add it".
+- 5c. The place no longer exists on Google Places.
+    - 5c1. The app shows "This place can't be added".
+- 5d. The User's login has expired.
+    - 5d1. The app returns to the sign-in screen; after signing in, the User can try again.
+- 5e. The gem can't be added (no connection, a server error, or Google Places is unavailable).
+    - 5e1. The app shows "Couldn't add the gem, try again". Nothing is added.
+
+<a name="uc3"></a>
+#### Use Case 3: Contribute to GemScore
+**Description**: A Signed-in User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
+
+**Primary actor(s)**: Signed-in User
+
+**Main success scenario**:
+1. The User opens a gem (Use Case 1).
+2. The User selects 1 to 5 stars.
+3. The app shows the gem's new Gem Score. If the User had rated the gem before, the new rating replaces the old one.
+4. Other users with that area open see the gem's new Gem Score without refreshing.
+
+**Failure scenario(s)**:
+- 3a. The gem no longer exists.
+    - 3a1. The app shows "This gem is no longer available".
+- 3b. The User's login has expired.
+    - 3b1. The app returns to the sign-in screen; after signing in, the User can rate again.
+- 3c. The rating can't be saved (no connection, or a server error).
+    - 3c1. The app shows "Couldn't save your rating, try again".
+    - 3c2. The gem keeps its previous Gem Score and the User's previous rating.
+
+<a name="uc4"></a>
+#### Use Case 4: View new Gems nearby
+**Description**: A Signed-in User with the Dashboard open sees the newest gems, and gems that are added or re-scored near them appear without refreshing.
+
+**Primary actor(s)**: Signed-in User
+
+**Main success scenario**:
+1. The User opens the Dashboard.
+2. The app shows the most recently added gems.
+3. The app starts receiving live updates for the area around the User, asking for location permission if it hasn't been granted.
+4. When another User adds a gem near the User, it appears at the top of the list.
+5. When a gem near the User is rated, its Gem Score is updated in place.
+
+**Failure scenario(s)**:
+- 2a. The gems can't be loaded (no connection, or a server error).
+    - 2a1. The app shows "Couldn't load gems, try again" and a retry option.
+- 3a. The User denies location permission.
+    - 3a1. The app explains that the location is needed for live updates.
+    - 3a2. The list still shows the newest gems, without live updates.
+- 4a. The live-update connection is lost.
+    - 4a1. New gems stop appearing until the connection is restored or the Dashboard is reopened.
+
+<a name="uc5"></a>
+#### Use Case 5: Mark a Gem as favorite
+**Description**: A Signed-in User adds a gem to their favorites, which they can see on the Favorites screen from any phone they sign in on.
+
+**Primary actor(s)**: Signed-in User
+
+**Main success scenario**:
+1. The User opens a gem (Use Case 1).
+2. The User taps the favorite button.
+3. The favorite button turns on, and the gem appears at the top of the Favorites screen.
+
+**Failure scenario(s)**:
+- 2a. The gem is already one of the User's favorites.
+    - 2a1. The favorite button stays on; nothing changes.
+- 2b. The User already has 500 favorites.
+    - 2b1. The app shows "You have too many favorites, remove one first".
+- 2c. The gem no longer exists.
+    - 2c1. The app shows "This gem is no longer available".
+- 2d. The User's login has expired.
+    - 2d1. The app returns to the sign-in screen; after signing in, the User can try again.
+- 2e. The favorite can't be saved (no connection, or a server error).
+    - 2e1. The app shows "Couldn't add to favorites, try again", and the favorite button stays off.
 
 ### **3.6. Screen Mock-ups**
 ![Frontend Screens Diagram](images/frontend_screens_diagram.jpg)
@@ -256,8 +355,8 @@ Sources: `documentation/diagrams/`.
 ![Contribute to GemScore](images/uc3_contribute_to_gemscore.png)
 4. [**View new Gems nearby**](#uc4)\
 ![View new Gems nearby](images/uc4_view_new_gems_nearby.png)
-5. [**Initialize session**](#uc5)\
-![Initialize session](images/uc5_initialize_session.png)
+5. [**Mark a Gem as favorite**](#uc5)\
+![Mark a Gem as favorite](images/uc5_mark_a_gem_as_favorite.png)
 
 ### **4.7. Design of Non-Functional Requirements**
 1. [**Live updates arrive within 1 second**](#nfr1)
