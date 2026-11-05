@@ -8,8 +8,8 @@ import android.widget.Toast
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.dashboard.DashboardActivity
 import com.example.cpen321application.presentation.activities.discovery.DiscoveryActivity
+import com.example.cpen321application.presentation.activities.favorites.FavoritesActivity
 import com.example.cpen321application.presentation.activities.signin.SigninActivity
-import kotlin.jvm.java
 
 // Keys shared by the sender (here) and whichever activity reads the data
 object GemExtras {
@@ -27,7 +27,7 @@ fun navigateTo(
     val target: Class<out Activity>? = when (destination) {
         NavDestination.DASHBOARD -> DashboardActivity::class.java
         NavDestination.DISCOVERY -> DiscoveryActivity::class.java
-        NavDestination.FAVORITES -> null // TODO: add FavoritesActivity when it exists
+        NavDestination.FAVORITES -> FavoritesActivity::class.java
     }
 
     if (target == null) {

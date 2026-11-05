@@ -13,4 +13,6 @@
     <!-- Shared Preferences Keys -->
     <string name="prefs_auth_key">token</string>
 
+    <string name="title_activity_favorites">Favorites</string>
+
 </resources>

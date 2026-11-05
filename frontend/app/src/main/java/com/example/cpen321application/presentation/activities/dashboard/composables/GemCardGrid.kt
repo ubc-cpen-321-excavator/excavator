@@ -12,17 +12,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.domain.models.Gem
-import com.google.android.gms.maps.model.LatLng
 
 @Composable
 fun GemCardGrid(
     gems: List<Gem>,
     context: Context,
     modifier: Modifier = Modifier,
-    title: String? = null
+    title: String? = null,
+    isFavorite: Boolean = false,
+    onGemLongClick: (Gem) -> Unit = {}
 ) {
     Column(modifier = modifier) {
         if (title != null) {
@@ -34,7 +34,12 @@ fun GemCardGrid(
                 modifier = Modifier.heightIn(max = 400.dp)
             ) {
                 items(gems) { gem ->
-                    GemCard(gem = gem, context = context)
+                    GemCard(
+                        gem = gem,
+                        context = context,
+                        isFavorite = isFavorite,
+                        onLongClick = { onGemLongClick(gem) }
+                    )
                 }
             }
         }
