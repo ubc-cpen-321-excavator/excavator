@@ -22,7 +22,7 @@ class GemMapper : Mapper<Gem, GemDTO>{
 
     override fun toDomain(dtoObject: GemDTO): Gem {
         return Gem(
-            title = dtoObject.name,
+            title = dtoObject.place.displayName ?: dtoObject.name,
             coords = LatLng(
                 dtoObject.place.latitude,
                 dtoObject.place.longitude
