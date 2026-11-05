@@ -6,27 +6,43 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.NavBar
 import com.example.cpen321application.presentation.activities.NavDestination
 import com.example.cpen321application.presentation.activities.dashboard.composables.GemCardGrid
 import com.example.cpen321application.presentation.activities.navigateTo
+import com.example.cpen321application.presentation.viewmodels.GemViewModel
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 import com.google.android.gms.maps.model.LatLng
 
-// Hardcoded for now; real favorites will come from the API later
-private val hardcodedFavorites = listOf(
-    Gem("Nitobe Memorial Garden", LatLng(49.2663, -123.2599), "places/seed-nitobe-garden"),
-    Gem("Museum of Anthropology", LatLng(49.2692, -123.2599), "places/seed-moa")
-)
+
+//@Composable
+//fun FavoritesScreen(
+//    viewModel: GemViewModel = hiltViewModel()
+//) {
+//
+//    val favorites by viewModel.favoriteGems.collectAsState()
+//    viewModel.getFavoriteGems()
+//
+//    FavoritesScreenContent(favorites)
+//
+//}
 
 @Composable
-fun FavoritesScreen(gems: List<Gem> = hardcodedFavorites) {
+fun FavoritesScreenContent(
+    viewModel: GemViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
+
+    val gems by viewModel.favoriteGems.collectAsState()
+    viewModel.getFavoriteGems()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -44,16 +60,8 @@ fun FavoritesScreen(gems: List<Gem> = hardcodedFavorites) {
                 context = context,
                 title = "Your favorites:",
                 isFavorite = true,
-                onGemLongClick = { /* TODO: favorites long-press action */ }
+                onGemLongClick = { viewModel.deleteFavoriteGem(it.placesName.removePrefix("places/")) }
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun FavoritesScreenPreview() {
-    CPEN321ApplicationTheme {
-        FavoritesScreen()
     }
 }

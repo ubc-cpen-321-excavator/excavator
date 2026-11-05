@@ -85,7 +85,9 @@ fun DiscoveryMap(
             gem = selectedGem,
             {showGemInfoSheet = it},
             showGemInfoSheet
-        )
+        ) {
+            viewModel.addFavoriteGem(it)
+        }
 
         GemCreationSheet(
             {showNewGemSheet = it},

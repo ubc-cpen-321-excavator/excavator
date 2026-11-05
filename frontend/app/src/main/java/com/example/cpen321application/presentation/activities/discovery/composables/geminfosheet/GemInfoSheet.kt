@@ -32,7 +32,8 @@ private fun removePrefix(s: String, prefix: String): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean) {
+fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean,
+                        onFavoritesClicked: (String)->Unit) {
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false,
@@ -52,7 +53,7 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                         fontSize = 20.sp
                     )
                     Spacer(modifier=Modifier.weight(1f))
-                    FavoriteButton()
+                    FavoriteButton { onFavoritesClicked(gem.placesName) }
                 }
 
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
