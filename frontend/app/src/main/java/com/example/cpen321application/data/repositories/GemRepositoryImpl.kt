@@ -76,8 +76,8 @@ class GemRepositoryImpl @Inject constructor(
             )
 
         } else {
-            // TODO: Update this to be a more descriptive error
-            throw Exception("Non 200 Response")
+                // TODO: Update this to be a more descriptive error
+                throw Exception("Non 200 Response")
         }
 
     }
