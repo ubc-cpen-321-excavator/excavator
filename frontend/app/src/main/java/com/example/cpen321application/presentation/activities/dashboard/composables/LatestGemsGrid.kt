@@ -15,7 +15,7 @@ fun LatestGemsGrid(
     viewModel: GemViewModel = hiltViewModel(),
     context: Context
 ){
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.newestGems.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.getNewestGems()

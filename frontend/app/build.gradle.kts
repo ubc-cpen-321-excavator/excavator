@@ -57,6 +57,11 @@ android {
             "GOOGLE_CLIENT_ID",
             "\"${localProperty("GOOGLE_CLIENT_ID")}\""
         )
+        buildConfigField(
+            "String",
+            "WS_ENDPOINT",
+            "\"${localProperty("WS_ENDPOINT")}\""
+        )
     }
 
     buildTypes {
