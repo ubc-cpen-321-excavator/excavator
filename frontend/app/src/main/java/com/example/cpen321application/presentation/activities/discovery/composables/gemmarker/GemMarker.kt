@@ -3,16 +3,13 @@ package com.example.cpen321application.presentation.activities.discovery.composa
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.example.cpen321application.R
-import com.example.cpen321application.data.entities.Gem
-import com.google.android.gms.maps.CameraUpdateFactory
+import com.example.cpen321application.domain.models.Gem
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Dispatchers.Default
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @Composable

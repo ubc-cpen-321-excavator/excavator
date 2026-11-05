@@ -1,0 +1,832 @@
+openapi: 3.0.3
+info:
+  title: Excavator API
+  version: 0.1.0
+  description: |
+    Backend for Excavator, an app for discovering and sharing hidden gems.
+
+    A **Gem** is a Google Places place, identified by its Google name `places/<place ID>`.
+    In URL paths a Gem is identified by its place ID alone (`pk`), since the name contains a slash.
+
+    All errors are JSON. Every path below answers **405** for methods it does not list,
+    with an `Allow` header naming the supported ones. Malformed JSON bodies get **400** `{ message: "Invalid JSON." }`,
+    and unexpected server errors get **500** `{ message: "Internal error." }`. Unknown paths get **404** `{ error: "Not Found" }`.
+
+    **Login.** Sign-in (`POST /user/auth/google`) returns a JWT in `sessionId`, valid for 7 days. Routes marked with a
+    lock require it as `Authorization: Bearer <token>` and answer **401** `{ message }` without a valid one
+    (`Unauthorized request.`, `Invalid token.`, `Invalid user ID.` or `Nonexistent user.`), or **500**
+    `{ message: "Login check failed." }` if the user can't be looked up.
+
+    **Live feed.** New Gems are also pushed over a WebSocket at `ws://<server>/feed` (same port), which OpenAPI 3.0
+    cannot describe. The client sends `{ "type": "subscribe", "latitude": 49.26, "longitude": -123.25, "radius": 5000 }`
+    (radius optional, metres, max 50000; at most once a second) and gets `{ "type": "subscribed", ... }`, then
+    `{ "type": "gem.added", "gem": <Gem> }` for every Gem added within that radius, and
+    `{ "type": "gem.updated", "gem": <Gem> }` whenever a Gem within it changes (e.g. its GemScore after a rating). Invalid messages get
+    `{ "type": "error", "message": "..." }`. Messages over 1 KB close the connection; clients that stop answering
+    pings are dropped within 30–60 s. The feed needs no login. See Requirements_and_Design.md section 4.1.
+servers:
+  - url: http://localhost:3000
+    description: Local development (PORT defaults to 3000)
+
+tags:
+  - name: Gems
+    description: Add, get and list Gems
+  - name: Comments
+    description: Comments on a Gem (a weak entity of Gems)
+  - name: Places
+    description: Google Places lookups for places that are not Gems yet
+  - name: Ratings
+    description: A user's 1–5 star rating of a Gem, which feeds its GemScore
+  - name: Users
+    description: Sign-in and profile
+  - name: Favorites
+    description: The signed-in user's favorite Gems
+  - name: Misc
+    description: Health check
+
+paths:
+  /gem:
+    get:
+      tags: [Gems]
+      operationId: getGem
+      summary: Get one Gem
+      parameters:
+        - name: name
+          in: query
+          required: true
+          description: The Gem's Google name.
+          schema: { $ref: '#/components/schemas/GemName' }
+      responses:
+        '200':
+          description: The Gem.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Gem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404':
+          description: No Gem has that name.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: No such Gem. }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Get Gem failed. }
+    post:
+      tags: [Gems]
+      operationId: addGem
+      summary: Add a place as a Gem
+      security: [{ bearerAuth: [] }]
+      description: |
+        Checks the place exists on Google Places and is within 200 m of the user, then stores it as a new,
+        scored Gem added by the signed-in user, and pushes it to nearby live-feed clients.
+        `latitude` / `longitude` are the **user's** current location.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, latitude, longitude]
+              properties:
+                name: { $ref: '#/components/schemas/GemName' }
+                latitude: { $ref: '#/components/schemas/Latitude' }
+                longitude: { $ref: '#/components/schemas/Longitude' }
+            example: { name: places/ChIJN1t_tDeuEmsRUsoyG83frY4, latitude: 49.2606, longitude: -123.246 }
+      responses:
+        '201':
+          description: The new Gem.
+          headers:
+            Location:
+              description: Where to get the new Gem, e.g. `/gem?name=places%2FChIJN1t_tDeuEmsRUsoyG83frY4`.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Gem' }
+        '400':
+          description: "`name` is not `places/<place ID>`, the location is missing or out of range, or the body is not valid JSON."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                name: { value: { message: Invalid place name. } }
+                location: { value: { message: Invalid location. } }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: A Gem with that name already exists; nothing changed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Gem already exists. }
+        '422':
+          description: The place does not exist on Google Places, or is more than 200 m from the user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                missing: { value: { message: Place does not exist. } }
+                tooFar: { value: { message: Too far from place. } }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Add Gem failed. }
+        '502': { $ref: '#/components/responses/PlacesUnavailable' }
+
+  /gem/nearby:
+    get:
+      tags: [Gems]
+      operationId: getNearbyGems
+      summary: Gems around a point, nearest first
+      description: For the dashboard and the discovery map.
+      parameters:
+        - { $ref: '#/components/parameters/Lat' }
+        - { $ref: '#/components/parameters/Lng' }
+        - name: radius
+          in: query
+          description: Search radius in metres.
+          schema: { type: integer, minimum: 1, maximum: 50000, default: 5000 }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200': { $ref: '#/components/responses/GemList' }
+        '400':
+          description: Invalid location, radius or limit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                location: { value: { message: Invalid location. } }
+                radius: { value: { message: Invalid radius. } }
+                limit: { value: { message: Invalid limit. } }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500': { $ref: '#/components/responses/GetGemsFailed' }
+
+  /gem/within:
+    get:
+      tags: [Gems]
+      operationId: getGemsWithin
+      summary: Gems inside a map viewport, highest GemScore first
+      description: For the discovery map. The viewport must not cross the antimeridian (`west` < `east`).
+      parameters:
+        - { name: south, in: query, required: true, schema: { $ref: '#/components/schemas/Latitude' } }
+        - { name: west, in: query, required: true, schema: { $ref: '#/components/schemas/Longitude' } }
+        - { name: north, in: query, required: true, description: Must be greater than `south`., schema: { $ref: '#/components/schemas/Latitude' } }
+        - { name: east, in: query, required: true, description: Must be greater than `west`., schema: { $ref: '#/components/schemas/Longitude' } }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200': { $ref: '#/components/responses/GemList' }
+        '400':
+          description: A bound is missing or out of range, `south` >= `north`, `west` >= `east`, or the limit is invalid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                bounds: { value: { message: Invalid bounds. } }
+                limit: { value: { message: Invalid limit. } }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500': { $ref: '#/components/responses/GetGemsFailed' }
+
+  /gem/newest:
+    get:
+      tags: [Gems]
+      operationId: getNewestGems
+      summary: The most recently added Gems, newest first
+      description: For the dashboard.
+      parameters:
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200': { $ref: '#/components/responses/GemList' }
+        '400':
+          description: Invalid limit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Invalid limit. }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500': { $ref: '#/components/responses/GetGemsFailed' }
+
+  /gem/{pk}/comments:
+    parameters:
+      - name: pk
+        in: path
+        required: true
+        description: The Gem's place ID (its name without `places/`).
+        schema: { $ref: '#/components/schemas/PlaceId' }
+    get:
+      tags: [Comments]
+      operationId: getComments
+      summary: All comments on a Gem, oldest first
+      responses:
+        '200':
+          description: The comments; empty if there are none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Comment' }
+        '400': { $ref: '#/components/responses/InvalidGemId' }
+        '404': { $ref: '#/components/responses/NoSuchGem' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Get comments failed. }
+    post:
+      tags: [Comments]
+      operationId: addComment
+      summary: Add a comment to a Gem
+      description: The comment records the signed-in user and their display name as its author.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+                  description: Stored trimmed. 1–1000 characters after trimming; newlines and tabs allowed, other control characters not.
+                  minLength: 1
+                  maxLength: 1000
+            example: { body: Great view at sunset! }
+      responses:
+        '201':
+          description: The new comment.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comment' }
+        '400':
+          description: Invalid place ID or comment body, or the body is not valid JSON.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                gemId: { value: { message: Invalid Gem ID. } }
+                body: { value: { message: Invalid comment body. } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NoSuchGem' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Add comment failed. }
+
+  /gem/{pk}/rating:
+    parameters:
+      - name: pk
+        in: path
+        required: true
+        description: The Gem's place ID (its name without `places/`).
+        schema: { $ref: '#/components/schemas/PlaceId' }
+    get:
+      tags: [Ratings]
+      operationId: getRating
+      summary: The signed-in user's rating of a Gem
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Their rating.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stars]
+                properties:
+                  stars: { $ref: '#/components/schemas/Stars' }
+        '400': { $ref: '#/components/responses/InvalidGemId' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: No Gem has that place ID, or the user hasn't rated it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                gem: { value: { message: No such Gem. } }
+                rating: { value: { message: No rating. } }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Get rating failed. }
+    put:
+      tags: [Ratings]
+      operationId: rateGem
+      summary: Rate a Gem 1–5 stars
+      description: |
+        Sets the signed-in user's rating, replacing any earlier one. The Gem's rating totals are recounted,
+        its GemScore is recomputed, and the updated Gem is pushed to nearby live-feed clients as `gem.updated`.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [stars]
+              properties:
+                stars: { $ref: '#/components/schemas/Stars' }
+            example: { stars: 5 }
+      responses:
+        '200':
+          description: The rating, and the Gem with its new `ratingCount`, `ratingAverage` and `score`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stars, gem]
+                properties:
+                  stars: { $ref: '#/components/schemas/Stars' }
+                  gem: { $ref: '#/components/schemas/Gem' }
+        '400':
+          description: Invalid place ID, or `stars` is not a whole number from 1 to 5.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                gemId: { value: { message: Invalid Gem ID. } }
+                stars: { value: { message: Invalid stars. } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NoSuchGem' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Rate Gem failed. }
+
+  /place/nearby:
+    get:
+      tags: [Places]
+      operationId: findNearbyPlaces
+      summary: Places within 200 m of the user that they could add as a Gem
+      description: |
+        For places that are not labelled on the map. Lists up to 20 places, nearest first; the user picks one
+        and the app sends its `name` to `POST /gem`. To narrow the list, pass one or more Google Places types in
+        `type`; a place matching any of them is listed.
+      parameters:
+        - { $ref: '#/components/parameters/Lat' }
+        - { $ref: '#/components/parameters/Lng' }
+        - name: type
+          in: query
+          description: >-
+            Google Places types to search for, e.g. `cafe`, `park`: comma-separated (`type=cafe,park`) or as a
+            repeated parameter (`type=cafe&type=park`). Up to 50; spaces around each type and duplicates are ignored.
+          style: form
+          explode: false
+          schema:
+            type: array
+            maxItems: 50
+            items: { type: string, pattern: '^[a-z_]{1,50}$' }
+          example: [cafe, park]
+      responses:
+        '200':
+          description: Up to 20 places, nearest first; empty if there are none.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 20
+                items: { $ref: '#/components/schemas/PlaceCandidate' }
+        '400':
+          description: Invalid location, or a type that is empty, malformed or unknown to Google, or more than 50 types.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                location: { value: { message: Invalid location. } }
+                type: { value: { message: Invalid place type. } }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Nearby search failed. }
+        '502': { $ref: '#/components/responses/PlacesUnavailable' }
+
+  /user/auth/google:
+    post:
+      tags: [Users]
+      operationId: loginWithGoogle
+      summary: Sign in with a Google ID token
+      description: Creates the user on their first sign-in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idToken]
+              properties:
+                idToken:
+                  type: string
+                  description: ID token from Google Sign-In on the app.
+      responses:
+        '200':
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessionId]
+                properties:
+                  sessionId: { type: string, description: 'A JWT for the Authorization Bearer header, valid for 7 days.' }
+        '400':
+          description: No JSON body, `idToken` missing or not a string, or the body is not valid JSON.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                request: { value: { message: Invalid request. } }
+                idToken: { value: { message: Wrong OAuth idToken. } }
+        '401':
+          description: Google rejected the token.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Login failed. }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Login failed. }
+
+  /user/me:
+    get:
+      tags: [Users]
+      operationId: getProfile
+      summary: The signed-in user's profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+    patch:
+      tags: [Users]
+      operationId: updateProfile
+      summary: Set the signed-in user's display name
+      description: The display name is shown to other users, e.g. on comments. Stored trimmed.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName: { type: string, minLength: 1, maxLength: 50, description: '1–50 characters after trimming, no control characters.' }
+            example: { displayName: mermaid }
+      responses:
+        '200':
+          description: The updated profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '400':
+          description: Invalid display name.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Invalid display name. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Update profile failed. }
+
+  /user/favorites:
+    get:
+      tags: [Favorites]
+      operationId: getFavorites
+      summary: The signed-in user's favorite Gems, most recently added first
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/GemList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Get favorites failed. }
+    post:
+      tags: [Favorites]
+      operationId: addFavorite
+      summary: Add a Gem to the signed-in user's favorites
+      description: Adding one that already is a favorite changes nothing. A user can have up to 500.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gem]
+              properties:
+                gem: { $ref: '#/components/schemas/GemName' }
+      responses:
+        '200':
+          description: It already was a favorite; nothing changed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FavoriteRef' }
+        '201':
+          description: Added.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FavoriteRef' }
+        '400':
+          description: "`gem` is missing or not `places/<place ID>`."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Invalid Gem name. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: No Gem has that name; nothing is stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: No such Gem. }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '409':
+          description: The user already has 500 favorites.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Too many favorites. }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Add favorite failed. }
+
+  /user/favorites/{placeId}:
+    delete:
+      tags: [Favorites]
+      operationId: removeFavorite
+      summary: Remove a Gem from the signed-in user's favorites
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: placeId
+          in: path
+          required: true
+          description: The Gem's place ID (its name without `places/`).
+          schema: { $ref: '#/components/schemas/PlaceId' }
+      responses:
+        '204': { description: Removed. }
+        '400': { $ref: '#/components/responses/InvalidGemId' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: The Gem isn't in the user's favorites.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Not a favorite. }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Remove favorite failed. }
+
+  /health:
+    get:
+      tags: [Misc]
+      operationId: health
+      summary: Health check
+      responses:
+        '200':
+          description: The server is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+
+components:
+  schemas:
+    PlaceId:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{1,255}$'
+      example: ChIJN1t_tDeuEmsRUsoyG83frY4
+    GemName:
+      type: string
+      description: Google Places resource name, `places/<place ID>`.
+      pattern: '^places/[A-Za-z0-9_-]{1,255}$'
+      example: places/ChIJN1t_tDeuEmsRUsoyG83frY4
+    Latitude:
+      type: number
+      minimum: -90
+      maximum: 90
+    Longitude:
+      type: number
+      minimum: -180
+      maximum: 180
+    Place:
+      type: object
+      required: [name, latitude, longitude]
+      properties:
+        name: { $ref: '#/components/schemas/GemName' }
+        displayName: { type: string, description: Human-readable name; absent if Google has none. }
+        latitude: { $ref: '#/components/schemas/Latitude' }
+        longitude: { $ref: '#/components/schemas/Longitude' }
+        type: { type: string, description: 'Google Places primary type, e.g. `cafe`.' }
+        description: { type: string, description: Google's editorial summary. }
+    Gem:
+      type: object
+      description: Optional fields are absent when unknown.
+      required: [name, place]
+      properties:
+        name: { $ref: '#/components/schemas/GemName' }
+        place: { $ref: '#/components/schemas/Place' }
+        addedBy: { type: string, description: User ID (Google account `sub`) of who added it. }
+        score: { type: number, minimum: 0, maximum: 100, description: 'GemScore: high when well rated and little known.' }
+        scoreTime: { type: integer, description: 'When the score was computed, ms since epoch.' }
+        nicheness: { type: number, minimum: 0, maximum: 1, description: Fewer Google reviews means more niche. }
+        quality: { type: number, minimum: 1, maximum: 5, description: Google rating. }
+        reviewCount: { type: integer, minimum: 1, description: Number of Google reviews. }
+        ratingCount: { type: integer, minimum: 1, description: Number of Excavator users' ratings. }
+        ratingAverage: { type: number, minimum: 1, maximum: 5, description: Average of the Excavator users' ratings. }
+      example:
+        name: places/ChIJN1t_tDeuEmsRUsoyG83frY4
+        place:
+          name: places/ChIJN1t_tDeuEmsRUsoyG83frY4
+          displayName: Mitakihara Cafe
+          latitude: 49.2606
+          longitude: -123.246
+          type: cafe
+          description: Quiet cafe behind the library.
+        addedBy: '104837261938475610293'
+        score: 82.2
+        scoreTime: 1761868800000
+        nicheness: 0.769
+        quality: 4.8
+        reviewCount: 60
+        ratingCount: 3
+        ratingAverage: 4.7
+    Comment:
+      type: object
+      required: [id, body]
+      properties:
+        id: { type: string, description: 'Comment ID, unique within its Gem.' }
+        body: { type: string }
+        author: { type: string, description: User ID (Google account `sub`) of who wrote it; absent on older comments. }
+        authorName: { type: string, description: Their display name when they wrote it; absent on older comments. }
+      example: { id: 3f2b8c1e-6a4d-4f0e-9b7a-2d5c8e1f4a90, body: Great view at sunset!, author: '104837261938475610293', authorName: mermaid }
+    Stars:
+      type: integer
+      minimum: 1
+      maximum: 5
+    Profile:
+      type: object
+      required: [id, name, displayName]
+      properties:
+        id: { type: string, description: User ID (Google account `sub`). }
+        name:
+          type: object
+          required: [full]
+          properties:
+            full: { type: string }
+            given: { type: string }
+            family: { type: string }
+        displayName: { type: string, description: 'The name they chose, or their Google name.' }
+      example: { id: '104837261938475610293', name: { full: Sayaka Miki, given: Sayaka, family: Miki }, displayName: mermaid }
+    FavoriteRef:
+      type: object
+      required: [gem]
+      properties:
+        gem: { $ref: '#/components/schemas/GemName' }
+    PlaceCandidate:
+      type: object
+      required: [name, displayName, latitude, longitude, distance, isGem]
+      properties:
+        name: { $ref: '#/components/schemas/GemName' }
+        displayName: { type: string, description: Falls back to `name` if Google has none. }
+        type: { type: string }
+        address: { type: string }
+        latitude: { $ref: '#/components/schemas/Latitude' }
+        longitude: { $ref: '#/components/schemas/Longitude' }
+        distance: { type: integer, minimum: 0, maximum: 200, description: 'Metres from the user, rounded.' }
+        isGem: { type: boolean, description: Whether the place is already a Gem. }
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+
+  parameters:
+    Lat:
+      name: lat
+      in: query
+      required: true
+      description: Latitude in degrees, as a plain decimal (e.g. `49.26`).
+      schema: { $ref: '#/components/schemas/Latitude' }
+    Lng:
+      name: lng
+      in: query
+      required: true
+      description: Longitude in degrees, as a plain decimal (e.g. `-123.25`).
+      schema: { $ref: '#/components/schemas/Longitude' }
+    Limit:
+      name: limit
+      in: query
+      description: Most Gems to return.
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The `sessionId` from `POST /user/auth/google`.
+
+  responses:
+    Unauthorized:
+      description: Not signed in, or the token is invalid or expired, or the user no longer exists.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { message: Unauthorized request. }
+    GemList:
+      description: The Gems; empty if there are none.
+      content:
+        application/json:
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/Gem' }
+    BadRequest:
+      description: Invalid input.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { message: Invalid Gem name. }
+    InvalidGemId:
+      description: "`pk` is not a place ID."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { message: Invalid Gem ID. }
+    NoSuchGem:
+      description: No Gem has that place ID.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { message: No such Gem. }
+    MethodNotAllowed:
+      description: The path does not support this method.
+      headers:
+        Allow:
+          description: The methods the path supports, e.g. `GET, POST`.
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { message: Method not allowed. }
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { message: Internal error. }
+    GetGemsFailed:
+      description: Database error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { message: Get Gems failed. }
+    PlacesUnavailable:
+      description: Google Places failed (network, quota, credentials or outage); nothing is stored.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { message: Google Places unavailable. }

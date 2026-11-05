@@ -17,12 +17,17 @@ import androidx.compose.ui.unit.dp
 import com.example.cpen321application.R
 
 @Composable
-fun FavoriteButton() {
+fun FavoriteButton(
+    onFavoritesClicked: () -> Unit
+) {
 
     var checked by remember {mutableStateOf(false)}
 
     IconButton(
-        onClick = {checked = !checked}
+        onClick = {
+            checked = !checked
+            onFavoritesClicked()
+        }
     ) {
         Icon(
             painter = painterResource(R.drawable.baseline_star_24),

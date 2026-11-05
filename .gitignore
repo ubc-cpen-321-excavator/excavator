@@ -1,9 +1,12 @@
+# mongodb
+**/mongodb/
+
 # kls
 **/kls_database.db
 
 # direnv
-**/.direnv
-**/.cache
+**/.direnv/
+**/.cache/
 
 # Node / TypeScript
 # These are repeated in backend/.gitignore, but are needed here too: the moment
@@ -59,3 +62,7 @@ google-services.json
 
 # Verity — snapshots of analyzed files (machine state, never commit)
 .verity/.snapshot/
+
+# macOS/iCloud duplicate copies, e.g. "gemService 2.ts"
+* [0-9].*
+frontend/secrets.properties

@@ -46,9 +46,14 @@ jobs:
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY}}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
             EOF
             chmod 600 backend/.env
 
             docker compose down
             docker compose up --build -d
+
+            # Adds the demo Gems and comments if they are missing; never changes or removes other data.
+            # -T: no terminal over SSH. Runs once MongoDB is healthy (backend depends_on it).
+            docker compose exec -T backend npm run seed
             docker image prune -f

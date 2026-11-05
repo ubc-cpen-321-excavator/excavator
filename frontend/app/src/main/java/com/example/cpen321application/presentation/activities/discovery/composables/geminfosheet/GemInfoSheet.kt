@@ -4,43 +4,36 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.cpen321application.data.entities.Gem
+import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.CommentCardList
+import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.NewCommentInput
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
 import java.util.Locale.getDefault
+import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.localrating.LocalRating
 
-//@Composable
-//fun GemInfoSheet() {
-//
-//    var showBottomSheet by remember { mutableStateOf(true) }
-//
-//    GemInfoSheetContent(
-//        gem = Gem("Sample Gem Title"),
-//        onShowChange = {showBottomSheet = it},
-//        showBottomSheet = showBottomSheet
-//    )
-//
-//}
+private fun removePrefix(s: String, prefix: String): String {
+    return if (s.startsWith(prefix)) {
+        s.substring(prefix.length)
+    } else s
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean) {
+fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean,
+                        onFavoritesClicked: (String)->Unit) {
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false,
@@ -60,10 +53,26 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                         fontSize = 20.sp
                     )
                     Spacer(modifier=Modifier.weight(1f))
-                    FavoriteButton()
+                    FavoriteButton { onFavoritesClicked(gem.placesName) }
                 }
 
-                CommentCardList()
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Text(text = "Personal rating", fontSize = 14.sp)
+                    LocalRating(
+                        initialRating = null,
+                        onRatingSelected = { rating -> /* TODO: API call by Filip */ }
+                    )
+                }
+
+                CommentCardList(modifier = Modifier.weight(1f), gemID = removePrefix(gem.placesName,"places/"))
+                NewCommentInput(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .imePadding(),
+                    gemID = removePrefix(gem.placesName,"places/")
+                )
+
             }
 
         }

@@ -1,11 +1,16 @@
 package com.example.cpen321application.di
 
 import com.example.cpen321application.BuildConfig
-import com.example.cpen321application.utils.AuthAPIService
+import com.example.cpen321application.data.remote.CommentAPIService
+import com.example.cpen321application.data.remote.GemAPIService
+import com.example.cpen321application.utils.auth.AuthAPIService
+import com.example.cpen321application.utils.auth.SessionAuthenticator
+import com.example.cpen321application.utils.interceptors.AuthInterceptor
 import dagger.Module
 import dagger.Provides
-import dagger.hilt.components.SingletonComponent
 import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
@@ -16,8 +21,21 @@ object RetrofitModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(): Retrofit = Retrofit.Builder()
+    fun provideOkHttpClient(
+        authInterceptor: AuthInterceptor,
+        sessionAuthenticator: SessionAuthenticator
+    ): OkHttpClient =
+        OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
+            .authenticator(sessionAuthenticator)
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit =
+        Retrofit.Builder()
         .baseUrl(BuildConfig.API_BASE_URL)
+        .client(okHttpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
@@ -26,6 +44,19 @@ object RetrofitModule {
     fun provideAuthAPIService(retrofit: Retrofit) : AuthAPIService {
         return retrofit.create(AuthAPIService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideGemAPIService(retrofit: Retrofit) : GemAPIService {
+        return retrofit.create(GemAPIService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCommentAPIService(retrofit: Retrofit) : CommentAPIService {
+        return retrofit.create(CommentAPIService::class.java)
+    }
+
 
 
 }

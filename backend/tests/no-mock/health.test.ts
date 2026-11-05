@@ -28,4 +28,15 @@ describe('Unmocked: GET /does-not-exist', () => {
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ error: 'Not Found' });
   });
+
+  // Input: GET requests to the M1 demo routes, which were removed
+  // Expected status code: 404
+  // Expected behavior: the routes are gone, so they are rejected like any other unknown path
+  // Expected output: { error: "Not Found" }
+  test.each(['/ip', '/name', '/time'])('Removed M1 route %s', async (path) => {
+    const response = await request(createApp()).get(path);
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: 'Not Found' });
+  });
 });
