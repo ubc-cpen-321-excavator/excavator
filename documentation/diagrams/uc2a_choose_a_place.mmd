@@ -1,0 +1,44 @@
+sequenceDiagram
+  actor U as Signed-in User
+  participant F as :Frontend
+  participant G as :Gems
+  participant P as :Google Places API
+  participant DB as :Database
+
+  U->>+F: tap "Add gem"
+  F->>F: get the device's location
+  alt location permission denied
+    F-->>U: dialog: location is needed to add a gem
+  else location available
+    U->>F: select type filters T (optional)
+    F->>+G: GET /place/nearby (location, types T)
+    G->>+P: nearby search: 200 m around the user, types T
+    alt Google Places answers
+      P-->>G: places
+      G->>+DB: which of these places are already gems
+      alt database available
+        DB-->>G: names of existing gems
+        G-->>F: 200 [places, nearest first, with isGem]
+        alt no places nearby
+          F-->>U: "No places found within 200 m"
+        else places found
+          F-->>U: list of nearby places (gems marked)
+          U->>F: pick place places/{id}
+          F-->>U: continue to Add a Gem with places/{id}
+        end
+      else database error
+        DB-->>-G: error
+        G-->>F: 500 "Nearby search failed."
+        F-->>U: "Couldn't load nearby places, try again"
+      end
+    else a type in T is unknown to Google
+      P-->>G: invalid argument
+      G-->>F: 400 "Invalid place type."
+      F-->>U: "Unknown filter, try another"
+    else Google Places unavailable
+      P-->>-G: error
+      G-->>-F: 502 "Google Places unavailable."
+      F-->>-U: "Can't reach Google right now, try again later"
+    end
+  end
+  Note over U,DB: If the server can't be reached, the Frontend shows "No connection, try again"

@@ -1,0 +1,64 @@
+sequenceDiagram
+  actor U as Signed-in User
+  participant F as :Frontend
+  participant G as :Gems
+  participant US as :Users
+  participant P as :Google Places API
+  participant DB as :Database
+  participant LF as :Live Feed
+  participant OF as :Frontend (other users)
+
+  Note over U,F: Starts with the place places/{id} picked in Choose a place to add
+  U->>+F: confirm adding places/{id}
+  F->>+G: POST /gem { name, latitude, longitude } + login token
+  G->>+US: check login token
+  alt token invalid or expired
+    US-->>G: invalid
+    G-->>F: 401 "Invalid token."
+    F-->>U: back to the sign-in screen
+  else token valid
+    US-->>-G: user
+    G->>+DB: does a gem with this name exist
+    DB-->>-G: yes or no
+    alt already a gem
+      G-->>F: 409 "Gem already exists."
+      F-->>U: "This place is already a gem"
+    else not a gem yet
+      G->>+P: place details (name)
+      alt place found
+        P-->>G: place (location, type, rating, review count)
+        alt within 200 m of the user
+          G->>G: compute the Gem Score
+          G->>+DB: insert the gem (added by the user)
+          alt stored
+            DB-->>G: inserted
+            G->>+LF: publish the new gem
+            LF-)OF: gem.added (to each app whose area contains it)
+            LF-->>-G: done
+            G-->>F: 201 gem
+            F-->>U: the new gem on the map
+          else added by someone else at the same moment
+            DB-->>G: duplicate
+            G-->>F: 409 "Gem already exists."
+            F-->>U: "This place is already a gem"
+          else database error
+            DB-->>-G: error
+            G-->>F: 500 "Add Gem failed."
+            F-->>U: "Couldn't add the gem, try again"
+          end
+        else more than 200 m away
+          G-->>F: 422 "Too far from place."
+          F-->>U: "Move closer to the place to add it"
+        end
+      else no such place
+        P-->>G: not found
+        G-->>F: 422 "Place does not exist."
+        F-->>U: "This place can't be added"
+      else Google Places unavailable
+        P-->>-G: error
+        G-->>-F: 502 "Google Places unavailable."
+        F-->>-U: "Can't reach Google right now, try again later"
+      end
+    end
+  end
+  Note over U,OF: If the server can't be reached, the Frontend shows "No connection, try again"

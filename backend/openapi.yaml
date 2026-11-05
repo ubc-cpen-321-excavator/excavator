@@ -243,7 +243,7 @@ paths:
       tags: [Comments]
       operationId: addComment
       summary: Add a comment to a Gem
-      description: The comment records the signed-in user and their display name as its author.
+      description: The comment records the signed-in user and their name as its author.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -482,42 +482,6 @@ paths:
               schema: { $ref: '#/components/schemas/Profile' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '405': { $ref: '#/components/responses/MethodNotAllowed' }
-    patch:
-      tags: [Users]
-      operationId: updateProfile
-      summary: Set the signed-in user's display name
-      description: The display name is shown to other users, e.g. on comments. Stored trimmed.
-      security: [{ bearerAuth: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [displayName]
-              properties:
-                displayName: { type: string, minLength: 1, maxLength: 50, description: '1–50 characters after trimming, no control characters.' }
-            example: { displayName: mermaid }
-      responses:
-        '200':
-          description: The updated profile.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Profile' }
-        '400':
-          description: Invalid display name.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { message: Invalid display name. }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '405': { $ref: '#/components/responses/MethodNotAllowed' }
-        '500':
-          description: Database error.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { message: Update profile failed. }
 
   /user/favorites:
     get:
@@ -701,7 +665,7 @@ components:
         id: { type: string, description: 'Comment ID, unique within its Gem.' }
         body: { type: string }
         author: { type: string, description: User ID (Google account `sub`) of who wrote it; absent on older comments. }
-        authorName: { type: string, description: Their display name when they wrote it; absent on older comments. }
+        authorName: { type: string, description: Their name when they wrote it; absent on older comments. }
       example: { id: 3f2b8c1e-6a4d-4f0e-9b7a-2d5c8e1f4a90, body: Great view at sunset!, author: '104837261938475610293', authorName: mermaid }
     Stars:
       type: integer
@@ -719,7 +683,7 @@ components:
             full: { type: string }
             given: { type: string }
             family: { type: string }
-        displayName: { type: string, description: 'The name they chose, or their Google name.' }
+        displayName: { type: string, description: 'The name shown to other users, e.g. on their comments.' }
       example: { id: '104837261938475610293', name: { full: Sayaka Miki, given: Sayaka, family: Miki }, displayName: mermaid }
     FavoriteRef:
       type: object
@@ -803,7 +767,9 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
           example: { message: No such Gem. }
     MethodNotAllowed:
-      description: The path does not support this method.
+      description: >-
+        The path does not support this method. The rating and favorites routes check login first, so there a request
+        without a valid token gets 401 instead.
       headers:
         Allow:
           description: The methods the path supports, e.g. `GET, POST`.

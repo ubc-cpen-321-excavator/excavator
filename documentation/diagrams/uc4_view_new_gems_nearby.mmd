@@ -1,0 +1,42 @@
+sequenceDiagram
+  actor U as Signed-in User
+  participant F as :Frontend
+  participant G as :Gems
+  participant DB as :Database
+  participant LF as :Live Feed
+  participant OF as :Frontend (another user)
+
+  U->>+F: open the dashboard
+  F->>+G: GET /gem/newest
+  G->>+DB: find the newest gems
+  alt database available
+    DB-->>G: gems
+    G-->>F: 200 [gems]
+    F-->>U: the newest gems
+  else database error
+    DB-->>-G: error
+    G-->>-F: 500 "Get Gems failed."
+    F-->>-U: "Couldn't load gems, try again"
+  end
+
+  alt location permission granted
+    F-)LF: subscribe (user's location, radius)
+    alt location and radius valid
+      LF-)F: subscribed
+    else invalid
+      LF-)F: error (connection stays open)
+    end
+    Note over OF,G: Another user adds a gem within the radius (Add a Gem)
+    OF->>+G: POST /gem
+    G->>+DB: insert the gem
+    DB-->>-G: inserted
+    G->>+LF: publish the new gem
+    LF-)F: gem.added
+    LF-->>-G: done
+    G-->>-OF: 201 gem
+    F-)U: the new gem appears at the top of the list (no refresh)
+    Note over F,LF: A rating in the area sends gem.updated the same way
+  else location permission denied
+    F-)U: dialog: location is needed for live updates, the list shows only the newest gems
+  end
+  Note over U,OF: If the server can't be reached, the Frontend shows "No connection, try again". If the live-feed connection drops, live updates stop until the app reconnects
