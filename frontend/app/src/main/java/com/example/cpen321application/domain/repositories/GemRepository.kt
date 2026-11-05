@@ -14,4 +14,10 @@ interface GemRepository {
 
     suspend fun getGemCandidates(coords: LatLng): Flow<List<GemCandidate>>
 
+    suspend fun getFavoritesGems(): Flow<List<Gem>>
+
+    suspend fun addFavoriteGem(gemID: String): Flow<Gem>
+
+    suspend fun deleteFavoriteGem(placesID: String)
+
 }
