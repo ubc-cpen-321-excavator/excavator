@@ -8,16 +8,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.data.dto.GemCandidate
+import com.example.cpen321application.data.remote.NewGemRequestBody
 import com.example.cpen321application.domain.models.Gem
 
 @Composable
 fun NearbyGemOptionCard(
-    gemCandidate: GemCandidate
+    gemCandidate: GemCandidate,
+    onOptionSelect: (NewGemRequestBody) -> Unit
 ) {
 
-    Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(8.dp),
+        onClick = {
+            onOptionSelect(
+                NewGemRequestBody(gemCandidate.name,
+                    gemCandidate.latitude,
+                    gemCandidate.longitude
+                )
+            )
+        }
+    ) {
         Text(
-            gemCandidate.displayName
+            gemCandidate.displayName, modifier = Modifier.padding(16.dp)
         )
     }
 

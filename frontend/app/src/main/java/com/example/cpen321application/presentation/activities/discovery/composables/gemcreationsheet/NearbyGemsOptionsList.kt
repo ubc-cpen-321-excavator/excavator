@@ -10,7 +10,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.cpen321application.data.remote.NewGemRequestBody
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
+import com.google.android.gms.maps.model.LatLng
 
 @Composable
 fun NearbyGemsOptionsList (
@@ -26,9 +28,14 @@ fun NearbyGemsOptionsList (
             modifier = modifier.fillMaxWidth()
         ) {
 
-            uiState.forEach {
+            uiState.forEach { gemCandidate ->
                 item {
-                    NearbyGemOptionCard(it)
+                    NearbyGemOptionCard(gemCandidate) {
+                        viewModel.addGem(
+                            it.name, LatLng(it.latitiude, it.longitude)
+                        )
+                        onOptionsClosed(false)
+                    }
                 }
             }
         }

@@ -75,7 +75,7 @@ class GemViewModel @Inject constructor(
 
     fun onEvent(event: GemEvent) {
         when (event) {
-            is GemEvent.AddGem -> addGem(event.title, event.coords,event.placesName)
+            is GemEvent.AddGem -> addGem(event.title, event.coords)
         }
     }
 
@@ -115,19 +115,11 @@ class GemViewModel @Inject constructor(
         }
     }
 
-    private fun addGem(title: String, coords: LatLng, placesName: String) {
+    fun addGem(title: String, coords: LatLng) {
         launch {
-
-            // Store the result in a variable for now, later the result will be able to cover
-            // failure cases.
-            val result = addGemUseCase(
-                AddGemUseCase.Params(title, coords, placesName)
-            )
-
-            if (result.isFailure) {
-                // Cover the failure case here
+            addGemUseCase(AddGemUseCase.Params(title,coords)).collect { newGem ->
+                _uiState.value += newGem
             }
-
         }
     }
 

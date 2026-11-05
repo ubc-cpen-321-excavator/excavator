@@ -25,7 +25,7 @@ interface GemAPIService {
 
     @POST(GEM_BASE_ENDPOINT)
     @Headers("Content-Type: application/json")
-    suspend fun postGem(@Body body: GemDTO): Response<GemDTO>
+    suspend fun postGem(@Body body: NewGemRequestBody): Response<GemDTO>
 
     // Note: There are optional query parameters
     // radius<Int>: Search radius in meters
@@ -47,6 +47,7 @@ interface GemAPIService {
     suspend fun getFavoriteGems() : Response<List<GemDTO>>
 
     @POST(USER_FAVORITE_GEMS_ENDPOINT)
+    @Headers("Content-Type: application/json")
     suspend fun postFavoriteGem(@Body favGemRequestBody: FavGemRequestBody) : Response<GemDTO>
 
     @DELETE(USER_FAVORITE_GEMS_DETAIL_ENDPOINT)
@@ -57,5 +58,9 @@ interface GemAPIService {
 }
 
 data class FavGemRequestBody(val gem: String)
-
+data class NewGemRequestBody(
+    val name: String,
+    val latitiude: Double,
+    val longitude: Double
+)
 
