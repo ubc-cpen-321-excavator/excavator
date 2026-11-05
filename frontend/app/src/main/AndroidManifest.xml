@@ -53,6 +53,12 @@
             android:label="@string/title_activity_dashboard"
             android:theme="@style/Theme.CPEN321Application"
             android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".presentation.activities.favorites.FavoritesActivity"
+            android:exported="true"
+            android:label="@string/title_activity_favorites"
+            android:theme="@style/Theme.CPEN321Application"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>
