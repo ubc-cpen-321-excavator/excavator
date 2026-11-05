@@ -11,9 +11,9 @@
 | 2026-10-31 | 4.4 | Added the backend frameworks and libraries. |
 | 2026-11-03 | 4.5 | Added the dependencies diagram: front end, the four back-end components, the five MongoDB collections and the two Google services, with the interfaces each arrow uses. |
 | 2026-11-03 | 4.6 | Added sequence diagrams for the five major use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Initialize session), using the components and interfaces of 4.1 and 4.5. |
-| 2026-11-03 | 4.1 | Corrected the interfaces to match the code: `GET /user/me` returns `name` as an object; feed messages over 1024 bytes close the connection; rating and favorites routes answer 401 before 405; added default and maximum values (radius, limit, comment and display-name length) and the missing 400, 401 and 404 responses. |
+| 2026-11-03 | 4.1 | Corrected the interfaces to match the code: `GET /user/me` returns `name` as an object; feed messages over 1024 bytes close the connection; rating and favorites routes answer 401 before 405; added default and maximum values (radius, limit, comment length) and the missing 400, 401 and 404 responses. |
 | 2026-11-04 | 4.1 | `GET /place/nearby` now takes several place types in `type`, so the app can search with all the filters the user selected. |
-| 2026-11-04 | 3.1, 3.2, 3.3, 3.4 | Updated the features, use case diagram, actors and use cases to match the implemented app: added Favorites, Browse Gems on the map, Choose a place to add, Sign out and Edit display name; removed the nicheness API (nicheness is computed by the Gem Score formula) and "Authenticate API calls" (the app does it on every request; it is not a user goal); described the Google actors. |
+| 2026-11-04 | 3.1, 3.2, 3.3, 3.4 | Updated the features, use case diagram, actors and use cases to match the implemented app: added Favorites, Browse Gems on the map, Choose a place to add, and Sign out; removed the nicheness API (nicheness is computed by the Gem Score formula) and "Authenticate API calls" (the app does it on every request; it is not a user goal); described the Google actors. |
 | 2026-11-04 | 4.5, 4.6 | Redid the diagrams to the course conventions: every synchronous call has a labelled return, WebSocket messages are asynchronous, database calls are the real queries, error cases are in `alt` frames, values flow from earlier messages, and lifeline and actor names match 3.3 and 4.5 (Frontend, Google Places API, Signed-in User, Guest). |
 | 2026-11-04 | 4.5, 4.6 | Simplified the diagrams to a high level: one database, plain-language labels instead of function names. Every failure is now an `alt` branch at the step where it happens. Add a Gem is split into Choose a place to add and adding the picked place, so a failed search ends the flow. |
 | 2026-11-04 | 3.5, 4.6 | Wrote the five formal use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Mark a Gem as favorite) with every failure scenario. Replaced Initialize session with Mark a Gem as favorite, since the formal use cases must exclude authentication. Add a Gem now matches the app: the place is picked from the list of nearby places. |
@@ -29,7 +29,7 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ## 3. Requirements Specification
 
 ### **3.1. List of Features**
-1. **Authentication**: Users sign in with their Google account (Google OAuth). The server then issues its own login token (JWT), which the app sends with every request. Users can set the display name other users see.
+1. **Authentication**: Users sign in with their Google account (Google OAuth). The server then issues its own login token (JWT), which the app sends with every request.
 2. **Gems and Gem Score**: A gem is a real place that users add from nearby places. Each gem has a Gem Score from 0 to 100 that rewards places that are both well rated and little known. Users browse gems on a map and open a gem to see its details and score.
 3. **Live feed**: New gems, and gems whose Gem Score changed, appear in real time for users near them, without refreshing.
 4. **In-app ratings**: Users rate gems from 1 to 5 stars, and their ratings feed into the gem's Gem Score.
@@ -49,29 +49,28 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 - Use cases for feature 1: Authentication
 1. **Initialize session**: A Guest signs in with Google, the first time or after their login has expired, and becomes a Signed-in User.
 2. **Sign out**: The User signs out, and the app forgets their login.
-3. **Edit display name**: The User sets the name other users see on their comments.
 
 - Use cases for feature 2: Gems and Gem Score
-4. **Browse Gems on the map**: The User sees the gems in the area shown on the map, highest Gem Score first.
-5. **View a Gem**: The User opens a gem and sees its details, its Gem Score and its comments.
-6. **Add a Gem**: The User adds a place within 200 m of them as a gem; the gem is then scored and shared with nearby users.
-7. **Choose a place to add**: While adding a gem, the User picks from the places near them, optionally filtered by type (e.g. café, park).
+3. **Browse Gems on the map**: The User sees the gems in the area shown on the map, highest Gem Score first.
+4. **View a Gem**: The User opens a gem and sees its details, its Gem Score and its comments.
+5. **Add a Gem**: The User adds a place within 200 m of them as a gem; the gem is then scored and shared with nearby users.
+6. **Choose a place to add**: While adding a gem, the User picks from the places near them, optionally filtered by type (e.g. café, park).
 
 - Use cases for feature 3: Live feed
-8. **View newest Gems**: The User opens the dashboard and sees the most recently added gems.
-9. **View new Gems nearby**: With the app open, gems added near the User, and gems whose Gem Score changed, appear without refreshing.
+7. **View newest Gems**: The User opens the dashboard and sees the most recently added gems.
+8. **View new Gems nearby**: With the app open, gems added near the User, and gems whose Gem Score changed, appear without refreshing.
 
 - Use cases for feature 4: In-app ratings
-10. **Contribute to GemScore**: The User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
+9. **Contribute to GemScore**: The User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
 
 - Use cases for feature 5: Comments
-11. **View comments**: The User sees a gem's comments, oldest first, while viewing it.
-12. **Make comments**: While viewing a gem, the User writes a comment and posts it; it shows their display name.
+10. **View comments**: The User sees a gem's comments, oldest first, while viewing it.
+11. **Make comments**: While viewing a gem, the User writes a comment and posts it; it shows their name.
 
 - Use cases for feature 6: Favorites
-13. **Mark a Gem as favorite**: The User taps "favorite" on a gem to add it to their favorites.
-14. **View favorites**: The User opens the favorites screen and sees their favorite gems, most recently added first.
-15. **Remove a favorite**: The User removes a gem from their favorites.
+12. **Mark a Gem as favorite**: The User taps "favorite" on a gem to add it to their favorites.
+13. **View favorites**: The User opens the favorites screen and sees their favorite gems, most recently added first.
+14. **Remove a favorite**: The User removes a gem from their favorites.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 
@@ -238,7 +237,7 @@ Excavator is an app designed to let you find niche, high quality locations in yo
         5. `GET /gem/newest[?limit]` → gems, newest first
             - **Purpose**: The latest gems, for the dashboard. `limit` is 20 by default and at most 50; 400 if it is invalid.
         6. `GET /gem/:pk/comments` → `[{ id, body, author, authorName }]`, oldest first; `POST /gem/:pk/comments { body }` → 201 `{ id, body, author, authorName }` (posting requires login)
-            - **Purpose**: Reads and adds the comments of the gem whose place ID is `pk`. A new comment records the signed-in user and their display name. The body is trimmed and must then be 1–1000 characters with no control characters. Both return 400 if `pk` is not a valid place ID and 404 if no gem has it; posting also returns 400 for an invalid body and 401 if not signed in.
+            - **Purpose**: Reads and adds the comments of the gem whose place ID is `pk`. A new comment records the signed-in user and their name. The body is trimmed and must then be 1–1000 characters with no control characters. Both return 400 if `pk` is not a valid place ID and 404 if no gem has it; posting also returns 400 for an invalid body and 401 if not signed in.
         7. `PUT /gem/:pk/rating { stars }` → `{ stars, gem }`; `GET /gem/:pk/rating` → `{ stars }` (both require login)
             - **Purpose**: Sets the signed-in user's 1–5 star rating of the gem, returning the gem with its new rating totals and Gem Score; or reads their rating. Both return 400 if `pk` is not a valid place ID, 401 if not signed in, and 404 if no gem has that place ID. `PUT` also returns 400 if `stars` is not a whole number from 1 to 5; `GET` returns 404 if the user hasn't rated the gem.
         8. `GET /place/nearby?lat&lng[&type=cafe,park]` → up to 20 places within 200 m, nearest first, each with `isGem`
@@ -260,12 +259,12 @@ Excavator is an app designed to let you find niche, high quality locations in yo
         4. `int publishGemAdded(Gem gem)` and `int publishGemUpdated(Gem gem)`
             - **Purpose**: Called by Gems after a gem is stored or rescored; sends it to every subscribed client in range and returns how many it was sent to. A failure here never fails adding or rating the gem.
 3. **Users**
-    - **Purpose**: Signs users in with Google and keeps their profile (Google name and display name). After verifying the Google ID token, the server issues its own JSON Web Token (JWT), valid for 7 days, which the app sends as `Authorization: Bearer <token>`. A JWT was chosen over server-side sessions because it survives server restarts and needs no session store; the server still checks the user exists on every request.
+    - **Purpose**: Signs users in with Google and keeps their profile (their name from Google). After verifying the Google ID token, the server issues its own JSON Web Token (JWT), valid for 7 days, which the app sends as `Authorization: Bearer <token>`. A JWT was chosen over server-side sessions because it survives server restarts and needs no session store; the server still checks the user exists on every request.
     - **Interfaces**:
         1. `POST /user/auth/google { idToken }` → `{ sessionId }`
             - **Purpose**: Signs in with a Google ID token, creating the user on their first sign-in. `sessionId` holds the JWT. Returns 400 if there is no JSON body or `idToken` is missing or not a string, and 401 if Google rejects the token.
-        2. `GET /user/me` → `{ id, name: { full, given?, family? }, displayName }`; `PATCH /user/me { displayName }` → the updated profile (both require login)
-            - **Purpose**: Reads the signed-in user's profile, and sets the display name other users see on their comments. `name` is the user's name from Google; `given` and `family` are left out when Google doesn't have them. The display name is trimmed and must then be 1–50 characters with no control characters, or `PATCH` returns 400. Both return 401 if not signed in. Signing out is done on the app by discarding the token.
+        2. `GET /user/me` → `{ id, name: { full, given?, family? }, displayName }` (requires login)
+            - **Purpose**: Reads the signed-in user's profile. `name` is the user's name from Google; `given` and `family` are left out when Google doesn't have them. `displayName` is the name shown to other users on their comments. Returns 401 if not signed in. Signing out is done on the app by discarding the token.
         3. `void reqJwt(Request req, Response res, NextFunction next)`
             - **Purpose**: Express middleware for routes that need a signed-in user: checks the Bearer JWT, loads the user into `req.user`, and answers 401 otherwise. Used by Gems, Favorites and Users.
         4. `User currentUser(Request req)`
@@ -286,9 +285,9 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 1. **Gems DB (MongoDB, `gems` collection)**
     - **Purpose**: Stores every gem in Excavator. Each gem holds its Google Places place (place ID, display name and location), its type and description, the user who added it, and its Gem Score together with the inputs the score is computed from (the Google rating and review count, the nicheness derived from the review count, and the number and average of Excavator users' ratings) and the time the score was last computed. The location is indexed for geospatial queries, so the discovery screen can load the gems around the user and the dashboard can show nearby gems. Gems are also indexed by type for filtering and by Gem Score for recommendations.
 2. **Users DB (MongoDB, `users` collection)**
-    - **Purpose**: Stores every Excavator user, keyed by their Google account ID. Each user holds their name from Google and the display name shown to other users. A user is created the first time they sign in with Google, and the same ID is what each gem stores as the user who added it.
+    - **Purpose**: Stores every Excavator user, keyed by their Google account ID. Each user holds their name from Google and the name shown to other users. A user is created the first time they sign in with Google, and the same ID is what each gem stores as the user who added it.
 3. **Comments DB (MongoDB, `comments` collection)**
-    - **Purpose**: Stores the comments users leave on gems. Comments are a weak entity of gems (many comments to one gem): each comment belongs to exactly one gem and is identified by that gem together with its own comment ID, and holds the comment body, the user who wrote it, and their display name at the time (so listing comments needs no user lookups). Comments are indexed by gem, so a gem's comments can be listed oldest first.
+    - **Purpose**: Stores the comments users leave on gems. Comments are a weak entity of gems (many comments to one gem): each comment belongs to exactly one gem and is identified by that gem together with its own comment ID, and holds the comment body, the user who wrote it, and their name at the time (so listing comments needs no user lookups). Comments are indexed by gem, so a gem's comments can be listed oldest first.
 4. **Ratings DB (MongoDB, `ratings` collection)**
     - **Purpose**: Stores users' 1–5 star ratings of gems. Ratings are a weak entity of gems, identified by their gem together with the user who gave them, so a user has at most one rating per gem and rating again replaces it. After each rating, MongoDB recounts the gem's ratings and their average, which are stored on the gem for its Gem Score.
 5. **Favorites DB (MongoDB, `favorites` collection)**
