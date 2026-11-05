@@ -83,7 +83,7 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 **Main success scenario**:
 1. User taps a Gem entry, either on the Map view or the Dashboard view.
 2. A half-height panel displaying partial Gem information appears.
-3. User pulls up the panel to have it occupy the entire screen, and display full Gem information.
+3. User pulls up the panel to have it occupy the entire screen, and sees full Gem information.
 
 **Failure scenario(s)**:
 - 1a. The app cannot connect to the server, and that Gem is not cached.
@@ -99,8 +99,7 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 1. User taps a location that is not a Gem in the Map view.
 2. A panel presents option to add the place as a Gem.
 3. User taps the button.
-4. The server creates the Gem, adds it to DB.
-5. The server publishes the new Gem, the app gets it and updates the Map view.
+4. The app gets the new Gem and updates the Map view.
 
 **Failure scenario(s)**:
 - 4a. The Gem already exists on the server, perhaps another User added it at just about the same time.
