@@ -6,6 +6,7 @@ import com.example.cpen321application.data.mappers.GemMapper
 import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.data.remote.FavGemRequestBody
 import com.example.cpen321application.data.remote.GemAPIService
+import com.example.cpen321application.data.remote.NewGemRequestBody
 import com.example.cpen321application.di.InjectGemMapper
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.domain.repositories.GemRepository
@@ -62,9 +63,23 @@ class GemRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun addGem(gem: Gem) {
-        // Do nothing with the response for now
-        service.postGem(mapper.toDTO(gem))
+    override suspend fun addGem(gem: NewGemRequestBody) : Flow<Gem> {
+
+        val response: Response<GemDTO> = service.postGem(
+            gem
+        )
+
+        if (response.isSuccessful) {
+
+            return MutableStateFlow(
+                mapper.toDomain(response.body()!!)
+            )
+
+        } else {
+            // TODO: Update this to be a more descriptive error
+            throw Exception("Non 200 Response")
+        }
+
     }
 
     override suspend fun getGemCandidates(coords: LatLng): Flow<List<GemCandidate>> {
