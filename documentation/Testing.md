@@ -42,7 +42,7 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 
 #### 2.1.2. Commit Hash Where Tests Run
 
-`[Insert Commit SHA here]`
+`7e2dd810ac358ab7b6e5164353eae6746b4630cb` (the head of `main`; the tests are unchanged since then)
 
 #### 2.1.3. Explanation on How to Run the Tests
 
