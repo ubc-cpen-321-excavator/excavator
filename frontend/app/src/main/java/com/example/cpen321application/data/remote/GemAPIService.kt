@@ -6,11 +6,15 @@ import com.example.cpen321application.data.remote.Constants.Companion.GEM_BASE_E
 import com.example.cpen321application.data.remote.Constants.Companion.NEARBY_GEMS_ENDPOINT
 import com.example.cpen321application.data.remote.Constants.Companion.NEARBY_PLACES_ENDPOINT
 import com.example.cpen321application.data.remote.Constants.Companion.NEWEST_GEMS_ENDPOINT
+import com.example.cpen321application.data.remote.Constants.Companion.USER_FAVORITE_GEMS_DETAIL_ENDPOINT
+import com.example.cpen321application.data.remote.Constants.Companion.USER_FAVORITE_GEMS_ENDPOINT
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 
@@ -39,5 +43,19 @@ interface GemAPIService {
         @Query("lng") longitude: Double,
     ) : Response<List<GemCandidate>>
 
+    @GET(USER_FAVORITE_GEMS_ENDPOINT)
+    suspend fun getFavoriteGems() : Response<List<GemDTO>>
+
+    @POST(USER_FAVORITE_GEMS_ENDPOINT)
+    suspend fun postFavoriteGem(@Body favGemRequestBody: FavGemRequestBody) : Response<GemDTO>
+
+    @DELETE(USER_FAVORITE_GEMS_DETAIL_ENDPOINT)
+    suspend fun deleteFavoriteGem(
+        @Path(value="placeId", encoded = true) placeId: String
+    ) : Response<Unit>
+
 }
+
+data class FavGemRequestBody(val gem: String)
+
 

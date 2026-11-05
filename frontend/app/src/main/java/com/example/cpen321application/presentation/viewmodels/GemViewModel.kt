@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.domain.usecases.gem.AddGemUseCase
+import com.example.cpen321application.domain.usecases.gem.favorites.GetFavoriteGemsUseCase
 import com.example.cpen321application.domain.usecases.gem.GetGemCandidatesUseCase
 import com.example.cpen321application.domain.usecases.gem.GetNearestGemsUseCase
 import com.example.cpen321application.domain.usecases.gem.GetNewestGemsUseCase
+import com.example.cpen321application.domain.usecases.gem.favorites.AddFavoriteGemUseCase
+import com.example.cpen321application.domain.usecases.gem.favorites.DeleteFavoriteGemUseCase
 import com.example.cpen321application.utils.location.Coordinates
 import com.example.cpen321application.utils.location.LocationUtil
 import com.example.cpen321application.utils.permissions.LocationAccess
@@ -31,19 +34,27 @@ import javax.inject.Inject
 @HiltViewModel
 class GemViewModel @Inject constructor(
     private val locationUtil: LocationUtil,
+
     private val getNearestGemsUseCase: GetNearestGemsUseCase,
     private val getNewestGemsUseCase: GetNewestGemsUseCase,
     private val addGemUseCase: AddGemUseCase,
-    private val getGemCandidatesUseCase: GetGemCandidatesUseCase
+    private val getGemCandidatesUseCase: GetGemCandidatesUseCase,
+
+    private val getFavoriteGemsUseCase: GetFavoriteGemsUseCase,
+    private val addFavoriteGemUseCase: AddFavoriteGemUseCase,
+    private val deleteFavoriteGemUseCase: DeleteFavoriteGemUseCase
 ): BaseViewModel() {
 
     private val _uiState = MutableStateFlow<List<Gem>>(emptyList())
 
     private val _gemCandidates = MutableStateFlow<List<GemCandidate>> (emptyList())
 
+    private val _favoriteGems = MutableStateFlow<List<Gem>>(emptyList())
+
     val uiState: StateFlow<List<Gem>> = _uiState.asStateFlow()
     val gemCandidate: StateFlow<List<GemCandidate>> = _gemCandidates.asStateFlow()
 
+    val favoriteGems: StateFlow<List<Gem>> = _favoriteGems.asStateFlow()
 
     private val _access = MutableStateFlow(locationUtil.currentAccess())
 
@@ -127,6 +138,36 @@ class GemViewModel @Inject constructor(
             }
         }
     }
+
+    fun getFavoriteGems() {
+        launch {
+            getFavoriteGemsUseCase(Unit).collect { favorites ->
+                _favoriteGems.value = favorites
+            }
+        }
+    }
+
+    fun addFavoriteGem(gemID: String) {
+        launch {
+            addFavoriteGemUseCase(
+                AddFavoriteGemUseCase.Params(gemID)
+            ).collect { newFavorite ->
+                _favoriteGems.value += newFavorite
+            }
+        }
+    }
+
+    fun deleteFavoriteGem(placesID: String) {
+
+        launch {
+            deleteFavoriteGemUseCase(
+                DeleteFavoriteGemUseCase.Params(placesID)
+            )
+        }
+
+    }
+
+
 
     override fun handleError(error: Exception) {
         throw error // Propagate the error for now
