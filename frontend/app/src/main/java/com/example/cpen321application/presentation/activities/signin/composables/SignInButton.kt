@@ -1,70 +1,27 @@
-package com.example.cpen321application.presentation.activities.signin
-
-import android.os.Bundle
+package com.example.cpen321application.presentation.activities.signin.composables
 
 import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
-
-import androidx.compose.material3.Scaffold
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-
 import com.example.cpen321application.R
 import com.example.cpen321application.presentation.activities.NavDestination
 import com.example.cpen321application.presentation.activities.navigateTo
-
 import com.example.cpen321application.utils.auth.AuthAPIService
 import com.example.cpen321application.utils.auth.AuthUtil
 import com.example.cpen321application.utils.auth.GoogleSigninRequest
 import com.example.cpen321application.utils.auth.SessionEventBus
-
-import dagger.hilt.android.AndroidEntryPoint
-
+import com.example.cpen321application.utils.auth.TokenStore
 import kotlinx.coroutines.launch
 import java.io.IOException
 
-import javax.inject.Inject
-import com.example.cpen321application.utils.auth.TokenStore
-
-
-@AndroidEntryPoint
-class SigninActivity : ComponentActivity() {
-
-    @Inject lateinit var authAPIService: AuthAPIService
-    @Inject lateinit var tokenStore: TokenStore
-    @Inject lateinit var sessionEventBus: SessionEventBus
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-
-        if (tokenStore.getToken() != null) {
-            navigateTo(this@SigninActivity, NavDestination.DASHBOARD)
-        }
-
-        setContent {
-
-            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                ButtonUI(authAPIService, tokenStore, sessionEventBus) {
-                    finish()
-                }
-            }
-
-        }
-    }
-}
-
 @Composable
-fun ButtonUI(
+fun SignInButton(
     authAPIService: AuthAPIService,
     tokenStore: TokenStore,
     sessionEventBus: SessionEventBus,
@@ -94,16 +51,16 @@ fun ButtonUI(
                         GoogleSigninRequest(authUtil.idToken!!)
                     )
 
-                     if (tokenResponse.isSuccessful) {
+                    if (tokenResponse.isSuccessful) {
                         // Can always expect a non-null body since server response is a placeholder value
-                         jwtToken = tokenResponse.body()!!.sessionId
+                        jwtToken = tokenResponse.body()!!.sessionId
 
-                         tokenStore.saveToken(jwtToken)
-                         sessionEventBus.clearPending()
+                        tokenStore.saveToken(jwtToken)
+                        sessionEventBus.clearPending()
 
-                         navigateTo(context, NavDestination.DASHBOARD)
-                         onFinish()
-                     }
+                        navigateTo(context, NavDestination.DASHBOARD)
+                        onFinish()
+                    }
 
                 }  catch (e: IOException) {
                     Toast.makeText(context,
@@ -122,5 +79,3 @@ fun ButtonUI(
             .clickable(enabled = true, onClick = onClick)
     )
 }
-
-

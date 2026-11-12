@@ -1,6 +1,5 @@
 package com.example.cpen321application.data.mappers
 
-import android.R.attr.name
 import com.example.cpen321application.data.dto.GemDTO
 import com.example.cpen321application.data.dto.Place
 import com.example.cpen321application.domain.models.Gem

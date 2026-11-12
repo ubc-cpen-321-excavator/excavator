@@ -1,6 +1,5 @@
 package com.example.cpen321application.data.remote.websocket
 
-import android.R.attr.name
 import android.util.Log
 import com.example.cpen321application.data.dto.GemDTO
 import com.example.cpen321application.data.remote.websocket.models.FeedEvent

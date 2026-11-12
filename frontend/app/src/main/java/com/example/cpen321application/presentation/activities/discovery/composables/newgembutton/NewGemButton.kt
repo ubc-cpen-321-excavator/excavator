@@ -10,11 +10,10 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.R
-import com.example.cpen321application.presentation.viewmodels.GemEvent
 
 
 @Composable
-fun NewGemButton(modifier: Modifier, onClick: (GemEvent) -> Unit,
+fun NewGemButton(modifier: Modifier,
                  onShowNewGemSheet: (Boolean) -> Unit){
 
     FilledIconButton(

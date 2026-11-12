@@ -14,9 +14,9 @@ import com.example.cpen321application.BuildConfig
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import kotlinx.coroutines.delay
 import java.security.SecureRandom
 import java.util.Base64
-import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 

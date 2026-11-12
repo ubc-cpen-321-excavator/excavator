@@ -1,9 +1,9 @@
 package com.example.cpen321application.utils.auth
 
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import javax.inject.Inject
 import javax.inject.Singleton
-import androidx.core.content.edit
 
 @Singleton
 class TokenStore @Inject constructor(

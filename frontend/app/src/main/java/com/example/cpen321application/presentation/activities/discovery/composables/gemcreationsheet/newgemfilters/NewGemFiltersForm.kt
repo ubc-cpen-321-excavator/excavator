@@ -1,6 +1,5 @@
-package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet
+package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.newgemfilters
 
-import android.util.Log
 import androidx.collection.MutableObjectList
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth

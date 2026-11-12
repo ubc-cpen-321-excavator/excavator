@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet
+package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.nearbygemcandidates
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,7 +9,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.remote.NewGemRequestBody
-import com.example.cpen321application.domain.models.Gem
 
 @Composable
 fun NearbyGemOptionCard(
