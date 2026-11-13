@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet
+package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.nearbygemcandidates
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,7 +10,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.cpen321application.data.remote.NewGemRequestBody
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
 import com.google.android.gms.maps.model.LatLng
 
@@ -22,6 +21,8 @@ fun NearbyGemsOptionsList (
 ) {
 
     val uiState by viewModel.gemCandidate.collectAsState()
+
+    // TODO: make viewmodel call GetGemCandidiates and see if that will cause new gems to appear
 
     if (uiState.isNotEmpty()) {
         LazyColumn(

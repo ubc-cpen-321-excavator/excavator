@@ -33,7 +33,6 @@ class DiscoveryActivity : AuthenticatedActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-
         if (savedInstanceState == null) {
             gemRequest = GemRequest(parseGem(intent))
         }

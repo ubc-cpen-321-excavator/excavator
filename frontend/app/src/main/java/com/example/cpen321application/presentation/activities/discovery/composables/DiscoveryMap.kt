@@ -54,13 +54,6 @@ fun DiscoveryMap(
     // overrides it. rememberSaveable so rotation doesn't re-center the map.
     var hasCenteredCamera by rememberSaveable { mutableStateOf(gemRequest.gem != null) }
 
-    // null until the first real fix arrives (or while permission/location is unavailable).
-    val userLatLng: LatLng? = coordinates?.let { LatLng(it.latitude, it.longitude) }
-
-    // Only used as the camera's starting position, before we have a fix.
-    val coord: LatLng = userLatLng ?: PLACEHOLDER_COORDINATES
-
-
     val mapProperties = remember {
         MapProperties(
             mapStyleOptions = MapStyleOptions(
@@ -74,6 +67,11 @@ fun DiscoveryMap(
         )
     }
 
+    // null until the first real fix arrives (or while permission/location is unavailable).
+    val userLatLng: LatLng? = coordinates?.let { LatLng(it.latitude, it.longitude) }
+
+    // Only used as the camera's starting position, before we have a fix.
+    val coord: LatLng = userLatLng ?: PLACEHOLDER_COORDINATES
 
     Box(modifier = Modifier.fillMaxSize()){
 
@@ -118,10 +116,7 @@ fun DiscoveryMap(
                 }
             }
 
-            // Reacts to the user's location. Keyed on userLatLng so it runs again when the
-            // first real fix arrives, which is after the effect above has already run.
-            // (Previously the centering lived in the gemRequest effect, which only ran once,
-            // at first composition, while `coord` was still the placeholder.)
+            // Reacts to the user's location.
             LaunchedEffect(userLatLng) {
                 val target = userLatLng ?: return@LaunchedEffect
 
@@ -133,7 +128,6 @@ fun DiscoveryMap(
                     )
                 }
             }
-
 
             userLatLng?.let { position ->
                 Marker(
@@ -157,9 +151,10 @@ fun DiscoveryMap(
             }
         }
 
-        NewGemButton(Modifier.align(Alignment.BottomStart), onClick = viewModel::onEvent){
+        NewGemButton(Modifier.align(Alignment.BottomStart)){
             showNewGemSheet=true
         }
+
     }
 
 

@@ -21,8 +21,8 @@ import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.CommentCardList
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.NewCommentInput
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
-import java.util.Locale.getDefault
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.localrating.LocalRating
+import java.util.Locale.getDefault
 
 private fun removePrefix(s: String, prefix: String): String {
     return if (s.startsWith(prefix)) {

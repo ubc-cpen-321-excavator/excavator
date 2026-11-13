@@ -10,33 +10,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.NavBar
 import com.example.cpen321application.presentation.activities.NavDestination
 import com.example.cpen321application.presentation.activities.dashboard.composables.GemCardGrid
 import com.example.cpen321application.presentation.activities.navigateTo
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
-import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
-import com.google.android.gms.maps.model.LatLng
 
-
-//@Composable
-//fun FavoritesScreen(
-//    viewModel: GemViewModel = hiltViewModel()
-//) {
-//
-//    val favorites by viewModel.favoriteGems.collectAsState()
-//    viewModel.getFavoriteGems()
-//
-//    FavoritesScreenContent(favorites)
-//
-//}
 
 @Composable
-fun FavoritesScreenContent(
+fun FavoritesScreen(
     viewModel: GemViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current

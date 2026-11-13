@@ -98,6 +98,7 @@ class GemViewModel @Inject constructor(
         observeLiveUpdates()
     }
 
+    // TODO: Make this play a bigger role in the gem viewmodel
     fun onEvent(event: GemEvent) {
         when (event) {
             is GemEvent.AddGem -> addGem(event.title, event.coords)
@@ -235,12 +236,12 @@ class GemViewModel @Inject constructor(
     private fun onFeedEvent(event: FeedEvent) {
         when (event) {
             is FeedEvent.GemAdded -> {
-                val gem = runCatching { mapper.toDomain(event.gem) } // <- replace with your existing mapper
+                val gem = runCatching { mapper.toDomain(event.gem) }
                     .onFailure { Log.w(TAG, "Bad gem in live update", it) }
                     .getOrNull() ?: return
 
                 _newestGems.update { current ->
-                    if (current.any { it.sameGemAs(gem) }) current // already in the HTTP result
+                    if (current.any { it.sameGemAs(gem) }) current
                     else (listOf(gem) + current).take(MAX_NEWEST_GEMS)
                 }
             }
