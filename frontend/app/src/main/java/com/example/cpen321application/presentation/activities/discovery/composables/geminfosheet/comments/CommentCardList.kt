@@ -38,12 +38,14 @@ fun CommentCardList(
 
         }
 
-        if (commentState.isNotEmpty()) {
-            commentState.forEach {
+        if (commentState.comments.isNotEmpty()) {
+            commentState.comments.forEach {
                 item {
                     CommentCard(it)
                 }
             }
+        } else if (commentState.errorMessage != null) {
+          item {Text("Error fetching comments ${commentState.errorMessage}")}
         } else {
             item{Text("No comments yet!")}
         }

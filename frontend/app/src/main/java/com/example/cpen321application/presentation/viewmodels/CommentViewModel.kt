@@ -1,5 +1,7 @@
 package com.example.cpen321application.presentation.viewmodels
 
+
+import com.example.cpen321application.data.repositories.Resource
 import com.example.cpen321application.domain.models.Comment
 import com.example.cpen321application.domain.usecases.comment.AddCommentUseCase
 import com.example.cpen321application.domain.usecases.comment.GetCommentsUseCase
@@ -12,41 +14,60 @@ import javax.inject.Inject
 @HiltViewModel
 class CommentViewModel @Inject constructor(
     private val getCommentsUseCase: GetCommentsUseCase,
-    private val addCommentsUseCase: AddCommentUseCase
+    private val addCommentUseCase: AddCommentUseCase
 ) : BaseViewModel() {
 
-    private val _commentState = MutableStateFlow<List<Comment>>(emptyList())
+    private val _commentState: MutableStateFlow<CommentUiState> = MutableStateFlow(CommentUiState())
     val commentState = _commentState.asStateFlow()
 
     private val _addedCommentState = MutableStateFlow<Comment?>(null)
     val addedCommentState = _addedCommentState.asStateFlow()
 
+
     fun getComments(gemID: String) {
         launch {
-            getCommentsUseCase(
-                GetCommentsUseCase.Params(gemID)
-            ).collect { comments ->
-                _commentState.value = comments
+            when (val result = getCommentsUseCase(GetCommentsUseCase.Params(gemID))) {
+                is Resource.Error -> {handleError(result.message)}
+                else -> {
+                    result.data?.collect {
+                        _commentState.value = _commentState.value.copy(
+                            comments = it,
+                            errorMessage = null
+                        )
+                    }
+                }
             }
         }
     }
 
     fun addComment(gemID: String, commentBody: String) {
         launch {
-            addCommentsUseCase(
-                AddCommentUseCase.Params(gemID, commentBody)
-            ).collect { addedComment ->
-                _addedCommentState.value = addedComment
-                _commentState.value += addedComment
+            when (val result = addCommentUseCase(AddCommentUseCase.Params(gemID, commentBody))) {
+                is Resource.Error -> {handleError(result.message!!)}
+                else -> {
+                    result.data?.collect { newComment ->
+                        _commentState.value = _commentState.value.copy(
+                            comments = _commentState.value.comments + newComment
+                        )
+                    }
+                }
             }
+
         }
     }
 
 
-    override fun handleError(error: Exception) {
-        // TODO: For CP3, do something with this error
-        throw error // Propagate the error for now
+    override fun handleError(errorMessage: String?) {
+        _commentState.value = _commentState.value.copy(
+            errorMessage = errorMessage ?: "An error occured"
+        )
+
     }
 
 
 }
+
+data class CommentUiState(
+    val comments: List<Comment> = emptyList(),
+    val errorMessage: String? = null
+)

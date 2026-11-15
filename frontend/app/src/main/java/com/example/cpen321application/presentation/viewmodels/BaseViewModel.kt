@@ -6,16 +6,13 @@ import kotlinx.coroutines.launch
 
 abstract class BaseViewModel: ViewModel() {
 
-    protected abstract fun handleError(error: Exception)
+
+    protected abstract fun handleError(errorMessage: String?)
 
     protected fun <T> launch(block: suspend ()-> T) {
 
         viewModelScope.launch {
-            try {
-                block()
-            } catch (e: Exception) {
-                handleError(e)
-            }
+            block()
         }
     }
 }

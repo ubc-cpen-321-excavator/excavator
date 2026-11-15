@@ -263,8 +263,8 @@ class GemViewModel @Inject constructor(
     // Errors and location
     // ---------------------------------------------------------------------------------
 
-    override fun handleError(error: Exception) {
-        throw error // Propagate the error for now
+    override fun handleError(errorMessage: String?) {
+
     }
 
     /** Call this from the permission callback. Safe to call repeatedly. */
