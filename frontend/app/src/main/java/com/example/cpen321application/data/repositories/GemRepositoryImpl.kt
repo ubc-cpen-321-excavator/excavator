@@ -19,33 +19,21 @@ import javax.inject.Inject
 class GemRepositoryImpl @Inject constructor(
     private val service: GemAPIService,
     @param:InjectGemMapper private val mapper: Mapper<Gem, GemDTO>
-): GemRepository {
+): GemRepository, BaseRemoteRepo<Gem,GemDTO>() {
 
-    private fun responseBodyToFlow(responseBody:List<GemDTO>): Flow<List<Gem>>{
-        return MutableStateFlow(
-            responseBody.map {
-                mapper.toDomain(it)
-            }
-        )
-    }
+    override suspend fun getNearbyGems(coords: LatLng): Resource<Flow<List<Gem>>> {
 
-    override suspend fun getNearbyGems(coords: LatLng): Flow<List<Gem>> {
+        val response = safeApiCall {
+            service.getNearestGems(coords.latitude, coords.longitude)
+        }
 
-        val response: Response<List<GemDTO>> = service.getNearestGems(
-            coords.latitude,
-            coords.longitude
-        )
+        if (response is Resource.Success) {
 
-        if (response.isSuccessful) {
-            return responseBodyToFlow(response.body()!!)
-        } else {
-            // TODO: Update this to be a more descriptive error
-            throw Exception("Non 200 Response")
         }
 
     }
 
-    override suspend fun getNewestGems(numGems: UInt): Flow<List<Gem>> {
+    override suspend fun getNewestGems(numGems: UInt): Resource<Flow<List<Gem>>> {
         val response: Response<List<GemDTO>> = service.getNewestGems()
 
         if (response.isSuccessful) {
@@ -99,7 +87,7 @@ class GemRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getFavoritesGems(): Flow<List<Gem>> {
+    override suspend fun getFavoritesGems(): Resource<Flow<List<Gem>>> {
 
         val response: Response<List<GemDTO>> = service.getFavoriteGems()
 
