@@ -8,6 +8,7 @@ import com.example.cpen321application.data.dto.GemDTO
 import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.data.remote.websocket.DashboardLiveUpdatesClient
 import com.example.cpen321application.data.remote.websocket.models.FeedEvent
+import com.example.cpen321application.data.repositories.Resource
 import com.example.cpen321application.di.InjectGemMapper
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.domain.usecases.gem.AddGemUseCase
@@ -120,6 +121,11 @@ class GemViewModel @Inject constructor(
     private fun getGems() {
         launch {
             val firstFix = coordinates.filterNotNull().first()
+            val coords = LatLng(firstFix.latitude, firstFix.longitude)
+
+            when (val result = getNearestGemsUseCase(GetNearestGemsUseCase.Params(coords))) {
+                is Resource.Error -> {handleError(result.message!!)}
+            }
 
             getNearestGemsUseCase(
                 GetNearestGemsUseCase.Params(LatLng(firstFix.latitude, firstFix.longitude))
@@ -298,3 +304,18 @@ class GemViewModel @Inject constructor(
 sealed class GemEvent {
     data class AddGem(val title: String, val coords: LatLng, val placesName: String) : GemEvent()
 }
+
+data class GemUiState (
+    val gems: List<Gem> = emptyList(),
+    val errorMessage: String? = null
+)
+
+data class FavoriteGemsUiState (
+    val favoriteGems: List<Gem> = emptyList(),
+    val errorMessage: String? = null
+)
+
+data class NewestGemsUiState (
+    val newestGems: List<Gem> = emptyList(),
+    val errorMessage: String? = null
+)

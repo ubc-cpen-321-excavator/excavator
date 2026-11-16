@@ -1,12 +1,13 @@
-package com.example.cpen321application.data.mappers
+package com.example.cpen321application.data.mappers.gems
 
 import com.example.cpen321application.data.dto.GemDTO
 import com.example.cpen321application.data.dto.Place
+import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.domain.models.Gem
 import com.google.android.gms.maps.model.LatLng
 
 
-class GemMapper : Mapper<Gem, GemDTO>{
+class GemMapper : Mapper<Gem, GemDTO> {
 
     override fun toDTO(domainObject: Gem): GemDTO {
         return GemDTO(

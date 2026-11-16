@@ -6,127 +6,74 @@ import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.data.remote.FavGemRequestBody
 import com.example.cpen321application.data.remote.GemAPIService
 import com.example.cpen321application.data.remote.NewGemRequestBody
+import com.example.cpen321application.di.InjectGemCandidatesMapper
+import com.example.cpen321application.di.InjectGemListMapper
 import com.example.cpen321application.di.InjectGemMapper
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.domain.repositories.GemRepository
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import retrofit2.Response
 import javax.inject.Inject
 
 class GemRepositoryImpl @Inject constructor(
     private val service: GemAPIService,
-    @param:InjectGemMapper private val mapper: Mapper<Gem, GemDTO>
-): GemRepository, BaseRemoteRepo<Gem,GemDTO>() {
+    @param:InjectGemMapper private val mapper: Mapper<Gem, GemDTO>,
+    @param:InjectGemListMapper private val listMapper: Mapper<List<Gem>, List<GemDTO>>,
+    @param:InjectGemCandidatesMapper private val candidatesMapper: Mapper<List<GemCandidate>, List<GemCandidate>>
+): GemRepository, BaseRemoteRepo() {
 
     override suspend fun getNearbyGems(coords: LatLng): Resource<Flow<List<Gem>>> {
 
-        val response = safeApiCall {
+        return safeApiCall (listMapper) {
             service.getNearestGems(coords.latitude, coords.longitude)
         }
 
-        if (response is Resource.Success) {
+    }
 
+    override suspend fun getNewestGems(numGems: UInt?): Resource<Flow<List<Gem>>> {
+
+        return safeApiCall(listMapper) {
+            service.getNewestGems()
         }
 
     }
 
-    override suspend fun getNewestGems(numGems: UInt): Resource<Flow<List<Gem>>> {
-        val response: Response<List<GemDTO>> = service.getNewestGems()
+    override suspend fun addGem(gem: NewGemRequestBody) : Resource<Flow<Gem>> {
 
-        if (response.isSuccessful) {
-            // We will always receive a valid response body if the response is successful
-            return MutableStateFlow(
-                response.body()!!.map {
-                    mapper.toDomain(it)
-                }
-            ).asStateFlow()
-
-        } else {
-            // TODO: Update this to be a more descriptive error
-            throw Exception("Non 200 Response")
-        }
-    }
-
-    override suspend fun addGem(gem: NewGemRequestBody) : Flow<Gem> {
-
-        val response: Response<GemDTO> = service.postGem(
-            gem
-        )
-
-        if (response.isSuccessful) {
-
-            return MutableStateFlow(
-                mapper.toDomain(response.body()!!)
-            )
-
-        } else {
-                // TODO: Update this to be a more descriptive error
-                throw Exception("Non 200 Response")
+        return safeApiCall(mapper) {
+            service.postGem(gem)
         }
 
     }
 
-    override suspend fun getGemCandidates(coords: LatLng): Flow<List<GemCandidate>> {
-        val response: Response<List<GemCandidate>> = service.getNearestGemCandidates(
-            coords.latitude,
-            coords.longitude
-        )
+    override suspend fun getGemCandidates(coords: LatLng): Resource<Flow<List<GemCandidate>>> {
 
-        if (response.isSuccessful) {
-
-            return MutableStateFlow(
-                response.body()!!
-            )
-
-        } else {
-            // TODO: Update this to be a more descriptive error
-            throw Exception("Non 200 Response")
+        return safeApiCall(candidatesMapper) {
+            service.getNearestGemCandidates(coords.latitude, coords.longitude)
         }
+
     }
 
     override suspend fun getFavoritesGems(): Resource<Flow<List<Gem>>> {
 
-        val response: Response<List<GemDTO>> = service.getFavoriteGems()
-
-        if (response.isSuccessful) {
-
-            return responseBodyToFlow(response.body()!!)
-
-        } else {
-            // TODO: Update this to be a more descriptive error
-            throw Exception("Non 200 Response")
+        return safeApiCall(listMapper) {
+            service.getFavoriteGems()
         }
 
     }
 
-    override suspend fun addFavoriteGem(gemID: String): Flow<Gem> {
-        val response: Response<GemDTO> = service.postFavoriteGem(
-            favGemRequestBody = FavGemRequestBody(gemID)
-        )
+    override suspend fun addFavoriteGem(gemID: String): Resource<Flow<Gem>> {
 
-        if (response.isSuccessful) {
-
-            return MutableStateFlow(
-                mapper.toDomain(response.body()!!)
-            )
-
-        } else {
-            // TODO: Update this to be a more descriptive error
-            throw Exception("Non 200 Response")
+        return safeApiCall(mapper) {
+            service.postFavoriteGem(FavGemRequestBody(gemID))
         }
+
     }
 
     override suspend fun deleteFavoriteGem(placesID: String) {
-        val response: Response<Unit> = service.deleteFavoriteGem(
-            placesID
-        )
 
-        if (!response.isSuccessful) {
-            // TODO: Update this to be a more descriptive error
-            throw Exception("Non 200 Response")
+        safeApiCall <Unit,Unit> {
+            service.deleteFavoriteGem(placesID)
         }
 
     }

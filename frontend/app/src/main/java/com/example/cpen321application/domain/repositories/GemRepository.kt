@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 interface GemRepository {
 
     suspend fun getNearbyGems(coords: LatLng): Resource<Flow<List<Gem>>>
-    suspend fun getNewestGems(numGems: UInt): Resource<Flow<List<Gem>>>
+    suspend fun getNewestGems(numGems: UInt?): Resource<Flow<List<Gem>>>
     suspend fun addGem(gem: NewGemRequestBody): Resource<Flow<Gem>>
 
     suspend fun getGemCandidates(coords: LatLng): Resource<Flow<List<GemCandidate>>>
