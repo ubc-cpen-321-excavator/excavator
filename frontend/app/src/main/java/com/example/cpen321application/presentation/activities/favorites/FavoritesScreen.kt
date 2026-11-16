@@ -46,6 +46,6 @@ fun FavoritesScreen(
                 isFavorite = true,
                 onGemLongClick = { viewModel.deleteFavoriteGem(it.placesName.removePrefix("places/")) }
             )
-        }
+}
     }
 }

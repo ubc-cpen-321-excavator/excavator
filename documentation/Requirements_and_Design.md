@@ -42,35 +42,163 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 <a name="uc1"></a>
 
-#### Use Case 1: [WRITE_USE_CASE_1_NAME_HERE]
+#### Use Case 1: Sign In with Google
 
-**Description**: ...
+**Description**: The user signs in to Excavator with their Google account so they can add, rate, comment on and favorite gems. Excavator creates their account the first time they sign in.
 
-**Primary actor(s)**: ... 
-    
+**Primary actor(s)**: User, Google Sign-In
+
 **Main success scenario**:
-1. ...
-2. ...
+1. The user opens the app.
+2. The app shows the sign-in screen with a "Sign in with Google" button.
+3. The user taps "Sign in with Google".
+4. The app shows Google's account chooser.
+5. The user chooses a Google account.
+6. The app sends the account's Google ID token to the Excavator server, which verifies it, creates the user if this is their first sign-in, and returns a session.
+7. The app shows the Dashboard.
 
 **Failure scenario(s)**:
-- 1a. ...
-    - 1a1. ...
-    - 1a2. ...
-
-- 1b. ...
-    - 1b1. ...
-    - 1b2. ...
-                
-- 2a. ...
-    - 2a1. ...
-    - 2a2. ...
-
-...
+- 1a. The user is already signed in and their session has not expired.
+    - 1a1. The app skips the sign-in screen and shows the Dashboard.
+- 4a. The device has no Google account.
+    - 4a1. The app shows the message "Sign in failed!".
+    - 4a2. The app stays on the sign-in screen.
+- 5a. The user closes the account chooser without choosing an account.
+    - 5a1. The app shows the message "Sign-in cancelled".
+    - 5a2. The app stays on the sign-in screen.
+- 6a. The Excavator server cannot be reached.
+    - 6a1. The app shows the message "Failed to connect to server. Please try again later".
+    - 6a2. The app stays on the sign-in screen.
+- 6b. The Excavator server rejects the Google ID token.
+    - 6b1. The app shows the message "Sign in failed!".
+    - 6b2. The app stays on the sign-in screen.
 
 <a name="uc2"></a>
 
-#### Use Case 2: [WRITE_USE_CASE_2_NAME_HERE]
-...
+#### Use Case 2: Add a Gem
+
+**Description**: The user adds a place near them as a new gem. The place must exist on Google Places, be within 200 m of the user, and not already be a gem. The new gem is scored and appears for the user and for other users nearby.
+
+**Primary actor(s)**: User, Google Places
+
+**Main success scenario**:
+1. The user opens the Discovery screen from the navigation bar.
+2. The app shows a map centred on the user's location, with markers for the gems around them, and an "Add gem" button.
+3. The user taps "Add gem".
+4. The app shows the "Add New Gem" sheet with a "Filters" button and a "Submit" button.
+5. The user optionally taps "Filters" and selects the types of place they want to add.
+6. The user taps "Submit".
+7. The app shows a list of the places within 200 m of the user that are not gems yet, nearest first, limited to the selected types.
+8. The user taps a place in the list.
+9. The app adds the place as a gem and closes the sheet. The new gem appears as a marker on the map and at the top of the Dashboard's latest gems, and is pushed to other users near it.
+
+**Failure scenario(s)**:
+- 2a. The user has denied the app access to their location.
+    - 2a1. The app shows a dialog explaining that Excavator needs their location, with a button to try again.
+    - 2a2. If the user taps the button, the app asks for location access again and continues from step 2 once it is granted.
+- 2b. The device's location is turned off.
+    - 2b1. The app shows the dialog "Location is turned off" with a "Turn on location" button.
+    - 2b2. If the user taps "Turn on location" and turns it on, the app continues from step 2.
+- 7a. There are no places within 200 m that are not gems yet.
+    - 7a1. The app shows the message "No gem candidates found! Check back later" with an "Ok" button.
+    - 7a2. The user taps "Ok" and the app closes the sheet.
+- 7b. Google Places is unavailable.
+    - 7b1. The app shows the message "Could not load nearby places. Please try again later."
+    - 7b2. The sheet stays open on the filters form.
+- 9a. Another user added the same place as a gem after the list was shown.
+    - 9a1. The app shows the message "This place is already a gem."
+    - 9a2. The app reloads the list without that place.
+- 9b. The user has moved more than 200 m away from the place.
+    - 9b1. The app shows the message "You must be within 200 m of a place to add it."
+    - 9b2. The app reloads the list for the user's new location.
+- 9c. The Excavator server cannot be reached.
+    - 9c1. The app shows the message "Failed to connect to server. Please try again later".
+    - 9c2. The list stays open so the user can try again.
+
+<a name="uc3"></a>
+
+#### Use Case 3: Rate a Gem
+
+**Description**: The user gives a gem a personal rating of 1 to 5 stars. Each user has one rating per gem, and rating again replaces it. The rating updates the gem's Gem Score, which updates live for everyone near the gem.
+
+**Primary actor(s)**: User
+
+**Main success scenario**:
+1. The user opens a gem, by tapping its marker on the Discovery map or its card on the Dashboard or Favorites screen.
+2. The app shows the gem's sheet with its name, its Gem Score, a "Personal rating" row of 5 stars showing the user's current rating (empty if they have not rated it), and its comments.
+3. The user taps or drags across the stars to choose a rating from 1 to 5 whole stars.
+4. The app saves the rating, keeps the chosen stars filled, and shows the gem's updated Gem Score. Other users near the gem see the updated Gem Score.
+
+**Failure scenario(s)**:
+- 3a. The user has already rated the gem.
+    - 3a1. The app shows their previous rating in step 2.
+    - 3a2. The new rating replaces the previous one in step 4.
+- 3b. The user lifts their finger to the left of the first star (no stars chosen).
+    - 3b1. The app keeps the user's previous rating and saves nothing.
+- 4a. The Excavator server cannot be reached.
+    - 4a1. The app shows the message "Could not save your rating. Please try again."
+    - 4a2. The stars return to the user's previous rating.
+
+<a name="uc4"></a>
+
+#### Use Case 4: Comment on a Gem
+
+**Description**: The user reads a gem's comments and adds their own. Each comment shows the display name of the user who wrote it.
+
+**Primary actor(s)**: User
+
+**Main success scenario**:
+1. The user opens a gem, by tapping its marker on the Discovery map or its card on the Dashboard or Favorites screen.
+2. The app shows the gem's sheet with a "Comments" list, oldest first, each comment showing its author's display name and text, and a "New comment..." text field with a "Send Comment" button.
+3. The user types a comment of up to 256 characters.
+4. The user taps "Send Comment".
+5. The app posts the comment, clears the text field, and shows the comment at the bottom of the list with the user's display name.
+
+**Failure scenario(s)**:
+- 2a. The gem has no comments yet.
+    - 2a1. The app shows "No comments yet!" under "Comments".
+- 3a. The user types more than 256 characters.
+    - 3a1. The text field does not accept characters beyond the 256th.
+- 3b. The user types a new line or a tab.
+    - 3b1. The text field ignores it.
+- 4a. The text field is empty or contains only spaces.
+    - 4a1. The "Send Comment" button is disabled, so nothing is posted.
+- 5a. The Excavator server cannot be reached.
+    - 5a1. The app shows the message "Could not post your comment. Please try again."
+    - 5a2. The comment stays in the text field so the user can send it again.
+
+<a name="uc5"></a>
+
+#### Use Case 5: Manage Favorite Gems
+
+**Description**: The user marks gems as favorites to find them again later, sees them on the Favorites screen, and removes the ones they no longer want. Favorites are stored on the server, so they follow the user to other devices.
+
+**Primary actor(s)**: User
+
+**Main success scenario**:
+1. The user opens a gem, by tapping its marker on the Discovery map or its card on the Dashboard.
+2. The app shows the gem's sheet with a star button, grey if the gem is not one of the user's favorites and gold if it is.
+3. The user taps the grey star.
+4. The app saves the gem as a favorite and the star turns gold.
+5. The user opens the Favorites screen from the navigation bar.
+6. The app shows "Your favorites:" with a card for each favorite gem, most recently added first, each with a gold border and a ★ badge.
+7. The user long-presses a gem's card.
+8. The app removes the gem from the user's favorites and its card disappears from the screen.
+
+**Failure scenario(s)**:
+- 3a. The gem is already a favorite (gold star) and the user taps the star.
+    - 3a1. The app removes the gem from the user's favorites and the star turns grey.
+- 4a. The user already has 500 favorites.
+    - 4a1. The app shows the message "You can have at most 500 favorites."
+    - 4a2. The star stays grey.
+- 4b. The Excavator server cannot be reached.
+    - 4b1. The app shows the message "Could not update your favorites. Please try again."
+    - 4b2. The star returns to its previous colour.
+- 6a. The user has no favorites.
+    - 6a1. The app shows "No favorites yet!" under "Your favorites:".
+- 8a. The Excavator server cannot be reached.
+    - 8a1. The app shows the message "Could not update your favorites. Please try again."
+    - 8a2. The card stays on the screen.
 
 ### **3.6. Screen Mock-ups**
 ![Frontend Screens Diagram](images/frontend_screens_diagram.jpg)
