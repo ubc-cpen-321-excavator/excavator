@@ -308,7 +308,8 @@ gemRouter.get('/:pk/photo', asyncHandler(async (req: Request<{ pk: string }>, re
       return;
     }
 
-    res.redirect(302, photoUrl.href);
+    // The target is Google's photo URL, not user input, and toGooglePhotoUrl only allows https *.googleusercontent.com.
+    res.redirect(302, photoUrl.href); // nosemgrep
   } catch (err) {
     if (err instanceof PlacesUnavailableError) {
       logError('Get Gem photo failed, Google Places', err.cause);
