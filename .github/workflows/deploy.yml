@@ -57,3 +57,109 @@ jobs:
             # -T: no terminal over SSH. Runs once MongoDB is healthy (backend depends_on it).
             docker compose exec -T backend npm run seed
             docker image prune -f
+
+  # Builds the Android debug APK. Separate job: different runner, and it must not block the GCE deploy.
+  build-debug-apk:
+    # Same scope as the original APK workflow: main pushes and manual runs only.
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    concurrency:
+      group: android-debug-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      ANDROID_DIR: frontend
+      GRADLE_MODULE: app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install required SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle (caching)
+        uses: gradle/actions/setup-gradle@v4
+
+      # local.properties and secrets.properties are gitignored, so write them from repo secrets.
+      # sdk.dir is omitted: setup-android exports ANDROID_HOME, which Gradle uses instead.
+      - name: Write build config (local.properties, secrets.properties)
+        working-directory: ${{ env.ANDROID_DIR }}
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.ANDROID_GOOGLE_CLIENT_ID }}
+          WS_ENDPOINT: ${{ secrets.WS_ENDPOINT }}
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: |
+          set -euo pipefail
+          [[ -n "$API_BASE_URL" ]] || { echo "Secret API_BASE_URL is not set" >&2; exit 1; }
+          [[ -n "$GOOGLE_CLIENT_ID" ]] || { echo "Secret ANDROID_GOOGLE_CLIENT_ID is not set" >&2; exit 1; }
+          [[ -n "$MAPS_API_KEY" ]] || { echo "Secret MAPS_API_KEY is not set" >&2; exit 1; }
+          umask 077
+          printf 'API_BASE_URL=%s\nGOOGLE_CLIENT_ID=%s\nWS_ENDPOINT=%s\n' \
+            "$API_BASE_URL" "$GOOGLE_CLIENT_ID" "$WS_ENDPOINT" > local.properties
+          printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" > secrets.properties
+
+      - name: Build debug APK
+        working-directory: ${{ env.ANDROID_DIR }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --stacktrace ":${GRADLE_MODULE}:assembleDebug"
+
+      # ---------- Deliver APK to ~/apk ----------
+
+      - name: Locate built APK
+        run: |
+          set -euo pipefail
+          SRC_DIR="${GITHUB_WORKSPACE}/${ANDROID_DIR}/${GRADLE_MODULE}/build/outputs/apk/debug"
+          APK_FILE="$(find "$SRC_DIR" -maxdepth 1 -name '*.apk' | head -n 1)"
+          [[ -n "$APK_FILE" ]] || { echo "No APK found in $SRC_DIR" >&2; exit 1; }
+          echo "Found APK: $APK_FILE"
+          echo "APK_PATH=$APK_FILE" >> "$GITHUB_ENV"
+
+      - name: Resolve and validate destination folder
+        run: |
+          set -euo pipefail
+          DEST_DIR="$HOME/apk"
+          # Safety guard: never operate on an empty or root-level path
+          [[ -n "$HOME" && "$HOME" != "/" ]] || { echo "Unsafe HOME: '$HOME'" >&2; exit 1; }
+          mkdir -p "$DEST_DIR"
+          echo "DEST_DIR=$DEST_DIR" >> "$GITHUB_ENV"
+
+      - name: Clear old contents of destination folder
+        run: |
+          set -euo pipefail
+          echo "Clearing $DEST_DIR"
+          find "$DEST_DIR" -mindepth 1 -delete
+
+      - name: Copy newest APK into destination folder
+        run: |
+          set -euo pipefail
+          cp "$APK_PATH" "$DEST_DIR/.tmp.apk"
+          mv "$DEST_DIR/.tmp.apk" "$DEST_DIR/${GRADLE_MODULE}-debug.apk"
+
+      - name: Verify delivery
+        run: |
+          set -euo pipefail
+          [[ -s "$DEST_DIR/${GRADLE_MODULE}-debug.apk" ]] || { echo "APK missing or empty in $DEST_DIR" >&2; exit 1; }
+          echo "Contents of $DEST_DIR:"
+          ls -lh "$DEST_DIR"
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk-${{ github.sha }}
+          path: ${{ env.APK_PATH }}
+          retention-days: 14
