@@ -17,21 +17,23 @@ class CommentViewModel @Inject constructor(
     private val addCommentUseCase: AddCommentUseCase
 ) : BaseViewModel() {
 
-    private val _commentState: MutableStateFlow<CommentUiState> = MutableStateFlow(CommentUiState())
+    private val _commentState: MutableStateFlow<UiState<Comment>> = MutableStateFlow(UiState())
     val commentState = _commentState.asStateFlow()
-
-    private val _addedCommentState = MutableStateFlow<Comment?>(null)
-    val addedCommentState = _addedCommentState.asStateFlow()
 
 
     fun getComments(gemID: String) {
         launch {
             when (val result = getCommentsUseCase(GetCommentsUseCase.Params(gemID))) {
-                is Resource.Error -> {handleError(result.message)}
+                is Resource.Error -> {
+                    _commentState.value = getErrorState(
+                        result.message,
+                        _commentState.value
+                    )
+                }
                 else -> {
                     result.data?.collect {
                         _commentState.value = _commentState.value.copy(
-                            comments = it,
+                            data = it,
                             errorMessage = null
                         )
                     }
@@ -43,11 +45,16 @@ class CommentViewModel @Inject constructor(
     fun addComment(gemID: String, commentBody: String) {
         launch {
             when (val result = addCommentUseCase(AddCommentUseCase.Params(gemID, commentBody))) {
-                is Resource.Error -> {handleError(result.message!!)}
+                is Resource.Error -> {
+                    _commentState.value = getErrorState(
+                        result.message,
+                        _commentState.value
+                        )
+                }
                 else -> {
                     result.data?.collect { newComment ->
                         _commentState.value = _commentState.value.copy(
-                            comments = _commentState.value.comments + newComment
+                            data = _commentState.value.data + newComment
                         )
                     }
                 }
@@ -57,16 +64,4 @@ class CommentViewModel @Inject constructor(
     }
 
 
-    override fun handleError(errorMessage: String?) {
-        _commentState.value = _commentState.value.copy(
-            errorMessage = errorMessage ?: "An error occured"
-        )
-
-    }
-
 }
-
-data class CommentUiState(
-    val comments: List<Comment> = emptyList(),
-    val errorMessage: String? = null
-)

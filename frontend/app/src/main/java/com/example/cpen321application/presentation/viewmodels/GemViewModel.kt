@@ -46,6 +46,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// TODO: Update this viewmodel to use the new Resource class
+
 @HiltViewModel
 class GemViewModel @Inject constructor(
     private val locationUtil: LocationUtil,
@@ -63,22 +65,22 @@ class GemViewModel @Inject constructor(
     @param:InjectGemMapper private val mapper: Mapper<Gem, GemDTO>
 ) : BaseViewModel() {
 
-    private val _uiState = MutableStateFlow<List<Gem>>(emptyList())
+    private val _uiState = MutableStateFlow<UiState<Gem>>(UiState())
 
-    private val _gemCandidates = MutableStateFlow<List<GemCandidate>>(emptyList())
+    private val _gemCandidates = MutableStateFlow<UiState<GemCandidate>>(UiState())
 
-    private val _favoriteGems = MutableStateFlow<List<Gem>>(emptyList())
+    private val _favoriteGems = MutableStateFlow<UiState<Gem>>(UiState())
 
-    private val _newestGems = MutableStateFlow<List<Gem>>(emptyList())
+    private val _newestGems = MutableStateFlow<UiState<Gem>>(UiState())
 
     /** True once the first HTTP load of the newest gems has landed. Live updates wait for it. */
     private val _newestLoaded = MutableStateFlow(false)
 
-    val uiState: StateFlow<List<Gem>> = _uiState.asStateFlow()
-    val gemCandidate: StateFlow<List<GemCandidate>> = _gemCandidates.asStateFlow()
+    val uiState: StateFlow<UiState<Gem>> = _uiState.asStateFlow()
+    val gemCandidate: StateFlow<UiState<GemCandidate>> = _gemCandidates.asStateFlow()
 
-    val favoriteGems: StateFlow<List<Gem>> = _favoriteGems.asStateFlow()
-    val newestGems: StateFlow<List<Gem>> = _newestGems.asStateFlow()
+    val favoriteGems: StateFlow<UiState<Gem>> = _favoriteGems.asStateFlow()
+    val newestGems: StateFlow<UiState<Gem>> = _newestGems.asStateFlow()
 
     private val _access = MutableStateFlow(locationUtil.currentAccess())
 
@@ -124,13 +126,17 @@ class GemViewModel @Inject constructor(
             val coords = LatLng(firstFix.latitude, firstFix.longitude)
 
             when (val result = getNearestGemsUseCase(GetNearestGemsUseCase.Params(coords))) {
-                is Resource.Error -> {handleError(result.message!!)}
-            }
-
-            getNearestGemsUseCase(
-                GetNearestGemsUseCase.Params(LatLng(firstFix.latitude, firstFix.longitude))
-            ).collect { gems ->
-                _uiState.value = gems
+                is Resource.Error -> {
+                    _uiState.value = getErrorState(result.message,_uiState.value)
+                }
+                else -> {
+                    result.data?.collect {
+                        _uiState.value = _uiState.value.copy(
+                            data = it,
+                            errorMessage = null
+                        )
+                    }
+                }
             }
         }
     }
@@ -138,47 +144,114 @@ class GemViewModel @Inject constructor(
     private fun getGemCandidates() {
         launch {
             val firstFix = coordinates.filterNotNull().first()
+            val coords = LatLng(firstFix.latitude,firstFix.longitude)
 
-            getGemCandidatesUseCase(
-                GetGemCandidatesUseCase.Params(LatLng(firstFix.latitude, firstFix.longitude))
-            ).collect { gemCandidates ->
-                _gemCandidates.value = gemCandidates
+            when (val result = getGemCandidatesUseCase(GetGemCandidatesUseCase.Params(coords))) {
+                is Resource.Error -> {
+                    _gemCandidates.value = getErrorState(
+                        result.message,
+                        _gemCandidates.value
+                        )
+                }
+                else -> {
+                    result.data?.collect {
+                        _gemCandidates.value = _gemCandidates.value.copy(
+                            data = it,
+                            errorMessage = null
+                        )
+                    }
+                }
             }
         }
     }
 
     fun addGem(title: String, coords: LatLng) {
         launch {
-            addGemUseCase(AddGemUseCase.Params(title, coords)).collect { newGem ->
-                _uiState.value += newGem
+
+            when(val result = addGemUseCase(AddGemUseCase.Params(title,coords))) {
+                is Resource.Error -> {_uiState.value = getErrorState(
+                    result.message,
+                    _uiState.value
+                )}
+
+                else -> {
+                    result.data?.collect { newGem ->
+                        _uiState.value = _uiState.value.copy(
+                            data = _uiState.value.data + newGem
+                        )
+                    }
+                }
             }
-        }
+            }
     }
 
     /** Loads the newest gems over HTTP. Live updates are layered on top once this lands. */
     fun getNewestGems() {
         launch {
-            getNewestGemsUseCase(Unit).collect { gems ->
-                _newestGems.value = gems
-                _newestLoaded.value = true
+
+            when (val result = getNewestGemsUseCase(Unit)) {
+                is Resource.Error -> {
+                    _newestGems.value = getErrorState(
+                        result.message,
+                        _newestGems.value
+                    )
+                }
+
+                else -> {
+                    result.data?.collect { newestGems ->
+                        _newestGems.value = _newestGems.value.copy(
+                            data = newestGems,
+                            errorMessage = null
+                        )
+                        _newestLoaded.value = true
+                    }
+                }
             }
         }
     }
 
     fun getFavoriteGems() {
+
         launch {
-            getFavoriteGemsUseCase(Unit).collect { favorites ->
-                _favoriteGems.value = favorites
+            when (val result = getFavoriteGemsUseCase(Unit)) {
+                is Resource.Error -> {
+                    _favoriteGems.value = getErrorState(
+                        result.message,
+                        _favoriteGems.value
+                    )
+                }
+
+                else -> {
+                    result.data?.collect { favoriteGems ->
+                        _favoriteGems.value = _favoriteGems.value.copy(
+                            data = favoriteGems,
+                            errorMessage = null
+                        )
+                    }
+                }
             }
         }
     }
 
     fun addFavoriteGem(gemID: String) {
         launch {
-            addFavoriteGemUseCase(
+            when (val result = addFavoriteGemUseCase(
                 AddFavoriteGemUseCase.Params(gemID)
-            ).collect { newFavorite ->
-                _favoriteGems.value += newFavorite
+            )) {
+                is Resource.Error -> {
+                    _favoriteGems.value = getErrorState(
+                        result.message,
+                        _favoriteGems.value
+                    )
+                }
+
+                else -> {
+                    result.data?.collect { newFavoriteGem ->
+                        _favoriteGems.value = _favoriteGems.value.copy(
+                            data = _favoriteGems.value.data + newFavoriteGem
+                        )
+                    }
+                }
             }
         }
     }
@@ -247,8 +320,10 @@ class GemViewModel @Inject constructor(
                     .getOrNull() ?: return
 
                 _newestGems.update { current ->
-                    if (current.any { it.sameGemAs(gem) }) current
-                    else (listOf(gem) + current).take(MAX_NEWEST_GEMS)
+                    if (current.data.any { it.sameGemAs(gem) }) current
+                    else current.copy(
+                        data = (listOf(gem) + current.data).take(MAX_NEWEST_GEMS)
+                    )
                 }
             }
             is FeedEvent.Error -> Log.w(TAG, "Live feed error: ${event.message}")
@@ -268,10 +343,6 @@ class GemViewModel @Inject constructor(
     // ---------------------------------------------------------------------------------
     // Errors and location
     // ---------------------------------------------------------------------------------
-
-    override fun handleError(errorMessage: String?) {
-
-    }
 
     /** Call this from the permission callback. Safe to call repeatedly. */
     fun onLocationAccess(newAccess: LocationAccess) {
@@ -305,17 +376,3 @@ sealed class GemEvent {
     data class AddGem(val title: String, val coords: LatLng, val placesName: String) : GemEvent()
 }
 
-data class GemUiState (
-    val gems: List<Gem> = emptyList(),
-    val errorMessage: String? = null
-)
-
-data class FavoriteGemsUiState (
-    val favoriteGems: List<Gem> = emptyList(),
-    val errorMessage: String? = null
-)
-
-data class NewestGemsUiState (
-    val newestGems: List<Gem> = emptyList(),
-    val errorMessage: String? = null
-)
