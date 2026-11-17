@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CPEN321 Application</string>
+    <string name="app_name">Excavator</string>
     <string name="title_activity_signin">SigninActivity</string>
 
     <!-- Content Descriptions -->

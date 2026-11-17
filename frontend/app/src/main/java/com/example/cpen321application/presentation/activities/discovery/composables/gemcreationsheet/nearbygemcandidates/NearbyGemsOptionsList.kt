@@ -20,16 +20,20 @@ fun NearbyGemsOptionsList (
     onOptionsClosed: (Boolean) -> Unit
 ) {
 
-    val uiState by viewModel.gemCandidate.collectAsState()
+    val gemCandidateState by viewModel.gemCandidate.collectAsState()
 
     // TODO: make viewmodel call GetGemCandidiates and see if that will cause new gems to appear
 
-    if (uiState.isNotEmpty()) {
+    if (gemCandidateState.errorMessage != null) {
+        NoGemCandidateDisplay(
+            message = gemCandidateState.errorMessage!!
+        ) { onOptionsClosed(it)}
+    } else if (gemCandidateState.data.isNotEmpty()) {
         LazyColumn(
             modifier = modifier.fillMaxWidth()
         ) {
 
-            uiState.forEach { gemCandidate ->
+            gemCandidateState.data.forEach { gemCandidate ->
                 item {
                     NearbyGemOptionCard(gemCandidate) {
                         viewModel.addGem(
@@ -42,15 +46,27 @@ fun NearbyGemsOptionsList (
         }
     } else {
         Column {
-            Text("No gem candididates found! Check back later")
-            Button(
-                onClick = {onOptionsClosed(false)}
-            ) {
-                Text("Ok")
-            }
+
+            NoGemCandidateDisplay(
+                message = "No gem candididates found! Check back later"
+            ) { onOptionsClosed(it) }
         }
-
     }
+}
 
+@Composable
+fun NoGemCandidateDisplay(
+    modifier: Modifier = Modifier,
+    message: String,
+    onDismiss: (Boolean) -> Unit
+){
+    Column {
+        Text(message)
+        Button(
+            onClick = {onDismiss(false)}
+        ) {
+            Text("Ok")
+        }
+    }
 }
 

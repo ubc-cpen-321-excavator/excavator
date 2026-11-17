@@ -120,7 +120,7 @@ class GemViewModel @Inject constructor(
      * is created. `first()` then cancels the collection, so the stream can shut down
      * when no UI is watching.
      */
-    private fun getGems() {
+     fun getGems() {
         launch {
             val firstFix = coordinates.filterNotNull().first()
             val coords = LatLng(firstFix.latitude, firstFix.longitude)
@@ -177,7 +177,8 @@ class GemViewModel @Inject constructor(
                 else -> {
                     result.data?.collect { newGem ->
                         _uiState.value = _uiState.value.copy(
-                            data = _uiState.value.data + newGem
+                            data = _uiState.value.data + newGem,
+                            errorMessage = null
                         )
                     }
                 }
@@ -248,7 +249,8 @@ class GemViewModel @Inject constructor(
                 else -> {
                     result.data?.collect { newFavoriteGem ->
                         _favoriteGems.value = _favoriteGems.value.copy(
-                            data = _favoriteGems.value.data + newFavoriteGem
+                            data = _favoriteGems.value.data + newFavoriteGem,
+                            errorMessage = null
                         )
                     }
                 }

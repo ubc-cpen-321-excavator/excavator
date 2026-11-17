@@ -23,12 +23,7 @@ import com.example.cpen321application.presentation.activities.discovery.composab
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.localrating.LocalRating
 import java.util.Locale.getDefault
-
-private fun removePrefix(s: String, prefix: String): String {
-    return if (s.startsWith(prefix)) {
-        s.substring(prefix.length)
-    } else s
-}
+import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,7 +43,7 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
             Column() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        gem.title.replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() },
+                        gem.title.replaceFirstChar { if (it.isLowerCase()) it.titlecase(LocalLocale.current.platformLocale) else it.toString() },
                         modifier = Modifier.padding(16.dp),
                         fontSize = 20.sp
                     )
@@ -64,13 +59,13 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                     )
                 }
 
-                CommentCardList(modifier = Modifier.weight(1f), gemID = removePrefix(gem.placesName,"places/"))
+                CommentCardList(modifier = Modifier.weight(1f), gemID = gem.placesName.removePrefix("places/"))
                 NewCommentInput(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
                         .imePadding(),
-                    gemID = removePrefix(gem.placesName,"places/")
+                    gemID = gem.placesName.removePrefix("places/")
                 )
 
             }
