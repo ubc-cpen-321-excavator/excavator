@@ -9,6 +9,7 @@
 | 2026-10-31 | 4.1 | Gems: ratings, login on writes, internal interfaces. Live Feed: `gem.updated`. Users: profile routes. New Favorites component. Matches the implemented backend. |
 | 2026-10-31 | 4.2 | Added the Favorites and Ratings collections; Gems store rating totals; comments store their author. |
 | 2026-10-31 | 4.4 | Added the backend frameworks and libraries. |
+| 2026-11-17 | 4.1, 4.2 | Gems: new `GET /gem/:pk/photo` and a `photoUrl` on every gem, so the dashboard can show place photos; `GET /gem/newest` can be limited to gems near the user. Gems store the name of their Google photo. |
 
 ---
 
@@ -101,17 +102,19 @@ Excavator is an app designed to let you find niche, high quality locations in yo
             - **Purpose**: Gems around the user, for the dashboard and discovery screen.
         4. `GET /gem/within?south&west&north&east[&limit]` → gems, highest Gem Score first
             - **Purpose**: Gems inside the visible map area, for the discovery screen.
-        5. `GET /gem/newest[?limit]` → gems, newest first
-            - **Purpose**: The latest gems, for the dashboard.
-        6. `GET /gem/:pk/comments` → `[{ id, body, author, authorName }]`, oldest first; `POST /gem/:pk/comments { body }` → 201 `{ id, body, author, authorName }` (posting requires login)
+        5. `GET /gem/newest[?lat&lng[&radius]][&limit]` → gems, newest first
+            - **Purpose**: The latest gems, for the dashboard. With `lat` / `lng`, only the gems within `radius` metres of the user (default 5000, max 50000); without them, gems anywhere.
+        6. `GET /gem/:pk/photo[?maxWidth]` → 302 redirect to a photo of the place
+            - **Purpose**: Shows a photo of the gem whose place ID is `pk`, on the dashboard and its info sheet. Every gem's JSON has a `photoUrl` pointing here, which the app uses as the image source. The photo comes from Google Places through the server, so the Google API key never reaches the app; the server stores the name of the place's first photo and asks Google for a short-lived image URL on each request. Gems whose place ID Google doesn't know (e.g. demo data) get the photo of the best text-search match for their name near their location. Returns 404 if the gem doesn't exist or Google has no photo of it, and 502 if Google Places is unavailable.
+        7. `GET /gem/:pk/comments` → `[{ id, body, author, authorName }]`, oldest first; `POST /gem/:pk/comments { body }` → 201 `{ id, body, author, authorName }` (posting requires login)
             - **Purpose**: Reads and adds the comments of the gem whose place ID is `pk`. A new comment records the signed-in user and their display name.
-        7. `PUT /gem/:pk/rating { stars }` → `{ stars, gem }`; `GET /gem/:pk/rating` → `{ stars }` (both require login)
+        8. `PUT /gem/:pk/rating { stars }` → `{ stars, gem }`; `GET /gem/:pk/rating` → `{ stars }` (both require login)
             - **Purpose**: Sets the signed-in user's 1–5 star rating of the gem, returning the gem with its new rating totals and Gem Score; or reads their rating (404 if they haven't rated it).
-        8. `GET /place/nearby?lat&lng[&type]` → up to 20 places within 200 m, nearest first, each with `isGem`
+        9. `GET /place/nearby?lat&lng[&type]` → up to 20 places within 200 m, nearest first, each with `isGem`
             - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem; the app then sends its `name` to `POST /gem`.
-        9. `boolean hasGem(String name)`
+        10. `boolean hasGem(String name)`
             - **Purpose**: Used by Favorites and by comments and ratings to check a gem exists before acting on it.
-        10. `List<Gem> getGems(List<String> names)`
+        11. `List<Gem> getGems(List<String> names)`
             - **Purpose**: Used by Favorites to load a user's favorite gems in one query, in the order given; names with no gem are left out.
     - Any other method on these paths gets 405 with an `Allow` header.
 2. **Live Feed**
@@ -149,7 +152,7 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 
 ### **4.2. Databases**
 1. **Gems DB (MongoDB, `gems` collection)**
-    - **Purpose**: Stores every gem in Excavator. Each gem holds its Google Places place (place ID, display name and location), its type and description, the user who added it, and its Gem Score together with the inputs the score is computed from (the Google rating and review count, the nicheness derived from the review count, and the number and average of Excavator users' ratings) and the time the score was last computed. The location is indexed for geospatial queries, so the discovery screen can load the gems around the user and the dashboard can show nearby gems. Gems are also indexed by type for filtering and by Gem Score for recommendations.
+    - **Purpose**: Stores every gem in Excavator. Each gem holds its Google Places place (place ID, display name, location and the name of its first Google photo), its type and description, the user who added it, and its Gem Score together with the inputs the score is computed from (the Google rating and review count, the nicheness derived from the review count, and the number and average of Excavator users' ratings) and the time the score was last computed. The location is indexed for geospatial queries, so the discovery screen can load the gems around the user and the dashboard can show nearby gems. Gems are also indexed by type for filtering and by Gem Score for recommendations.
 2. **Users DB (MongoDB, `users` collection)**
     - **Purpose**: Stores every Excavator user, keyed by their Google account ID. Each user holds their name from Google and the display name shown to other users. A user is created the first time they sign in with Google, and the same ID is what each gem stores as the user who added it.
 3. **Comments DB (MongoDB, `comments` collection)**

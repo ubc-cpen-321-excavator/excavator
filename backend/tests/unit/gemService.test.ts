@@ -616,4 +616,19 @@ describe('Mocked: GemService list queries', () => {
     expect(sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
     expect(limit).toHaveBeenCalledWith(3);
   });
+
+  // Mocked behavior: GemModel.find returns one gem
+  // Input: limit 3, within 6378.1 m of (49.26, -123.25)
+  // Expected behavior: a $centerSphere filter, radius in radians (1 / Earth's radius in km), newest first
+  // Expected output: the gems
+  test('Newest gems near a point', async () => {
+    const { sort } = mockFindChain();
+
+    await new GemService().getNewestGems(3, { center: { latitude: 49.26, longitude: -123.25 }, radius: 6378.1 });
+
+    expect(mockedGemModel.find).toHaveBeenCalledWith({
+      'place.location': { $geoWithin: { $centerSphere: [[-123.25, 49.26], 0.001] } },
+    });
+    expect(sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
+  });
 });

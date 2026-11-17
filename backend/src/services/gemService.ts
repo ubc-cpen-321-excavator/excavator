@@ -9,7 +9,23 @@ import { distanceMeters, type Bounds, type LatLng } from "../utils/geo";
  * Google Places fields requested when looking up a place for a new Gem.
  * The Places API (New) rejects any request that has no field mask.
  */
-const PLACE_FIELD_MASK = 'id,name,displayName,location,primaryType,editorialSummary,rating,userRatingCount';
+const PLACE_FIELD_MASK = 'id,name,displayName,location,primaryType,editorialSummary,rating,userRatingCount,photos';
+
+/** Google Places fields requested when looking up only a place's photos. */
+const PHOTO_FIELD_MASK = 'photos';
+
+/** Google Places fields requested from a text search for a place's photos. */
+const PHOTO_SEARCH_FIELD_MASK = 'places.photos';
+
+/**
+ * How far from a Gem a text search for its photo looks, in metres.
+ * Used for Gems whose name is not a real place ID, e.g. the seeded demo Gems.
+ */
+const PHOTO_SEARCH_RADIUS_M = 500;
+
+/** Default and largest width of a Gem photo, in pixels (Google allows up to 4800). */
+export const GEM_PHOTO_WIDTH_DEFAULT_PX = 800;
+export const GEM_PHOTO_WIDTH_MAX_PX = 4800;
 
 /** Google Places fields requested for each nearby place. */
 const NEARBY_FIELD_MASK = 'places.name,places.displayName,places.location,places.primaryType,places.formattedAddress';
@@ -141,6 +157,9 @@ export class PlacesUnavailableError extends Error {
   }
 }
 
+/** Earth's radius in metres, as MongoDB uses to turn a `$centerSphere` radius into radians. */
+const EARTH_RADIUS_M = 6_378_100;
+
 /** MongoDB's error code for a unique index violation. */
 const MONGO_DUPLICATE_KEY = 11000;
 
@@ -212,6 +231,8 @@ class Gem {
   readonly place: Place;
   /** User ID (Google `sub`) of the user who added the Gem. */
   readonly addedBy?: string | undefined;
+  /** Path of the Gem's photo on this server, `/gem/<place ID>/photo` (redirects to the image; 404 if it has none). */
+  readonly photoUrl: string;
   protected score?: number | undefined;
   protected nicheness?: number | undefined;
   protected quality?: number | undefined;
@@ -231,6 +252,7 @@ class Gem {
     this.name = name;
     this.place = place;
     this.addedBy = addedBy;
+    this.photoUrl = `/gem/${encodeURIComponent(name.slice(PLACE_NAME_PREFIX.length))}/photo`;
   }
 
   /**
@@ -343,6 +365,8 @@ interface PlaceLookup {
   place: Place;
   /** Google's 1.0–5.0 rating, if the place has one. */
   rating: number | undefined;
+  /** Google Places resource name of the place's first photo, `places/<place ID>/photos/<photo ID>`, if it has one. */
+  photoName: string | undefined;
   /** Number of Google reviews, if Google gave one. */
   reviewCount: number | undefined;
 }
@@ -389,6 +413,23 @@ function locationFromGoogle(gPlace: GooglePlace): LatLng | undefined {
 }
 
 /**
+ * @param gPlace a place from Google Places, looked up with `photos` in the field mask.
+ * @returns the resource name of its first photo, or `undefined` if it has none.
+ */
+function firstPhotoName(gPlace: GooglePlace): string | undefined {
+  return nonEmpty(gPlace.photos?.[0]?.name);
+}
+
+/**
+ * @param err an error thrown by the Places client.
+ * @returns `true` if Google rejected the request because the place or photo is malformed or unknown.
+ */
+function isNoSuchPlaceError(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null)?.code;
+  return code === GRPC_NOT_FOUND || code === GRPC_INVALID_ARGUMENT;
+}
+
+/**
  * Maps a place looked up on Google Places to our `Place` and its Google rating.
  *
  * @param gPlace the place from Google Places.
@@ -414,6 +455,7 @@ function lookupFromGoogle(gPlace: GooglePlace): PlaceLookup {
     place,
     rating: positiveOrUndefined(gPlace.rating),
     reviewCount: positiveOrUndefined(gPlace.userRatingCount),
+    photoName: firstPhotoName(gPlace),
   };
 }
 
@@ -466,8 +508,7 @@ class GemService {
         { otherArgs: { headers: { 'X-Goog-FieldMask': PLACE_FIELD_MASK } } },
       );
     } catch (err) {
-      const code = (err as { code?: unknown } | null)?.code;
-      if (code === GRPC_NOT_FOUND || code === GRPC_INVALID_ARGUMENT) {
+      if (isNoSuchPlaceError(err)) {
         throw new InvalidPlaceError('No such place.');
       }
       throw new PlacesUnavailableError('Place lookup failed.', { cause: err });
@@ -482,17 +523,18 @@ class GemService {
    * @param name Google Places resource name, `places/<place ID>`.
    * @param addedBy user ID of the user who is adding the Gem.
    * @param userLocation where the user is; the place must be within `MAX_ADD_DISTANCE_M` of it.
-   * @returns the new Gem, with `quality` (Google rating), `reviewCount`, nicheness and GemScore set.
+   * @returns the new Gem, with `quality` (Google rating), `reviewCount`, nicheness and GemScore set,
+   *   and the name of the place's first photo, if it has one.
    * @throws `InvalidPlaceError` if `name` is malformed or not a real place.
    * @throws `TooFarError` if the place is too far from the user.
    * @constructs `Gem`
    */
-  private async newGem(name: string, addedBy: string, userLocation: LatLng): Promise<Gem> {
+  private async newGem(name: string, addedBy: string, userLocation: LatLng): Promise<{ gem: Gem; photoName: string | undefined }> {
     if (!isValidGemName(name)) {
       throw new InvalidPlaceError('Invalid place name.');
     }
 
-    const { place, rating, reviewCount } = await this.getPlace(name);
+    const { place, rating, reviewCount, photoName } = await this.getPlace(name);
 
     if (distanceMeters(userLocation, place) > MAX_ADD_DISTANCE_M) {
       throw new TooFarError('Too far from place.');
@@ -503,7 +545,7 @@ class GemService {
     gem.setReviewCount(reviewCount);
     gem.rescore();
 
-    return gem;
+    return { gem, photoName };
   }
 
   /**
@@ -557,8 +599,8 @@ class GemService {
       throw new GemExistsError('Gem already exists.');
     }
 
-    const gem = await this.newGem(name, addedBy, userLocation);
-    await this.repo.insert(gem);
+    const { gem, photoName } = await this.newGem(name, addedBy, userLocation);
+    await this.repo.insert(gem, photoName);
 
     return gem;
   }
@@ -681,10 +723,100 @@ class GemService {
 
   /**
    * @param limit most Gems to return.
+   * @param near if given, only Gems within `near.radius` metres of `near.center`.
    * @returns the most recently added Gems, newest first.
    */
-  async getNewestGems(limit: number): Promise<Gem[]> {
-    return this.repo.newest(limit);
+  async getNewestGems(limit: number, near?: { center: LatLng; radius: number }): Promise<Gem[]> {
+    return this.repo.newest(limit, near);
+  }
+
+  /**
+   * Gets a short-lived URL of a Gem's photo, served by Google.
+   * Uses the photo name stored with the Gem; if there is none, or Google no longer knows it,
+   * finds the Gem's first photo on Google Places and stores its name for next time.
+   *
+   * @param gem a stored Gem.
+   * @param maxWidthPx largest width of the image, 1–`GEM_PHOTO_WIDTH_MAX_PX`.
+   * @returns the image URL, or `undefined` if Google has no photo of the place.
+   * @throws `PlacesUnavailableError` if Google Places fails.
+   * @throws the database error if reading or storing the photo name fails.
+   */
+  async getPhotoUri(gem: Gem, maxWidthPx: number): Promise<string | undefined> {
+    const stored = await this.repo.getPhotoName(gem.name);
+    if (stored !== undefined) {
+      const uri = await this.photoMediaUri(stored, maxWidthPx);
+      if (uri !== undefined) {
+        return uri;
+      }
+    }
+
+    const photoName = await this.findPhotoName(gem);
+    if (photoName === undefined || photoName === stored) {
+      return undefined;
+    }
+
+    await this.repo.setPhotoName(gem.name, photoName);
+    return this.photoMediaUri(photoName, maxWidthPx);
+  }
+
+  /**
+   * Finds a Gem's first photo on Google Places. Looks the place up by name; if Google does not know
+   * the name (e.g. a seeded demo Gem), searches for the Gem's display name around its location instead.
+   *
+   * @param gem the Gem.
+   * @returns the photo's resource name, or `undefined` if Google has none.
+   * @throws `PlacesUnavailableError` if Google Places fails.
+   */
+  private async findPhotoName(gem: Gem): Promise<string | undefined> {
+    try {
+      const [gPlace] = await this.gpClient.getPlace(
+        { name: gem.name },
+        { otherArgs: { headers: { 'X-Goog-FieldMask': PHOTO_FIELD_MASK } } },
+      );
+      return gPlace ? firstPhotoName(gPlace) : undefined;
+    } catch (err) {
+      if (!isNoSuchPlaceError(err)) {
+        throw new PlacesUnavailableError('Photo lookup failed.', { cause: err });
+      }
+    }
+
+    const { latitude, longitude } = gem.place;
+    try {
+      const [res] = await this.gpClient.searchText(
+        {
+          textQuery: gem.place.getDisplayName(),
+          locationBias: { circle: { center: { latitude, longitude }, radius: PHOTO_SEARCH_RADIUS_M } },
+          maxResultCount: 1,
+        },
+        { otherArgs: { headers: { 'X-Goog-FieldMask': PHOTO_SEARCH_FIELD_MASK } } },
+      );
+      const first = res.places?.[0];
+      return first ? firstPhotoName(first) : undefined;
+    } catch (err) {
+      throw new PlacesUnavailableError('Photo search failed.', { cause: err });
+    }
+  }
+
+  /**
+   * @param photoName Google Places photo resource name.
+   * @param maxWidthPx largest width of the image.
+   * @returns a short-lived URL of the image, or `undefined` if Google no longer knows the photo.
+   * @throws `PlacesUnavailableError` if Google Places fails.
+   */
+  private async photoMediaUri(photoName: string, maxWidthPx: number): Promise<string | undefined> {
+    try {
+      const [media] = await this.gpClient.getPhotoMedia({
+        name: `${photoName}/media`,
+        maxWidthPx,
+        skipHttpRedirect: true,
+      });
+      return nonEmpty(media.photoUri);
+    } catch (err) {
+      if (isNoSuchPlaceError(err)) {
+        return undefined;
+      }
+      throw new PlacesUnavailableError('Photo download failed.', { cause: err });
+    }
   }
 }
 
@@ -692,9 +824,10 @@ class GemService {
  * Maps a Gem to the document stored in Mongo.
  *
  * @param gem the Gem to store.
+ * @param photoName Google Places resource name of the place's first photo, if it has one.
  * @returns the document, with the location as GeoJSON `[longitude, latitude]` and no `undefined` fields.
  */
-function toDoc(gem: Gem): GemInput {
+function toDoc(gem: Gem, photoName?: string): GemInput {
   const place = gem.place;
   const doc: GemInput = {
     name: gem.name,
@@ -702,6 +835,7 @@ function toDoc(gem: Gem): GemInput {
       name: place.name,
       displayName: place.getDisplayName(),
       location: { type: 'Point', coordinates: [place.longitude, place.latitude] },
+      ...definedOnly({ photoName }),
     },
     ...definedOnly({
       description: place.description,
@@ -772,12 +906,13 @@ class GemRepo {
    * Stores a new Gem, never overwriting one.
    *
    * @param gem the Gem to store.
+   * @param photoName Google Places resource name of the place's first photo, if it has one.
    * @throws `GemExistsError` if a Gem with the same name is already stored (unique index).
    * @throws the database error for anything else.
    */
-  async insert(gem: Gem): Promise<void> {
+  async insert(gem: Gem, photoName?: string): Promise<void> {
     try {
-      await GemModel.create(toDoc(gem));
+      await GemModel.create(toDoc(gem, photoName));
     } catch (err) {
       if ((err as { code?: unknown } | null)?.code === MONGO_DUPLICATE_KEY) {
         throw new GemExistsError('Gem already exists.');
@@ -858,11 +993,42 @@ class GemRepo {
 
   /**
    * @param limit most Gems to return.
+   * @param near if given, only Gems within `near.radius` metres of `near.center`.
    * @returns the most recently added Gems, newest first.
    */
-  async newest(limit: number): Promise<Gem[]> {
-    const docs = await GemModel.find({}).sort({ createdAt: -1, _id: -1 }).limit(limit).lean<GemDoc[]>();
+  async newest(limit: number, near?: { center: LatLng; radius: number }): Promise<Gem[]> {
+    // $centerSphere rather than $nearSphere, which would sort by distance instead of age.
+    const filter = near
+      ? {
+        'place.location': {
+          $geoWithin: {
+            $centerSphere: [[near.center.longitude, near.center.latitude], near.radius / EARTH_RADIUS_M],
+          },
+        },
+      }
+      : {};
+    const docs = await GemModel.find(filter).sort({ createdAt: -1, _id: -1 }).limit(limit).lean<GemDoc[]>();
     return docs.map(fromDoc);
+  }
+
+  /**
+   * @param name Gem name.
+   * @returns the stored Google Places photo name of the Gem, or `undefined` if none is stored (or there is no such Gem).
+   */
+  async getPhotoName(name: string): Promise<string | undefined> {
+    const doc = await GemModel.findOne({ name }, { 'place.photoName': 1 })
+      .lean<{ place?: { photoName?: string | null } }>();
+    return nonEmpty(doc?.place?.photoName);
+  }
+
+  /**
+   * Stores the Google Places photo name of a Gem, leaving everything else as stored.
+   *
+   * @param name Gem name.
+   * @param photoName Google Places photo resource name.
+   */
+  async setPhotoName(name: string, photoName: string): Promise<void> {
+    await GemModel.updateOne({ name }, { $set: { 'place.photoName': photoName } });
   }
 
   /**

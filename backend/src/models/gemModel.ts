@@ -11,6 +11,9 @@ const placeSchema = new Schema({
   name: { type: String, required: true }, // Google Places resource name, e.g. "places/ChIJ..."
   displayName: { type: String },
   location: { type: pointSchema, required: true },
+  // Google Places resource name of the place's first photo, e.g. "places/ChIJ.../photos/AXCi...".
+  // Not sent to clients: they load the image through GET /gem/:pk/photo, which needs our API key.
+  photoName: { type: String },
 }, { _id: false });
 
 /**
@@ -43,7 +46,7 @@ gemSchema.index({ type: 1 });
 gemSchema.index({ score: -1 });
 
 // Comments are in their own collection (commentModel.ts), keyed by gem name.
-// TODO Ratings, photos and notes go in their own collections too, keyed by gem name.
+// TODO User photos and notes go in their own collections too, keyed by gem name.
 
 /** A stored Gem document, as read back from Mongo. */
 export type GemDoc = InferSchemaType<typeof gemSchema>;
