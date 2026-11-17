@@ -197,19 +197,87 @@ paths:
       tags: [Gems]
       operationId: getNewestGems
       summary: The most recently added Gems, newest first
-      description: For the dashboard.
+      description: >-
+        For the dashboard. With `lat` and `lng`, only the Gems within `radius` of that point;
+        without them, Gems anywhere. Give both or neither.
       parameters:
+        - name: lat
+          in: query
+          description: Latitude in degrees, as a plain decimal (e.g. `49.26`). Required with `lng`.
+          schema: { $ref: '#/components/schemas/Latitude' }
+        - name: lng
+          in: query
+          description: Longitude in degrees, as a plain decimal (e.g. `-123.25`). Required with `lat`.
+          schema: { $ref: '#/components/schemas/Longitude' }
+        - name: radius
+          in: query
+          description: Search radius in metres. Ignored without `lat` / `lng`.
+          schema: { type: integer, minimum: 1, maximum: 50000, default: 5000 }
         - { $ref: '#/components/parameters/Limit' }
       responses:
         '200': { $ref: '#/components/responses/GemList' }
         '400':
-          description: Invalid limit.
+          description: Only one of `lat` / `lng` given, or an invalid location, radius or limit.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-              example: { message: Invalid limit. }
+              examples:
+                location: { value: { message: Invalid location. } }
+                radius: { value: { message: Invalid radius. } }
+                limit: { value: { message: Invalid limit. } }
         '405': { $ref: '#/components/responses/MethodNotAllowed' }
         '500': { $ref: '#/components/responses/GetGemsFailed' }
+
+  /gem/{pk}/photo:
+    parameters:
+      - name: pk
+        in: path
+        required: true
+        description: The Gem's place ID (its name without `places/`).
+        schema: { $ref: '#/components/schemas/PlaceId' }
+    get:
+      tags: [Gems]
+      operationId: getGemPhoto
+      summary: Redirects to a photo of the Gem, from Google Places
+      description: >-
+        Use the Gem's `photoUrl` as an image source. The image URL Google gives is short-lived,
+        so request this path again rather than storing the redirect target.
+      parameters:
+        - name: maxWidth
+          in: query
+          description: Largest width of the image, in pixels.
+          schema: { type: integer, minimum: 1, maximum: 4800, default: 800 }
+      responses:
+        '302':
+          description: Redirect to the image.
+          headers:
+            Location:
+              description: Short-lived URL of the image.
+              schema: { type: string, format: uri }
+        '400':
+          description: "`pk` is not a place ID, or `maxWidth` is invalid."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                pk: { value: { message: Invalid Gem ID. } }
+                width: { value: { message: Invalid width. } }
+        '404':
+          description: No Gem has that place ID, or Google has no photo of the place.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                gem: { value: { message: No such Gem. } }
+                photo: { value: { message: No photo. } }
+        '405': { $ref: '#/components/responses/MethodNotAllowed' }
+        '500':
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { message: Get photo failed. }
+        '502': { $ref: '#/components/responses/PlacesUnavailable' }
 
   /gem/{pk}/comments:
     parameters:
@@ -665,11 +733,16 @@ components:
     Gem:
       type: object
       description: Optional fields are absent when unknown.
-      required: [name, place]
+      required: [name, place, photoUrl]
       properties:
         name: { $ref: '#/components/schemas/GemName' }
         place: { $ref: '#/components/schemas/Place' }
         addedBy: { type: string, description: User ID (Google account `sub`) of who added it. }
+        photoUrl:
+          type: string
+          description: >-
+            Path of the Gem's photo on this server, relative to the API base URL. Redirects to the image,
+            or answers 404 if Google has no photo of the place. See `GET /gem/{pk}/photo`.
         score: { type: number, minimum: 0, maximum: 100, description: 'GemScore: high when well rated and little known.' }
         scoreTime: { type: integer, description: 'When the score was computed, ms since epoch.' }
         nicheness: { type: number, minimum: 0, maximum: 1, description: Fewer Google reviews means more niche. }
@@ -687,6 +760,7 @@ components:
           type: cafe
           description: Quiet cafe behind the library.
         addedBy: '104837261938475610293'
+        photoUrl: /gem/ChIJN1t_tDeuEmsRUsoyG83frY4/photo
         score: 82.2
         scoreTime: 1761868800000
         nicheness: 0.769
