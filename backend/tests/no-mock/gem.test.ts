@@ -358,6 +358,6 @@ describeWithPlaces('Unmocked: GET /gem/:pk/photo with Google Places', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toMatch(/^https:\/\//);
     const stored = await GemModel.findOne({ name: GOOGLE_SYDNEY }).lean();
-    expect(stored?.place.photoName).toMatch(new RegExp(`^${GOOGLE_SYDNEY}/photos/`));
+    expect(stored?.place.photoName?.startsWith(`${GOOGLE_SYDNEY}/photos/`)).toBe(true);
   }, 20_000);
 });

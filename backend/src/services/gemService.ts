@@ -416,8 +416,8 @@ function locationFromGoogle(gPlace: GooglePlace): LatLng | undefined {
  * @param gPlace a place from Google Places, looked up with `photos` in the field mask.
  * @returns the resource name of its first photo, or `undefined` if it has none.
  */
-function firstPhotoName(gPlace: GooglePlace | undefined): string | undefined {
-  return nonEmpty(gPlace?.photos?.[0]?.name);
+function firstPhotoName(gPlace: GooglePlace): string | undefined {
+  return nonEmpty(gPlace.photos?.[0]?.name);
 }
 
 /**
@@ -773,7 +773,7 @@ class GemService {
         { name: gem.name },
         { otherArgs: { headers: { 'X-Goog-FieldMask': PHOTO_FIELD_MASK } } },
       );
-      return firstPhotoName(gPlace);
+      return gPlace ? firstPhotoName(gPlace) : undefined;
     } catch (err) {
       if (!isNoSuchPlaceError(err)) {
         throw new PlacesUnavailableError('Photo lookup failed.', { cause: err });
@@ -790,7 +790,8 @@ class GemService {
         },
         { otherArgs: { headers: { 'X-Goog-FieldMask': PHOTO_SEARCH_FIELD_MASK } } },
       );
-      return firstPhotoName(res.places?.[0] ?? undefined);
+      const first = res.places?.[0];
+      return first ? firstPhotoName(first) : undefined;
     } catch (err) {
       throw new PlacesUnavailableError('Photo search failed.', { cause: err });
     }

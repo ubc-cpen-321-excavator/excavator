@@ -764,6 +764,27 @@ describe('Mocked: GET /gem/:pk/photo', () => {
     expect(response.body).toEqual({ message: 'Google Places unavailable.' });
   });
 
+  // Mocked behavior: Google returns an image URL that is not https on a Google photo host
+  // Input: GET /gem/abc/photo
+  // Expected status code: 502
+  // Expected behavior: no redirect is sent
+  // Expected output: { message: "Google Places unavailable." }
+  test.each([
+    'https://evil.example.com/image',
+    'http://lh3.googleusercontent.com/image',
+    'https://googleusercontent.com.evil.example/image',
+    'not a url',
+  ])('Unexpected photo URL %s', async (photoUri) => {
+    mockGemAndPhoto(PHOTO);
+    mockGetPhotoMedia.mockResolvedValue([{ photoUri }]);
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(502);
+    expect(response.headers.location).toBeUndefined();
+    expect(response.body).toEqual({ message: 'Google Places unavailable.' });
+  });
+
   // Mocked behavior: GemModel.findOne rejects
   // Input: GET /gem/abc/photo
   // Expected status code: 500

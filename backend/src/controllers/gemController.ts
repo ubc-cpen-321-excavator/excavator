@@ -242,6 +242,24 @@ gemRouter.get('/newest', asyncHandler(async (req, res) => {
   }
 }));
 
+/** Hosts Google Places serves photos from, e.g. `lh3.googleusercontent.com`. */
+const GOOGLE_PHOTO_HOST_SUFFIX = '.googleusercontent.com';
+
+/**
+ * @param uri an image URL from Google Places.
+ * @returns the parsed URL if it is `https` on a Google photo host, else `undefined`.
+ */
+export function toGooglePhotoUrl(uri: string): URL | undefined {
+  let url: URL;
+  try {
+    url = new URL(uri);
+  } catch {
+    return undefined;
+  }
+
+  return url.protocol === 'https:' && url.hostname.endsWith(GOOGLE_PHOTO_HOST_SUFFIX) ? url : undefined;
+}
+
 /**
  * GET /gem/:pk/photo[?maxWidth=px]
  *
@@ -254,7 +272,7 @@ gemRouter.get('/newest', asyncHandler(async (req, res) => {
  * - 404 `{ message: 'No such Gem.' }`: no Gem has that place ID.
  * - 404 `{ message: 'No photo.' }`: Google has no photo of the place.
  * - 500 `{ message: 'Get photo failed.' }`: database error.
- * - 502 `{ message: 'Google Places unavailable.' }`: Google Places failed.
+ * - 502 `{ message: 'Google Places unavailable.' }`: Google Places failed, or gave a URL not on a Google photo host.
  */
 gemRouter.get('/:pk/photo', asyncHandler(async (req: Request<{ pk: string }>, res: Response) => {
   const name = gemNameFromPlaceId(req.params.pk);
@@ -282,7 +300,15 @@ gemRouter.get('/:pk/photo', asyncHandler(async (req: Request<{ pk: string }>, re
       return;
     }
 
-    res.redirect(302, uri);
+    // Only redirect to Google's own image host, never to an arbitrary URL.
+    const photoUrl = toGooglePhotoUrl(uri);
+    if (!photoUrl) {
+      logError('Get Gem photo failed, unexpected photo URL from Google Places', uri);
+      res.status(502).json({ message: 'Google Places unavailable.' });
+      return;
+    }
+
+    res.redirect(302, photoUrl.href);
   } catch (err) {
     if (err instanceof PlacesUnavailableError) {
       logError('Get Gem photo failed, Google Places', err.cause);
