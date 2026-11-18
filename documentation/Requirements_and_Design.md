@@ -18,6 +18,7 @@
 | 2026-11-04 | 4.5, 4.6 | Simplified the diagrams to a high level: one database, plain-language labels instead of function names. Every failure is now an `alt` branch at the step where it happens. Add a Gem is split into Choose a place to add and adding the picked place, so a failed search ends the flow. |
 | 2026-11-04 | 3.5, 4.6 | Wrote the five formal use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Mark a Gem as favorite) with every failure scenario. Replaced Initialize session with Mark a Gem as favorite, since the formal use cases must exclude authentication. Add a Gem now matches the app: the place is picked from the list of nearby places. |
 | 2026-11-17 | 4.1, 4.2 | Gems: new `GET /gem/:pk/photo` and a `photoUrl` on every gem, so the dashboard can show place photos; `GET /gem/newest` can be limited to gems near the user. Gems store the name of their Google photo. |
+| 2026-11-17 | 3.2, 3.3, 3.4, 3.5 | Following the CP2 feedback: one User actor, since the Guest actor could only sign in; no include or extend relationships in the use case diagram, so *View comments* is its own goal and choosing a place is part of *Add a Gem*; the formal use cases are reordered (*Add a Gem* first), *Make comments* replaces *Mark a Gem as favorite*, and losing the live-update connection in Use Case 4 now shows a message. |
 
 ---
 
@@ -41,72 +42,43 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ![Use case diagram](./images/use_case_diagram.png)
 
 ### **3.3. Actors Description**
-1. **Guest**: Someone who has opened the app but not signed in. The only thing they can do is sign in.
-2. **Signed-in User**: Someone signed in with their Google account. They use every feature of the app. There is no admin or other role.
-3. **Google Sign-In**: Google's authentication service. It signs the user in and gives the app an ID token, which the server verifies.
-4. **Google Places API**: Google's place database. It lists the places near a user who is adding a gem, and gives the chosen place's location, rating and review count.
+1. **User**: Someone using the app with their Google account. They sign in first, and can then use every feature of the app. There is no admin or other role.
+2. **Google Sign-In**: Google's authentication service. It signs the user in and gives the app an ID token, which the server verifies.
+3. **Google Places API**: Google's place database. It lists the places near a user who is adding a gem, gives the chosen place's location, rating and review count, and provides the photos shown for each gem.
 
 ### **3.4. Use Case Description**
 - Use cases for feature 1: Authentication
-1. **Initialize session**: A Guest signs in with Google, the first time or after their login has expired, and becomes a Signed-in User.
+1. **Sign in**: The User signs in with their Google account, the first time they open the app or after their login has expired.
 2. **Sign out**: The User signs out, and the app forgets their login.
 
 - Use cases for feature 2: Gems and Gem Score
-3. **Browse Gems on the map**: The User sees the gems in the area shown on the map, highest Gem Score first.
-4. **View a Gem**: The User opens a gem and sees its details, its Gem Score and its comments.
-5. **Add a Gem**: The User adds a place within 200 m of them as a gem; the gem is then scored and shared with nearby users.
-6. **Choose a place to add**: While adding a gem, the User picks from the places near them, optionally filtered by type (e.g. café, park).
+3. **Add a Gem**: The User picks a place within 200 m of them from a list of nearby places, optionally filtered by type (e.g. café, park), and adds it as a gem; the gem is then scored and shared with nearby users.
+4. **Browse Gems on the map**: The User sees the gems in the area shown on the map, highest Gem Score first.
+5. **View a Gem**: The User opens a gem and sees its photo, its details and its Gem Score.
 
 - Use cases for feature 3: Live feed
-7. **View newest Gems**: The User opens the dashboard and sees the most recently added gems.
-8. **View new Gems nearby**: With the app open, gems added near the User, and gems whose Gem Score changed, appear without refreshing.
+6. **View newest Gems**: The User opens the dashboard and sees the most recently added gems near them, with their photos.
+7. **View new Gems nearby**: With the app open, gems added near the User, and gems whose Gem Score changed, appear without refreshing.
 
 - Use cases for feature 4: In-app ratings
-9. **Contribute to GemScore**: The User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
+8. **Contribute to GemScore**: The User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
 
 - Use cases for feature 5: Comments
-10. **View comments**: The User sees a gem's comments, oldest first, while viewing it.
-11. **Make comments**: While viewing a gem, the User writes a comment and posts it; it shows their name.
+9. **View comments**: The User opens a gem's comments and reads what other users wrote, oldest first.
+10. **Make comments**: The User writes a comment on a gem and posts it; it shows their name.
 
 - Use cases for feature 6: Favorites
-12. **Mark a Gem as favorite**: The User taps "favorite" on a gem to add it to their favorites.
-13. **View favorites**: The User opens the favorites screen and sees their favorite gems, most recently added first.
-14. **Remove a favorite**: The User removes a gem from their favorites.
+11. **Mark a Gem as favorite**: The User taps "favorite" on a gem to add it to their favorites.
+12. **View favorites**: The User opens the favorites screen and sees their favorite gems, most recently added first.
+13. **Remove a favorite**: The User removes a gem from their favorites.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 
 <a name="uc1"></a>
-#### Use Case 1: View a Gem
-**Description**: A Signed-in User finds a gem on the map or the dashboard and opens it to see its details, Gem Score and comments.
+#### Use Case 1: Add a Gem
+**Description**: A User adds a place near them as a gem, picking it from a list of nearby places that can be filtered by type. The new gem is scored and shown to nearby users.
 
-**Primary actor(s)**: Signed-in User
-
-**Main success scenario**:
-1. The User opens the Discovery screen.
-2. The app shows a marker for each gem in the visible map area.
-3. The User taps a gem's marker (or a gem card on the Dashboard).
-4. A half-height panel appears with the gem's name, type and Gem Score.
-5. The User pulls up the panel to full screen.
-6. The app shows the gem's full details and its comments, oldest first.
-
-**Failure scenario(s)**:
-- 2a. The gems can't be loaded (no connection, or a server error).
-    - 2a1. The app shows "Couldn't load gems, try again" and a retry option.
-- 2b. The visible map area is too large to search (e.g. it crosses the date line).
-    - 2b1. The app asks the User to zoom in.
-- 4a. The gem no longer exists (it was deleted after the map loaded).
-    - 4a1. The app shows "This gem is no longer available".
-    - 4a2. The app removes the gem's marker from the map.
-- 4b. The gem can't be loaded (no connection, or a server error) and it is not cached.
-    - 4b1. The panel appears with a message about the error and a retry option.
-- 6a. The comments can't be loaded.
-    - 6a1. The app shows the gem's details with "Couldn't load comments" and a retry option.
-
-<a name="uc2"></a>
-#### Use Case 2: Add a Gem
-**Description**: A Signed-in User adds a place near them as a gem, picking it from a list of nearby places that can be filtered by type (this includes *Choose a place to add*). The new gem is scored and shown to nearby users.
-
-**Primary actor(s)**: Signed-in User
+**Primary actor(s)**: User
 
 **Main success scenario**:
 1. The User taps "Add gem" on the Discovery screen.
@@ -140,14 +112,41 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 - 5e. The gem can't be added (no connection, a server error, or Google Places is unavailable).
     - 5e1. The app shows "Couldn't add the gem, try again". Nothing is added.
 
-<a name="uc3"></a>
-#### Use Case 3: Contribute to GemScore
-**Description**: A Signed-in User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
+<a name="uc2"></a>
+#### Use Case 2: View a Gem
+**Description**: A User finds a gem on the map or the dashboard and opens it to see its photo, details and Gem Score.
 
-**Primary actor(s)**: Signed-in User
+**Primary actor(s)**: User
 
 **Main success scenario**:
-1. The User opens a gem (Use Case 1).
+1. The User opens the Discovery screen.
+2. The app shows a marker for each gem in the visible map area.
+3. The User taps a gem's marker (or a gem card on the Dashboard).
+4. A half-height panel appears with the gem's name, type and Gem Score.
+5. The User pulls up the panel to full screen.
+6. The app shows the gem's photo, type, description, Gem Score and number of ratings.
+
+**Failure scenario(s)**:
+- 2a. The gems can't be loaded (no connection, or a server error).
+    - 2a1. The app shows "Couldn't load gems, try again" and a retry option.
+- 2b. The visible map area is too large to search (e.g. it crosses the date line).
+    - 2b1. The app asks the User to zoom in.
+- 4a. The gem no longer exists (it was deleted after the map loaded).
+    - 4a1. The app shows "This gem is no longer available".
+    - 4a2. The app removes the gem's marker from the map.
+- 4b. The gem can't be loaded (no connection, or a server error) and it is not cached.
+    - 4b1. The panel appears with a message about the error and a retry option.
+- 6a. The gem has no photo, or the photo can't be loaded.
+    - 6a1. The app shows a placeholder image instead; the rest of the details still show.
+
+<a name="uc3"></a>
+#### Use Case 3: Contribute to GemScore
+**Description**: A User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
+
+**Primary actor(s)**: User
+
+**Main success scenario**:
+1. The User opens a gem (Use Case 2).
 2. The User selects 1 to 5 stars.
 3. The app shows the gem's new Gem Score. If the User had rated the gem before, the new rating replaces the old one.
 4. Other users with that area open see the gem's new Gem Score without refreshing.
@@ -163,9 +162,9 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 
 <a name="uc4"></a>
 #### Use Case 4: View new Gems nearby
-**Description**: A Signed-in User with the Dashboard open sees the newest gems, and gems that are added or re-scored near them appear without refreshing.
+**Description**: A User with the Dashboard open sees the newest gems, and gems that are added or re-scored near them appear without refreshing.
 
-**Primary actor(s)**: Signed-in User
+**Primary actor(s)**: User
 
 **Main success scenario**:
 1. The User opens the Dashboard.
@@ -181,30 +180,37 @@ Excavator is an app designed to let you find niche, high quality locations in yo
     - 3a1. The app explains that the location is needed for live updates.
     - 3a2. The list still shows the newest gems, without live updates.
 - 4a. The live-update connection is lost.
-    - 4a1. New gems stop appearing until the connection is restored or the Dashboard is reopened.
+    - 4a1. The app shows "Live updates paused, reconnecting…" above the list.
+    - 4a2. The list keeps the gems it already shows, and the app tries to reconnect.
+    - 4a3. Once reconnected, the message disappears and new gems appear again.
 
 <a name="uc5"></a>
-#### Use Case 5: Mark a Gem as favorite
-**Description**: A Signed-in User adds a gem to their favorites, which they can see on the Favorites screen from any phone they sign in on.
+#### Use Case 5: Make comments
+**Description**: A User writes a comment on a gem. The comment appears, with their name, in the gem's comments for every user who opens the gem.
 
-**Primary actor(s)**: Signed-in User
+**Primary actor(s)**: User
 
 **Main success scenario**:
-1. The User opens a gem (Use Case 1).
-2. The User taps the favorite button.
-3. The favorite button turns on, and the gem appears at the top of the Favorites screen.
+1. The User opens a gem (Use Case 2) and opens its comments.
+2. The app shows the gem's comments, oldest first.
+3. The User types a comment and taps "Post".
+4. The app adds the comment at the bottom of the list, with the User's name.
 
 **Failure scenario(s)**:
-- 2a. The gem is already one of the User's favorites.
-    - 2a1. The favorite button stays on; nothing changes.
-- 2b. The User already has 500 favorites.
-    - 2b1. The app shows "You have too many favorites, remove one first".
-- 2c. The gem no longer exists.
-    - 2c1. The app shows "This gem is no longer available".
-- 2d. The User's login has expired.
-    - 2d1. The app returns to the sign-in screen; after signing in, the User can try again.
-- 2e. The favorite can't be saved (no connection, or a server error).
-    - 2e1. The app shows "Couldn't add to favorites, try again", and the favorite button stays off.
+- 2a. The comments can't be loaded (no connection, or a server error).
+    - 2a1. The app shows "Couldn't load comments" and a retry option.
+- 2b. The gem has no comments yet.
+    - 2b1. The app shows "No comments yet, be the first".
+- 3a. The comment is empty or only spaces.
+    - 3a1. The "Post" button stays disabled.
+- 3b. The comment is longer than 1000 characters.
+    - 3b1. The app shows "Comments can be at most 1000 characters" and keeps the text so the User can shorten it.
+- 4a. The gem no longer exists.
+    - 4a1. The app shows "This gem is no longer available". The comment is not posted.
+- 4b. The User's login has expired.
+    - 4b1. The app returns to the sign-in screen; after signing in, the User can post again.
+- 4c. The comment can't be saved (no connection, or a server error).
+    - 4c1. The app shows "Couldn't post your comment, try again" and keeps the text in the box.
 
 ### **3.6. Screen Mock-ups**
 ![Frontend Screens Diagram](images/frontend_screens_diagram.jpg)
@@ -344,20 +350,20 @@ The lifelines are the actors of 3.3 and the components of the dependencies diagr
 - A **solid arrow with a filled head** is a synchronous call. Its result comes back on the **dashed arrow** after it, labelled with what is returned (HTTP status and body for REST calls).
 - A **solid arrow with an open head** is an asynchronous message with no reply: WebSocket messages between the Frontend and the Live Feed, and updates the Frontend shows without the user asking.
 - Every failure the use case can run into is an `alt` branch at the step where it happens, with what the user then sees. A failure that applies to every request, the server not being reachable, is written once per diagram as a note. An invalid or expired login token is an `alt` branch in the use cases that need sign-in (it sends the user back to sign in). Requests the app never sends (e.g. a malformed place name) are rejected with 400; see 4.1.
-- Values flow from earlier messages: e.g. the place picked in *Choose a place to add* is the place *Add a Gem* adds.
+- Values flow from earlier messages: e.g. the place picked from the nearby places is the place that is then added.
 
 Sources: `documentation/diagrams/`.
 
-1. [**View a Gem**](#uc1)\
+1. [**View a Gem**](#uc2)\
 ![View a Gem](images/uc1_view_a_gem.png)
-2. [**Add a Gem**](#uc2), in two parts: first the included use case *Choose a place to add*, then adding the picked place.\
-![Choose a place to add](images/uc2a_choose_a_place.png)
+2. [**Add a Gem**](#uc1), in two parts: first choosing the place from the nearby places, then adding it.\
+![Add a Gem: choosing the place](images/uc2a_choose_a_place.png)
 ![Add a Gem](images/uc2b_add_a_gem.png)
 3. [**Contribute to GemScore**](#uc3)\
 ![Contribute to GemScore](images/uc3_contribute_to_gemscore.png)
 4. [**View new Gems nearby**](#uc4)\
 ![View new Gems nearby](images/uc4_view_new_gems_nearby.png)
-5. [**Mark a Gem as favorite**](#uc5)\
+5. **Mark a Gem as favorite**\
 ![Mark a Gem as favorite](images/uc5_mark_a_gem_as_favorite.png)
 
 ### **4.7. Design of Non-Functional Requirements**
