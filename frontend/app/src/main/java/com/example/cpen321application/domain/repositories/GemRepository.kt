@@ -14,7 +14,7 @@ interface GemRepository {
     suspend fun getNewestGems(numGems: UInt?): Resource<Flow<List<Gem>>>
     suspend fun addGem(gem: NewGemRequestBody): Resource<Flow<Gem>>
 
-    suspend fun getGemCandidates(coords: LatLng): Resource<Flow<List<GemCandidate>>>
+    suspend fun getGemCandidates(coords: LatLng, filters: String?): Resource<Flow<List<GemCandidate>>>
 
     suspend fun getFavoritesGems(): Resource<Flow<List<Gem>>>
 
