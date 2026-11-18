@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cpen321application.presentation.activities.NavBar
 import com.example.cpen321application.presentation.activities.NavDestination
 import com.example.cpen321application.presentation.activities.dashboard.composables.GemCardGrid
@@ -26,10 +28,11 @@ fun FavoritesScreen(
 ) {
     val context = LocalContext.current
 
-    val favoriteGemState by viewModel.favoriteGems.collectAsState()
+    val favoriteGemState by viewModel.favoriteGems.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
+    LifecycleStartEffect(Unit) {
         viewModel.getFavoriteGems()
+        onStopOrDispose {  }
     }
 
     Scaffold(

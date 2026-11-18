@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cpen321application.presentation.activities.discovery.GemRequest
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.BUILDING_LEVEL_ZOOM
@@ -44,8 +45,9 @@ fun DiscoveryMap(
     viewModel: GemViewModel = hiltViewModel()
 ) {
 
-    val nearestGemsState by viewModel.uiState.collectAsState()
+    val nearestGemsState by viewModel.uiState.collectAsStateWithLifecycle()
     val coordinates by viewModel.coordinates.collectAsStateWithLifecycle()
+    val favoriteGemState by viewModel.favoriteGems.collectAsStateWithLifecycle()
 
     var showGemInfoSheet by remember {mutableStateOf(false)}
     var showNewGemSheet by remember {mutableStateOf(false)}
@@ -81,13 +83,23 @@ fun DiscoveryMap(
             position = CameraPosition.fromLatLngZoom(coord, CAMERA_INIT_ZOOM_FACTOR)
         }
 
+        LifecycleStartEffect(Unit) {
+            viewModel.getFavoriteGems()
+            onStopOrDispose {  }
+        }
+
         GemInfoSheetContent(
             gem = selectedGem,
             {showGemInfoSheet = it},
-            showGemInfoSheet
-        ) {
-            viewModel.addFavoriteGem(it)
-        }
+            showGemInfoSheet,
+            isFavorite = selectedGem in favoriteGemState.data,
+            onFavoritesAdded = {viewModel.addFavoriteGem(it)},
+            onFavoritesRemoved = {
+                viewModel.deleteFavoriteGem(it.removePrefix("places"))
+                // TODO: Change this for M3 since the server will send the deleted gem in the gem response by then
+                viewModel.getFavoriteGems()
+            }
+        )
 
         GemCreationSheet(
             {showNewGemSheet = it},
@@ -158,6 +170,28 @@ fun DiscoveryMap(
                     )
                 }
             }
+
+            if (favoriteGemState.errorMessage != null) {
+                Toast.makeText(LocalContext.current,
+                    "Error: ${favoriteGemState.errorMessage}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                favoriteGemState.data.forEach { gem ->
+                    GemMarker(
+                        gem,
+                        onSelectedGemChange = {selectedGem = gem},
+                        onGemSheetVisibilityChange = {showGemInfoSheet = true},
+                        onCameraReposition = {
+                            cameraPositionState.animate(
+                                update=CameraUpdateFactory.newLatLng(gem.coords),
+                                durationMs= CAMERA_PAN_DURATION_MS
+                            )
+                        }
+                    )
+                }
+            }
+
         }
 
         NewGemButton(Modifier.align(Alignment.BottomStart)){

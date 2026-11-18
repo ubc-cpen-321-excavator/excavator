@@ -12,6 +12,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cpen321application.presentation.viewmodels.CommentViewModel
 
 @Composable
@@ -20,10 +22,11 @@ fun CommentCardList(
     viewModel: CommentViewModel = hiltViewModel(),
     gemID: String
 ) {
-    val commentState by viewModel.commentState.collectAsState()
+    val commentState by viewModel.commentState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
+    LifecycleStartEffect (Unit) {
         viewModel.getComments(gemID)
+        onStopOrDispose { }
     }
 
     LazyColumn(modifier = modifier)  {

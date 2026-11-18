@@ -18,15 +18,16 @@ import com.example.cpen321application.R
 
 @Composable
 fun FavoriteButton(
-    onFavoritesClicked: () -> Unit
+    isFavorites: Boolean,
+    onFavoritesClicked: (Boolean) -> Unit
 ) {
 
-    var checked by remember {mutableStateOf(false)}
+    var checked by remember {mutableStateOf(isFavorites)}
 
     IconButton(
         onClick = {
+            onFavoritesClicked(checked)
             checked = !checked
-            onFavoritesClicked()
         }
     ) {
         Icon(

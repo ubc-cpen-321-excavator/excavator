@@ -22,13 +22,12 @@ import com.example.cpen321application.presentation.activities.discovery.composab
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.NewCommentInput
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.localrating.LocalRating
-import java.util.Locale.getDefault
 import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean,
-                        onFavoritesClicked: (String)->Unit) {
+fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean, isFavorite:Boolean = false,
+                        onFavoritesAdded: (String)->Unit, onFavoritesRemoved: (String)->Unit) {
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false,
@@ -48,7 +47,13 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                         fontSize = 20.sp
                     )
                     Spacer(modifier=Modifier.weight(1f))
-                    FavoriteButton { onFavoritesClicked(gem.placesName) }
+                    FavoriteButton (isFavorite) {
+                        if (it) onFavoritesRemoved(
+                            gem.placesName.removePrefix("places/")
+                        ) else onFavoritesAdded(
+                            gem.placesName
+                        )
+                    }
                 }
 
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
