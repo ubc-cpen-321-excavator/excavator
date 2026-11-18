@@ -15,12 +15,12 @@ sequenceDiagram
     G->>+P: nearby search, 200 m around the user, types T
     P-->>-G: places, unknown type, or error
     opt places found
-      G->>+DB: which of these places are already gems
+      G->>+DB: which of these places are already gems (they are left out)
       DB-->>-G: names of existing gems, or an error
     end
-    G-->>-F: 200 [places, nearest first, with isGem], 400 "Invalid place type.", 502 "Google Places unavailable.", or 500 "Nearby search failed."
+    G-->>-F: 200 [places that are not gems yet, nearest first], 400 "Invalid place type.", 502 "Google Places unavailable.", or 500 "Nearby search failed."
     alt 200 with places
-      F-->>U: list of nearby places (gems marked)
+      F-->>U: list of nearby places that can be added
       U->>F: pick place places/{id}
       Note over U,F: continues in the second diagram with places/{id}
     else 200 with no places

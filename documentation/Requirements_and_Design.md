@@ -20,6 +20,7 @@
 | 2026-11-17 | 4.1, 4.2 | Gems: new `GET /gem/:pk/photo` and a `photoUrl` on every gem, so the dashboard can show place photos; `GET /gem/newest` can be limited to gems near the user. Gems store the name of their Google photo. |
 | 2026-11-17 | 3.2, 3.3, 3.4, 3.5 | Following the CP2 feedback: one User actor, since the Guest actor could only sign in; no include or extend relationships in the use case diagram, so *View comments* is its own goal and choosing a place is part of *Add a Gem*; the formal use cases are reordered (*Add a Gem* first), *Make comments* replaces *Mark a Gem as favorite*, and losing the live-update connection in Use Case 4 now shows a message. |
 | 2026-11-17 | 4.2, 4.5, 4.6 | Following the CP2 feedback: 4.2 now says there is one database with five collections; the dependencies diagram has no labels on its arrows; every sequence diagram now branches after a result (one return per call, then `alt` on it), and they follow the new order of 3.5, with *Make comments* in place of *Mark a Gem as favorite*. |
+| 2026-11-18 | 3.4, 3.5, 4.1, 4.6 | `GET /place/nearby` leaves out places that are already gems instead of marking them with `isGem`, so the list when adding a gem only shows places that can be added. |
 
 ---
 
@@ -53,7 +54,7 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 2. **Sign out**: The User signs out, and the app forgets their login.
 
 - Use cases for feature 2: Gems and Gem Score
-3. **Add a Gem**: The User picks a place within 200 m of them from a list of nearby places, optionally filtered by type (e.g. café, park), and adds it as a gem; the gem is then scored and shared with nearby users.
+3. **Add a Gem**: The User picks a place within 200 m of them from a list of nearby places that aren't gems yet, optionally filtered by type (e.g. café, park), and adds it as a gem; the gem is then scored and shared with nearby users.
 4. **Browse Gems on the map**: The User sees the gems in the area shown on the map, highest Gem Score first.
 5. **View a Gem**: The User opens a gem and sees its photo, its details and its Gem Score.
 
@@ -85,7 +86,7 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 1. The User taps "Add gem" on the Discovery screen.
 2. The app gets the User's location, asking for location permission if it hasn't been granted.
 3. The User optionally selects type filters (e.g. café, park).
-4. The app lists the places within 200 m of the User, nearest first, and marks the ones that are already gems.
+4. The app lists the places within 200 m of the User that aren't gems yet, nearest first.
 5. The User picks a place and confirms adding it.
 6. The app shows the new gem, with its Gem Score, on the map.
 7. Other users with that area open see the new gem appear without refreshing.
@@ -250,8 +251,8 @@ Excavator is an app designed to let you find niche, high quality locations in yo
             - **Purpose**: Reads and adds the comments of the gem whose place ID is `pk`. A new comment records the signed-in user and their name. The body is trimmed and must then be 1–1000 characters with no control characters. Both return 400 if `pk` is not a valid place ID and 404 if no gem has it; posting also returns 400 for an invalid body and 401 if not signed in.
         8. `PUT /gem/:pk/rating { stars }` → `{ stars, gem }`; `GET /gem/:pk/rating` → `{ stars }` (both require login)
             - **Purpose**: Sets the signed-in user's 1–5 star rating of the gem, returning the gem with its new rating totals and Gem Score; or reads their rating. Both return 400 if `pk` is not a valid place ID, 401 if not signed in, and 404 if no gem has that place ID. `PUT` also returns 400 if `stars` is not a whole number from 1 to 5; `GET` returns 404 if the user hasn't rated the gem.
-        9. `GET /place/nearby?lat&lng[&type=cafe,park]` → up to 20 places within 200 m, nearest first, each with `isGem`
-            - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem; the app then sends its `name` to `POST /gem`. `type` optionally limits the list to one or more Google Places types, comma-separated (`type=cafe,park`) or repeated (`type=cafe&type=park`), so the app can send all the filters the user selected; a place matching any of them is listed. Returns 400 if the location is invalid, or a type is empty, malformed or unknown to Google, or there are more than 50, and 502 if Google Places is unavailable.
+        9. `GET /place/nearby?lat&lng[&type=cafe,park]` → up to 20 places within 200 m that are not gems yet, nearest first
+            - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem. Places that are already gems are left out, since they can't be added again; the app then sends its `name` to `POST /gem`. `type` optionally limits the list to one or more Google Places types, comma-separated (`type=cafe,park`) or repeated (`type=cafe&type=park`), so the app can send all the filters the user selected; a place matching any of them is listed. Returns 400 if the location is invalid, or a type is empty, malformed or unknown to Google, or there are more than 50, and 502 if Google Places is unavailable.
         10. `boolean hasGem(String name)`
             - **Purpose**: Used by Favorites and by comments and ratings to check a gem exists before acting on it.
         11. `List<Gem> getGems(List<String> names)`
