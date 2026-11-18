@@ -10,7 +10,7 @@ info:
 
     All errors are JSON. Every path below answers **405** for methods it does not list,
     with an `Allow` header naming the supported ones. Malformed JSON bodies get **400** `{ message: "Invalid JSON." }`,
-    and unexpected server errors get **500** `{ message: "Internal error." }`. Unknown paths get **404** `{ error: "Not Found" }`.
+    and unexpected server errors get **500** `{ message: "Internal error." }`. Unknown paths get **404** `{ message: "Not Found" }`.
 
     **Login.** Sign-in (`POST /user/auth/google`) returns a JWT in `sessionId`, valid for 7 days. Routes marked with a
     lock require it as `Authorization: Bearer <token>` and answer **401** `{ message }` without a valid one
