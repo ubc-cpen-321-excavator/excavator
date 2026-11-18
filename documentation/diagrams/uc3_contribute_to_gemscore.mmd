@@ -1,0 +1,52 @@
+sequenceDiagram
+  actor U as Signed-in User
+  participant F as :Frontend
+  participant G as :Gems
+  participant US as :Users
+  participant DB as :Database
+  participant LF as :Live Feed
+  participant OF as :Frontend (other users)
+
+  U->>+F: choose S stars (1–5) on gem places/{pk}
+  F->>+G: PUT /gem/{pk}/rating { stars: S } + login token
+  G->>+US: check login token
+  alt token invalid or expired
+    US-->>G: invalid (401)
+    G-->>F: 401 "Invalid token."
+    F-->>U: back to the sign-in screen
+  else token valid
+    US-->>-G: user
+    G->>+DB: does the gem exist
+    alt gem exists
+      DB-->>G: yes
+      G->>DB: save the user's rating S (replaces their earlier one)
+      DB-->>G: saved
+      G->>DB: count and average all ratings of the gem
+      DB-->>G: count, average
+      G->>DB: get the gem
+      DB-->>G: gem (Google rating and review count)
+      G->>G: recompute the Gem Score
+      G->>DB: save rating totals and Gem Score
+      alt saved
+        DB-->>G: saved
+        G->>+LF: publish the updated gem
+        LF-)OF: gem.updated (to each app whose area contains it)
+        LF-->>-G: done
+        G-->>F: 200 { stars, gem }
+        F-->>U: the gem's new Gem Score
+      else database error
+        DB-->>G: error
+        G-->>F: 500 "Rate Gem failed."
+        F-->>U: "Couldn't save your rating, try again"
+      end
+    else no such gem (deleted)
+      DB-->>G: no
+      G-->>F: 404 "No such Gem."
+      F-->>U: "This gem is no longer available"
+    else database error
+      DB-->>-G: error
+      G-->>-F: 500 "Rate Gem failed."
+      F-->>-U: "Couldn't save your rating, try again"
+    end
+  end
+  Note over U,OF: If the server can't be reached, the Frontend shows "No connection, try again"
