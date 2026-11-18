@@ -141,7 +141,7 @@ class GemViewModel @Inject constructor(
         }
     }
 
-    private fun getGemCandidates() {
+    fun getGemCandidates() {
         launch {
             val firstFix = coordinates.filterNotNull().first()
             val coords = LatLng(firstFix.latitude,firstFix.longitude)

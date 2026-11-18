@@ -6,10 +6,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
 import com.google.android.gms.maps.model.LatLng
 
@@ -20,7 +21,11 @@ fun NearbyGemsOptionsList (
     onOptionsClosed: (Boolean) -> Unit
 ) {
 
-    val gemCandidateState by viewModel.gemCandidate.collectAsState()
+    val gemCandidateState by viewModel.gemCandidate.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.getGemCandidates()
+    }
 
     // TODO: make viewmodel call GetGemCandidiates and see if that will cause new gems to appear
 
@@ -37,7 +42,7 @@ fun NearbyGemsOptionsList (
                 item {
                     NearbyGemOptionCard(gemCandidate) {
                         viewModel.addGem(
-                            it.name, LatLng(it.latitiude, it.longitude)
+                            it.name, LatLng(it.latitude, it.longitude)
                         )
                         onOptionsClosed(false)
                     }

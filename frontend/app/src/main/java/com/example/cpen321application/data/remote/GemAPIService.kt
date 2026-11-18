@@ -60,7 +60,7 @@ interface GemAPIService {
 data class FavGemRequestBody(val gem: String)
 data class NewGemRequestBody(
     val name: String,
-    val latitiude: Double,
+    val latitude: Double,
     val longitude: Double
 )
 
