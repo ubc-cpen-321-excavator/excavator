@@ -150,34 +150,24 @@ fun DiscoveryMap(
                 )
             }
 
+            // TODO: Refactor this duplicated logic
+            // NOTE: This logic implies that if either one of nearby gems or favorite gems fails
+            // then nothing gets displayed until the error is resolved
             if (nearestGemsState.errorMessage != null) {
                 Toast.makeText(LocalContext.current,
                     "Error: ${nearestGemsState.errorMessage}",
                     Toast.LENGTH_SHORT
                     ).show()
-            } else {
-                nearestGemsState.data.forEach { gem ->
-                    GemMarker(
-                        gem,
-                        onSelectedGemChange = {selectedGem = gem},
-                        onGemSheetVisibilityChange = {showGemInfoSheet = true},
-                        onCameraReposition = {
-                            cameraPositionState.animate(
-                                update=CameraUpdateFactory.newLatLng(gem.coords),
-                                durationMs= CAMERA_PAN_DURATION_MS
-                            )
-                        }
-                    )
-                }
-            }
-
-            if (favoriteGemState.errorMessage != null) {
+            } else if (favoriteGemState.errorMessage != null) {
                 Toast.makeText(LocalContext.current,
                     "Error: ${favoriteGemState.errorMessage}",
                     Toast.LENGTH_SHORT
                 ).show()
-            } else {
-                favoriteGemState.data.forEach { gem ->
+            }
+            else {
+                nearestGemsState.data.union(
+                    favoriteGemState.data
+                ).forEach { gem ->
                     GemMarker(
                         gem,
                         onSelectedGemChange = {selectedGem = gem},
@@ -191,7 +181,6 @@ fun DiscoveryMap(
                     )
                 }
             }
-
         }
 
         NewGemButton(Modifier.align(Alignment.BottomStart)){
