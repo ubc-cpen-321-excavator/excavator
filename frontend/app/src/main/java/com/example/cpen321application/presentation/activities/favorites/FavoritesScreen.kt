@@ -10,8 +10,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.cpen321application.presentation.TestTags
 import com.example.cpen321application.presentation.activities.NavBar
 import com.example.cpen321application.presentation.activities.NavDestination
 import com.example.cpen321application.presentation.activities.dashboard.composables.GemCardGrid
@@ -42,6 +44,7 @@ fun FavoritesScreen(
             GemCardGrid(
                 gems = gems,
                 context = context,
+                modifier = Modifier.testTag(TestTags.FAVORITES_GRID),
                 title = "Your favorites:",
                 isFavorite = true,
                 onGemLongClick = { viewModel.deleteFavoriteGem(it.placesName.removePrefix("places/")) }

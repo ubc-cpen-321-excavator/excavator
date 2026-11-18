@@ -21,10 +21,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.cpen321application.R
+import com.example.cpen321application.presentation.TestTags
 import com.example.cpen321application.presentation.viewmodels.CommentViewModel
 
 @Composable
@@ -49,7 +51,7 @@ fun NewCommentInput(
                 if ("""[\n\t]""".toRegex() in proposed) current else proposed
             },
             lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 1, maxHeightInLines = maxLines),
-            modifier = Modifier.weight(1f).clip(shape= RectangleShape),
+            modifier = Modifier.weight(1f).clip(shape= RectangleShape).testTag(TestTags.COMMENT_INPUT),
             placeholder = {Text("New comment...")}
         )
 
@@ -58,7 +60,7 @@ fun NewCommentInput(
             commentState.clearText()
 
         },
-            modifier = Modifier.align(Alignment.CenterVertically)) {
+            modifier = Modifier.align(Alignment.CenterVertically).testTag(TestTags.SEND_COMMENT_BUTTON)) {
             Icon(
                 painter = painterResource(R.drawable.arrow_circle_up_24),
                 contentDescription = "Send Comment",

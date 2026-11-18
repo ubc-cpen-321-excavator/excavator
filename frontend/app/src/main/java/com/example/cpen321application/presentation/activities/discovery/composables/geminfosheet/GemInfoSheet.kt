@@ -15,9 +15,11 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cpen321application.domain.models.Gem
+import com.example.cpen321application.presentation.TestTags
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.CommentCardList
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.NewCommentInput
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
@@ -41,7 +43,7 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
 
     if (showBottomSheet) {
         ModalBottomSheet(
-            modifier = Modifier.fillMaxHeight(),
+            modifier = Modifier.fillMaxHeight().testTag(TestTags.GEM_INFO_SHEET),
             sheetState = sheetState,
             onDismissRequest = { onShowChange(false) }
         ) {
@@ -49,7 +51,7 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         gem.title.replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() },
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(16.dp).testTag(TestTags.GEM_TITLE),
                         fontSize = 20.sp
                     )
                     Spacer(modifier=Modifier.weight(1f))

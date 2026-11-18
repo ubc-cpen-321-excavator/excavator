@@ -6,7 +6,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.cpen321application.presentation.TestTags
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
 
 @Composable
@@ -21,7 +23,7 @@ fun LatestGemsGrid(
         viewModel.getNewestGems()
     }
 
-    GemCardGrid(uiState,context,modifier,"Latest Gems:")
+    GemCardGrid(uiState,context,modifier.testTag(TestTags.LATEST_GEMS_GRID),"Latest Gems:")
 
 
 }

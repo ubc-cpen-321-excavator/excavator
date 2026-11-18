@@ -8,10 +8,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.cpen321application.presentation.TestTags
 import com.example.cpen321application.presentation.viewmodels.CommentViewModel
 
 @Composable
@@ -26,7 +28,7 @@ fun CommentCardList(
         viewModel.getComments(gemID)
     }
 
-    LazyColumn(modifier = modifier)  {
+    LazyColumn(modifier = modifier.testTag(TestTags.COMMENT_LIST))  {
 
         item {
             Text(

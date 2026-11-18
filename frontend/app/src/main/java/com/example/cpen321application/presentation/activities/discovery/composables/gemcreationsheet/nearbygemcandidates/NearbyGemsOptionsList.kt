@@ -9,7 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.cpen321application.presentation.TestTags
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
 import com.google.android.gms.maps.model.LatLng
 
@@ -26,7 +28,7 @@ fun NearbyGemsOptionsList (
 
     if (uiState.isNotEmpty()) {
         LazyColumn(
-            modifier = modifier.fillMaxWidth()
+            modifier = modifier.fillMaxWidth().testTag(TestTags.CANDIDATE_LIST)
         ) {
 
             uiState.forEach { gemCandidate ->

@@ -20,7 +20,8 @@ fun GemMarker (
 ) {
     Marker(
         state = rememberUpdatedMarkerState(gem.coords),
-        title = "Sample",
+        // The gem's name, so UI Automator can find this marker (markers are not Compose nodes).
+        title = gem.title,
         snippet = "Snippet",
         icon = BitmapDescriptorFactory.fromResource(R.drawable.diamond_small),
         onClick = {
