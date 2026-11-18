@@ -21,6 +21,7 @@ jest.mock('../../src/models/gemModel', () => ({
     exists: jest.fn(),
     replaceOne: jest.fn(),
     updateOne: jest.fn(),
+    findOneAndUpdate: jest.fn(),
     create: jest.fn(),
   },
 }));
@@ -41,6 +42,7 @@ const mockedGemModel = GemModel as unknown as {
   exists: jest.Mock;
   replaceOne: jest.Mock;
   updateOne: jest.Mock;
+  findOneAndUpdate: jest.Mock;
   create: jest.Mock;
 };
 
@@ -472,25 +474,49 @@ describe('Mocked: GemService.scoreGem', () => {
 
 // Interface GemService.applyAppRatings
 describe('Mocked: GemService.applyAppRatings', () => {
-  // Mocked behavior: GemModel.findOne returns the stored gem; updateOne succeeds
-  // Input: 3 Excavator ratings averaging 5
-  // Expected behavior: the totals and the score computed with them are stored with $set, nothing $unset
+  // Mocked behavior: GemModel.findOne returns the stored gem; updateOne matches it
+  // Input: 3 Excavator ratings averaging 5, from the rating with sequence number 4
+  // Expected behavior: the totals, the score computed with them and the sequence number are stored with $set,
+  //                    only if no later rating's totals are stored; nothing $unset
   // Expected output: the Gem, with ratingCount 3, ratingAverage 5 and a higher score than without them
   test('New totals', async () => {
     mockedGemModel.findOne.mockReturnValue({ lean: () => Promise.resolve(STORED_FOR_SCORING) });
-    mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true });
+    mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true, matchedCount: 1 });
     const expected = computeGemScore({ rating: 4.8, reviewCount: 60, appRating: 5, appRatingCount: 3 });
 
-    const gem = await new GemService().applyAppRatings('places/abc', 3, 5);
+    const gem = await new GemService().applyAppRatings('places/abc', 3, 5, 4);
 
     expect(gem.getRatingCount()).toBe(3);
     expect(gem.getRatingAverage()).toBe(5);
     expect(gem.getScore()).toBe(expected.score);
     expect(expected.score).toBeGreaterThan(computeGemScore({ rating: 4.8, reviewCount: 60 }).score);
     expect(mockedGemModel.updateOne).toHaveBeenCalledWith(
-      { name: 'places/abc' },
-      { $set: { score: expected.score, scoreTime: expect.any(Number), nicheness: expected.nicheness, ratingCount: 3, ratingAverage: 5 } },
+      { name: 'places/abc', $or: [{ ratingSeqApplied: { $lt: 4 } }, { ratingSeqApplied: { $exists: false } }] },
+      {
+        $set: {
+          score: expected.score, scoreTime: expect.any(Number), nicheness: expected.nicheness,
+          ratingCount: 3, ratingAverage: 5, ratingSeqApplied: 4,
+        },
+      },
     );
+  });
+
+  // Mocked behavior: a later rating's totals (2 ratings averaging 3) are already stored, so updateOne matches nothing
+  // Input: older totals, 1 rating of 5, from the rating with sequence number 1
+  // Expected behavior: the older totals are not stored; the Gem is read again
+  // Expected output: the Gem as stored, with the later rating's totals
+  test('Older totals not stored', async () => {
+    mockedGemModel.findOne
+      .mockReturnValueOnce({ lean: () => Promise.resolve(STORED_FOR_SCORING) })
+      .mockReturnValueOnce({ lean: () => Promise.resolve({ ...STORED_FOR_SCORING, ratingCount: 2, ratingAverage: 3 }) });
+    mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true, matchedCount: 0 });
+
+    const gem = await new GemService().applyAppRatings('places/abc', 1, 5, 1);
+
+    expect(mockedGemModel.updateOne).toHaveBeenCalledTimes(1);
+    expect(mockedGemModel.findOne).toHaveBeenCalledTimes(2);
+    expect(gem.getRatingCount()).toBe(2);
+    expect(gem.getRatingAverage()).toBe(3);
   });
 
   // Mocked behavior: GemModel.findOne finds nothing
@@ -500,7 +526,7 @@ describe('Mocked: GemService.applyAppRatings', () => {
   test('No such gem', async () => {
     mockedGemModel.findOne.mockReturnValue({ lean: () => Promise.resolve(null) });
 
-    await expect(new GemService().applyAppRatings('places/unknown', 1, 4)).rejects.toBeInstanceOf(NoSuchGemError);
+    await expect(new GemService().applyAppRatings('places/unknown', 1, 4, 1)).rejects.toBeInstanceOf(NoSuchGemError);
 
     expect(mockedGemModel.updateOne).not.toHaveBeenCalled();
   });
@@ -511,12 +537,37 @@ describe('Mocked: GemService.applyAppRatings', () => {
   // Expected output: ratingCount and ratingAverage undefined
   test('Totals cleared', async () => {
     mockedGemModel.findOne.mockReturnValue({ lean: () => Promise.resolve({ ...STORED_FOR_SCORING, ratingCount: 2, ratingAverage: 3 }) });
-    mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true });
+    mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true, matchedCount: 1 });
 
-    const gem = await new GemService().applyAppRatings('places/abc', 0, undefined);
+    const gem = await new GemService().applyAppRatings('places/abc', 0, undefined, 3);
 
     expect(gem.getRatingCount()).toBeUndefined();
     expect(gem.getRatingAverage()).toBeUndefined();
+  });
+});
+
+// Interface GemService.nextRatingSeq
+describe('Mocked: GemService.nextRatingSeq', () => {
+  // Mocked behavior: GemModel.findOneAndUpdate returns the gem with ratingSeq 5
+  // Input: the gem's name
+  // Expected behavior: ratingSeq is incremented atomically and the new value read back
+  // Expected output: 5
+  test('Next number', async () => {
+    mockedGemModel.findOneAndUpdate.mockReturnValue({ lean: () => Promise.resolve({ ratingSeq: 5 }) });
+
+    await expect(new GemService().nextRatingSeq('places/abc')).resolves.toBe(5);
+    expect(mockedGemModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { name: 'places/abc' }, { $inc: { ratingSeq: 1 } }, { returnDocument: 'after', projection: { ratingSeq: 1 } },
+    );
+  });
+
+  // Mocked behavior: GemModel.findOneAndUpdate finds nothing
+  // Input: an unknown gem's name
+  // Expected output: rejects with NoSuchGemError
+  test('No such gem', async () => {
+    mockedGemModel.findOneAndUpdate.mockReturnValue({ lean: () => Promise.resolve(null) });
+
+    await expect(new GemService().nextRatingSeq('places/unknown')).rejects.toBeInstanceOf(NoSuchGemError);
   });
 });
 

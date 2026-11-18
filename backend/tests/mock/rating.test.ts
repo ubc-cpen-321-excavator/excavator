@@ -13,7 +13,7 @@ jest.mock('../../src/models/ratingModel', () => ({
   RatingModel: { updateOne: jest.fn(), findOne: jest.fn(), aggregate: jest.fn() },
 }));
 jest.mock('../../src/models/gemModel', () => ({
-  GemModel: { findOne: jest.fn(), find: jest.fn(), exists: jest.fn(), create: jest.fn(), updateOne: jest.fn() },
+  GemModel: { findOne: jest.fn(), find: jest.fn(), exists: jest.fn(), create: jest.fn(), updateOne: jest.fn(), findOneAndUpdate: jest.fn() },
 }));
 // The login check (AuthService.reqJwt) looks the signed-in user up.
 jest.mock('../../src/models/userModel', () => ({
@@ -25,7 +25,7 @@ jest.mock('@googlemaps/places', () => ({
 }));
 
 const mockedRatingModel = RatingModel as unknown as { updateOne: jest.Mock; findOne: jest.Mock; aggregate: jest.Mock };
-const mockedGemModel = GemModel as unknown as { findOne: jest.Mock; exists: jest.Mock; updateOne: jest.Mock };
+const mockedGemModel = GemModel as unknown as { findOne: jest.Mock; exists: jest.Mock; updateOne: jest.Mock; findOneAndUpdate: jest.Mock };
 
 /** The stored Gem the tests rate: 20 Google reviews at 4.0. */
 const STORED = {
@@ -39,7 +39,8 @@ const STORED = {
 function mockRatingFlow(count: number, average: number): void {
   mockedGemModel.exists.mockResolvedValue({ _id: 'gem' });
   mockedGemModel.findOne.mockReturnValue({ lean: () => Promise.resolve(STORED) });
-  mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true });
+  mockedGemModel.findOneAndUpdate.mockReturnValue({ lean: () => Promise.resolve({ ratingSeq: 1 }) });
+  mockedGemModel.updateOne.mockResolvedValue({ acknowledged: true, matchedCount: 1 });
   mockedRatingModel.updateOne.mockResolvedValue({ acknowledged: true });
   mockedRatingModel.aggregate.mockResolvedValue([{ _id: null, count, average }]);
 }

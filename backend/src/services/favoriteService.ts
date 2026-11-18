@@ -23,7 +23,7 @@ class FavoriteService {
   private gemService: GemService;
 
   /**
-   * @param gemService used to check that a Gem exists, and to load the favorite Gems.
+   * @param gemService used to load the favorite Gems (and to check one exists before adding it).
    */
   constructor(gemService: GemService) {
     this.gemService = gemService;
@@ -46,18 +46,19 @@ class FavoriteService {
    *
    * @param userId the user's ID (Google `sub`).
    * @param gem Gem name, `places/<place ID>`.
-   * @returns `true` if it was added, `false` if it already was a favorite.
+   * @returns the Gem, and `added`: `true` if it was added, `false` if it already was a favorite.
    * @throws `NoSuchGemError` if there is no such Gem; nothing is stored.
    * @throws `TooManyFavoritesError` if the user already has `MAX_FAVORITES`; nothing is stored.
    * @throws the database error.
    */
-  async addFavorite(userId: string, gem: string): Promise<boolean> {
-    if (!(await this.gemService.hasGem(gem))) {
+  async addFavorite(userId: string, gem: string): Promise<{ added: boolean; gem: Gem }> {
+    const stored = await this.gemService.getGem(gem);
+    if (!stored) {
       throw new NoSuchGemError('No such Gem.');
     }
 
     if (await this.repo.has(userId, gem)) {
-      return false;
+      return { added: false, gem: stored };
     }
 
     // Checked before inserting; two adds racing at the limit could go one over, which is harmless.
@@ -65,7 +66,7 @@ class FavoriteService {
       throw new TooManyFavoritesError('Too many favorites.');
     }
 
-    return this.repo.insert(userId, gem);
+    return { added: await this.repo.insert(userId, gem), gem: stored };
   }
 
   /**

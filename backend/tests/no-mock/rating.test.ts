@@ -1,6 +1,7 @@
 import request from 'supertest';
 
 import { createApp } from '../../src/app';
+import { gemService } from '../../src/controllers/gemController';
 import { GemModel } from '../../src/models/gemModel';
 import { RatingModel } from '../../src/models/ratingModel';
 import { computeGemScore } from '../../src/utils/gemScore';
@@ -40,6 +41,45 @@ describe('Unmocked: PUT /gem/:pk/rating', () => {
     expect(await RatingModel.countDocuments({ gem: 'places/cafe' })).toBe(2);
     expect(await GemModel.findOne({ name: 'places/cafe' }).lean())
       .toMatchObject({ ratingCount: 2, ratingAverage: 3, score: third.body.gem.score });
+  });
+
+  // Input: the user rates cafe 5 and is paused just before their totals (1 rating of 5) are saved;
+  //        another user rates it 1 meanwhile; then the first request carries on
+  // Expected status code: 200 for both
+  // Expected behavior: the first request's older totals do not overwrite the second's, which counted both ratings
+  // Expected output: both responses and the stored Gem have 2 ratings averaging 3, and the GemScore for them
+  test('Concurrent ratings', async () => {
+    const applyAppRatings = gemService.applyAppRatings.bind(gemService);
+    let resume: () => void = () => undefined;
+    const resumed = new Promise<void>(resolve => { resume = resolve; });
+    let paused: () => void = () => undefined;
+    const isPaused = new Promise<void>(resolve => { paused = resolve; });
+    const spy = jest.spyOn(gemService, 'applyAppRatings').mockImplementationOnce(async (...args) => {
+      paused();
+      await resumed;
+      return applyAppRatings(...args);
+    });
+
+    try {
+      const app = createApp();
+      const first = request(app).put('/gem/cafe/rating').set('Authorization', bearer()).send({ stars: 5 })
+        .then(response => response);
+      await isPaused;
+      const second = await request(app).put('/gem/cafe/rating').set('Authorization', bearer('google-sub-other')).send({ stars: 1 });
+      resume();
+      const firstResponse = await first;
+
+      const expectedScore = computeGemScore({ appRating: 3, appRatingCount: 2 }).score;
+      expect(firstResponse.status).toBe(200);
+      expect(second.status).toBe(200);
+      expect(second.body.gem).toMatchObject({ ratingCount: 2, ratingAverage: 3, score: expectedScore });
+      expect(firstResponse.body).toMatchObject({ stars: 5, gem: { ratingCount: 2, ratingAverage: 3, score: expectedScore } });
+      expect(await GemModel.findOne({ name: 'places/cafe' }).lean())
+        .toMatchObject({ ratingCount: 2, ratingAverage: 3, score: expectedScore });
+    } finally {
+      resume();
+      spy.mockRestore();
+    }
   });
 
   // Input: PUT { stars: 6 } signed in
