@@ -8,6 +8,7 @@
 | 2026-10-31 | 3 | Added the two non-functional requirement tests and how they verify the requirements. |
 | 2026-11-03 | 2.3, 2.4, 2.5 | Added the coverage of the mocked, unmocked and combined interface tests, and why the remaining lines are not covered. Coverage now maps to the TypeScript source lines (source maps enabled for the tests). |
 | 2026-11-17 | 2.1 | Added the tests of `GET /gem/:pk/photo`; updated the gem test locations. |
+| 2026-11-18 | 2.1 | `POST /user/favorites` tests expect the whole gem; updated the favorites test locations. |
 | 2026-11-18 | 2.1, 2.4 | Added a test of two users rating a gem at once (`PUT /gem/:pk/rating`, found in peer review); updated the rating test locations and the uncovered line in `ratingService.ts`. |
 
 ---
@@ -38,9 +39,9 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 | **POST /user/auth/google** | [`tests/no-mock/auth.test.ts#L15`](../backend/tests/no-mock/auth.test.ts#L15) | [`tests/mock/auth.test.ts#L35`](../backend/tests/mock/auth.test.ts#L35) | Google Sign-In, users collection |
 | **Login check (`reqJwt`, all routes requiring login)** | [`tests/no-mock/auth.test.ts#L47`](../backend/tests/no-mock/auth.test.ts#L47) | [`tests/mock/auth.test.ts#L119`](../backend/tests/mock/auth.test.ts#L119) | users collection |
 | **GET /user/me** | [`tests/no-mock/profile.test.ts#L16`](../backend/tests/no-mock/profile.test.ts#L16) | [`tests/mock/auth.test.ts#L119`](../backend/tests/mock/auth.test.ts#L119) | users collection |
-| **GET /user/favorites** | [`tests/no-mock/favorite.test.ts#L75`](../backend/tests/no-mock/favorite.test.ts#L75) | [`tests/mock/favorite.test.ts#L49`](../backend/tests/mock/favorite.test.ts#L49) | favorites collection, gems collection, users collection (login check) |
-| **POST /user/favorites** | [`tests/no-mock/favorite.test.ts#L25`](../backend/tests/no-mock/favorite.test.ts#L25) | [`tests/mock/favorite.test.ts#L109`](../backend/tests/mock/favorite.test.ts#L109) | favorites collection, gems collection, users collection (login check) |
-| **DELETE /user/favorites/:placeId** | [`tests/no-mock/favorite.test.ts#L108`](../backend/tests/no-mock/favorite.test.ts#L108) | [`tests/mock/favorite.test.ts#L206`](../backend/tests/mock/favorite.test.ts#L206) | favorites collection, users collection (login check) |
+| **GET /user/favorites** | [`tests/no-mock/favorite.test.ts#L78`](../backend/tests/no-mock/favorite.test.ts#L78) | [`tests/mock/favorite.test.ts#L61`](../backend/tests/mock/favorite.test.ts#L61) | favorites collection, gems collection, users collection (login check) |
+| **POST /user/favorites** | [`tests/no-mock/favorite.test.ts#L25`](../backend/tests/no-mock/favorite.test.ts#L25) | [`tests/mock/favorite.test.ts#L121`](../backend/tests/mock/favorite.test.ts#L121) | favorites collection, gems collection, users collection (login check) |
+| **DELETE /user/favorites/:placeId** | [`tests/no-mock/favorite.test.ts#L111`](../backend/tests/no-mock/favorite.test.ts#L111) | [`tests/mock/favorite.test.ts#L218`](../backend/tests/mock/favorite.test.ts#L218) | favorites collection, users collection (login check) |
 | **WebSocket /feed** | [`tests/no-mock/feed.test.ts#L40`](../backend/tests/no-mock/feed.test.ts#L40) | [`tests/mock/feed.test.ts#L73`](../backend/tests/mock/feed.test.ts#L73) | gems collection, users collection, Google Places API (gems are added through POST /gem) |
 
 #### 2.1.2. Commit Hash Where Tests Run
@@ -99,7 +100,7 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 | `src/services/gemService.ts` | 547–555 | `scoreGem`, which no route calls: gems are scored when added and when rated (`newGem`, `applyAppRatings`). Covered by the unit tests. |
 | `src/services/authService.ts` | 81, 147, 185, 246–247, 261–262, 271, 285, 290, 97–98 | Guards the API can't reach: `currentUser` before `reqJwt` (81, a programming error), `JWT_SECRET` missing (147; the tests set it), a Google token without an account ID (185), a valid token without a user ID (246–247; the server never issues one), a database failure during the login check (261–262), `getUser`, which no route calls (271), and an invalid profile update or a user deleted mid-request in the service (97–98, 285, 290; the route checks first). All are covered by `tests/unit/authService.test.ts`. |
 | `src/services/commentService.ts`, `ratingService.ts` | 30–31, 149; 17–18, 60 | The services' own body and star checks and their error classes; the routes reject invalid input with 400 first. Covered by the unit tests. |
-| `src/services/favoriteService.ts` | 124–127 | Two requests adding the same favorite at the same instant (duplicate-key error). Covered by the unit tests. |
+| `src/services/favoriteService.ts` | 125–128 | Two requests adding the same favorite at the same instant (duplicate-key error). Covered by the unit tests. |
 | `src/services/feedService.ts` | 108 | Drops a client whose socket throws while sending, which a real socket in the tests doesn't do. Covered by the unit tests. |
 
 Branch-only gaps (lines that run, with one side of a condition never taken) are of the same kinds: `req.body ?? {}` when a request has no JSON body (`authController.ts` 73, `ratingController.ts` 83), a Google API key always being set in CI (`gemService.ts` 424), and optional fields Google or MongoDB always return in the tests.

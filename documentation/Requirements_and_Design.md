@@ -21,6 +21,7 @@
 | 2026-11-17 | 3.2, 3.3, 3.4, 3.5 | Following the CP2 feedback: one User actor, since the Guest actor could only sign in; no include or extend relationships in the use case diagram, so *View comments* is its own goal and choosing a place is part of *Add a Gem*; the formal use cases are reordered (*Add a Gem* first), *Make comments* replaces *Mark a Gem as favorite*, and losing the live-update connection in Use Case 4 now shows a message. |
 | 2026-11-17 | 4.2, 4.5, 4.6 | Following the CP2 feedback: 4.2 now says there is one database with five collections; the dependencies diagram has no labels on its arrows; every sequence diagram now branches after a result (one return per call, then `alt` on it), and they follow the new order of 3.5, with *Make comments* in place of *Mark a Gem as favorite*. |
 | 2026-11-18 | 3.4, 3.5, 4.1, 4.6 | `GET /place/nearby` leaves out places that are already gems instead of marking them with `isGem`, so the list when adding a gem only shows places that can be added. |
+| 2026-11-18 | 4.1 | Favorites: `POST /user/favorites` returns the whole gem, like `GET /user/favorites`, instead of only its name, so the app can show it without another request. |
 | 2026-11-18 | 4.1, 4.2 | Ratings: two users rating a gem at once could leave the older totals and Gem Score stored (found in peer review). Each rating now takes a sequence number, and only the latest rating's totals are saved. |
 
 ---
@@ -280,7 +281,7 @@ Excavator is an app designed to let you find niche, high quality locations in yo
     - **Interfaces**:
         1. `GET /user/favorites` → the favorite gems, most recently added first (requires login)
             - **Purpose**: Loads the favorites screen.
-        2. `POST /user/favorites { gem }` → 201 `{ gem }`, or 200 if it already was a favorite (requires login)
+        2. `POST /user/favorites { gem }` → 201 with the gem (the same JSON as `GET /gem`), or 200 with it if it already was a favorite (requires login)
             - **Purpose**: Adds a gem to the user's favorites. Returns 400 if `gem` is missing or not `places/<place ID>`, 404 if the gem doesn't exist, and 409 at the 500-favorite limit.
         3. `DELETE /user/favorites/:placeId` → 204 (requires login)
             - **Purpose**: Removes a gem from the user's favorites. Returns 400 if `placeId` is not a valid place ID, and 404 if the gem wasn't a favorite.

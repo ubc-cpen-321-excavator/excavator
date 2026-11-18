@@ -584,15 +584,15 @@ paths:
                 gem: { $ref: '#/components/schemas/GemName' }
       responses:
         '200':
-          description: It already was a favorite; nothing changed.
+          description: It already was a favorite; nothing changed. The Gem, as `GET /gem` returns it.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/FavoriteRef' }
+              schema: { $ref: '#/components/schemas/Gem' }
         '201':
-          description: Added.
+          description: Added. The Gem, as `GET /gem` returns it.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/FavoriteRef' }
+              schema: { $ref: '#/components/schemas/Gem' }
         '400':
           description: "`gem` is missing or not `places/<place ID>`."
           content:
@@ -759,11 +759,6 @@ components:
             family: { type: string }
         displayName: { type: string, description: 'The name shown to other users, e.g. on their comments.' }
       example: { id: '104837261938475610293', name: { full: Sayaka Miki, given: Sayaka, family: Miki }, displayName: mermaid }
-    FavoriteRef:
-      type: object
-      required: [gem]
-      properties:
-        gem: { $ref: '#/components/schemas/GemName' }
     PlaceCandidate:
       type: object
       required: [name, displayName, latitude, longitude, distance]
