@@ -26,7 +26,7 @@ export function createApp(): Express {
   app.use('/user', authRouter);
 
   app.use((_req, res) => {
-    res.status(404).json({ error: 'Not Found' });
+    res.status(404).json({ message: 'Not Found' });
   });
 
   // Errors that reach Express instead of a route's own handling, e.g. malformed JSON rejected by
