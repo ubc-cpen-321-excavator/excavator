@@ -317,7 +317,7 @@ describe('Mocked: GemService.findNearbyPlaces', () => {
   // Input: the user's location and types ["cafe", "park"]
   // Expected behavior: Google is asked for up to 20 places within MAX_ADD_DISTANCE_M, nearest first, of those types, with a field mask;
   //                    the place without a location is skipped; stored gems are looked up by name in one query
-  // Expected output: two candidates with name, display name, type, address, location, rounded distance and isGem
+  // Expected output: only the candidate that isn't a gem, with its name as display name, location and rounded distance
   test('Places found', async () => {
     mockSearchNearby.mockResolvedValue([{
       places: [
@@ -326,7 +326,7 @@ describe('Mocked: GemService.findNearbyPlaces', () => {
         { name: 'places/next', location: { latitude: AT_PLACE.latitude + 0.001, longitude: AT_PLACE.longitude } },
       ],
     }]);
-    mockedGemModel.find.mockReturnValue({ lean: () => Promise.resolve([{ name: 'places/next' }]) });
+    mockedGemModel.find.mockReturnValue({ lean: () => Promise.resolve([{ name: 'places/near' }]) });
 
     const places = await new GemService().findNearbyPlaces(AT_PLACE, ['cafe', 'park']);
 
@@ -341,10 +341,9 @@ describe('Mocked: GemService.findNearbyPlaces', () => {
     );
     expect(mockedGemModel.find).toHaveBeenCalledWith({ name: { $in: ['places/near', 'places/next'] } }, { name: 1 });
     expect(places).toEqual([
-      { name: 'places/near', displayName: 'Near Cafe', type: 'cafe', address: '1 Main St', ...AT_PLACE, distance: 0, isGem: false },
       {
         name: 'places/next', displayName: 'places/next', type: undefined, address: undefined,
-        latitude: AT_PLACE.latitude + 0.001, longitude: AT_PLACE.longitude, distance: 111, isGem: true,
+        latitude: AT_PLACE.latitude + 0.001, longitude: AT_PLACE.longitude, distance: 111,
       },
     ]);
   });

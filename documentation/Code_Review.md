@@ -5,6 +5,7 @@
 | **Change Date**   | **Modified Sections** | **Rationale** |
 | ----------------- | --------------------- | ------------- |
 | 2026-11-04 | 2.1, 2.2, 2.3, 2.4 | Recorded the commit Codacy analysed and justified each issue it reports. |
+| 2026-11-18 | 2.4 | Moved two "unsafe use of `any`" issues in `findNearbyPlaces` to their new lines after it started leaving out existing gems (commit `20b398c`); same false positive, same justification. |
 
 ---
 
@@ -31,7 +32,7 @@ The 29 issues Codacy reports are listed below by code pattern. Most are false po
   1. **Issue**
 
      - **Location in Git:** [`backend/src/services/gemService.ts#L658`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/src/services/gemService.ts#L658)
-     - **Justification:** Codacy runs ESLint without installing our dependencies, so the types of `@googlemaps/places` cannot be resolved and everything derived from them becomes `any`. With the dependencies installed, `candidates` is typed `Omit<PlaceCandidate, 'isGem'>[]` (each built by `candidateFromGoogle`, which checks every field Google returns), and `namesIn` takes `string[]`. Our strict `tsc` type check (`npm run typecheck`, run in CI) passes with no `any`.
+     - **Justification:** Codacy runs ESLint without installing our dependencies, so the types of `@googlemaps/places` cannot be resolved and everything derived from them becomes `any`. With the dependencies installed, `candidates` is typed `PlaceCandidate[]` (each built by `candidateFromGoogle`, which checks every field Google returns), and `namesIn` takes `string[]`. Our strict `tsc` type check (`npm run typecheck`, run in CI) passes with no `any`.
 
   2. **Issue**
 
@@ -40,13 +41,13 @@ The 29 issues Codacy reports are listed below by code pattern. Most are false po
 
   3. **Issue**
 
-     - **Location in Git:** [`backend/src/services/gemService.ts#L660`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/src/services/gemService.ts#L660)
-     - **Justification:** Same cause: `c.name` is a `string` once `@googlemaps/places` is resolved, so `gems.has(c.name)` is type-safe.
+     - **Location in Git:** [`backend/src/services/gemService.ts#L283`](https://github.com/ubc-cpen-321-excavator/excavator/blob/20b398c/backend/src/services/gemService.ts#L283)
+     - **Justification:** Same cause, reported as an unsafe argument: `c.name` is a `string` once `@googlemaps/places` is resolved, so `namesIn(candidates.map(c => c.name))` gets the `string[]` it takes. This replaces the issue Codacy reported at the old line 660, which moved when `GET /place/nearby` started leaving out existing gems (pull request #124).
 
   4. **Issue**
 
-     - **Location in Git:** [`backend/src/services/gemService.ts#L660`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/src/services/gemService.ts#L660)
-     - **Justification:** Same cause, reported as an "error typed" return: the returned list is `PlaceCandidate[]` when the dependency types load, and `tsc` checks it.
+     - **Location in Git:** [`backend/src/services/gemService.ts#L285`](https://github.com/ubc-cpen-321-excavator/excavator/blob/20b398c/backend/src/services/gemService.ts#L285)
+     - **Justification:** Same cause, reported as an "error typed" return: `candidates.filter(...)` is `PlaceCandidate[]` when the dependency types load, matching the method's declared return type, and `tsc` checks it. This replaces the issue Codacy reported at the old line 660 (pull request #124).
 
   5. **Issue**
 

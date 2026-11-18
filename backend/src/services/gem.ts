@@ -254,7 +254,7 @@ export class Gem {
   }
 }
 
-/** A place near the user that they could add as a Gem. Returned by `GET /place/nearby`. */
+/** A place near the user that they could add as a Gem (not a Gem yet). Returned by `GET /place/nearby`. */
 export interface PlaceCandidate {
   /** Google Places resource name, `places/<place ID>`; what `POST /gem` takes. */
   name: string;
@@ -265,6 +265,4 @@ export interface PlaceCandidate {
   longitude: number;
   /** From the search point, in metres, rounded. */
   distance: number;
-  /** `true` if the place is already a Gem. */
-  isGem: boolean;
 }

@@ -41,8 +41,8 @@ describe('Mocked: GET /place/nearby', () => {
   // Mocked behavior: Google returns two places; one is already a gem
   // Input: GET request with the user's lat, lng and type "cafe"
   // Expected status code: 200
-  // Expected behavior: Google is searched around the user, limited to the type
-  // Expected output: both places, nearest first, with name, displayName, type, address, location, distance and isGem
+  // Expected behavior: Google is searched around the user, limited to the type; the gem is left out
+  // Expected output: only the place that isn't a gem, with name, displayName, type, address, location and distance
   test('Places found', async () => {
     mockSearchNearby.mockResolvedValue([{
       places: [
@@ -56,8 +56,7 @@ describe('Mocked: GET /place/nearby', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual([
-      { name: 'places/a', displayName: 'Cafe A', type: 'cafe', address: '1 Main St', latitude: 49.26, longitude: -123.25, distance: 0, isGem: false },
-      { name: 'places/b', displayName: 'Cafe B', type: 'cafe', latitude: 49.261, longitude: -123.25, distance: 111, isGem: true },
+      { name: 'places/a', displayName: 'Cafe A', type: 'cafe', address: '1 Main St', latitude: 49.26, longitude: -123.25, distance: 0 },
     ]);
     const req = mockSearchNearby.mock.calls[0][0];
     expect(req.locationRestriction.circle.center).toEqual({ latitude: 49.26, longitude: -123.25 });
