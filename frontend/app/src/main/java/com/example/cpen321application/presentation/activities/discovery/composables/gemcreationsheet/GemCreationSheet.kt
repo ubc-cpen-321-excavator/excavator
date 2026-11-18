@@ -39,7 +39,11 @@ fun GemCreationSheet(onShowChange: (Boolean)-> Unit, showBottomSheet: Boolean) {
                 NewGemFiltersForm(filterList) { showNearbyGems = it }
             } else {
                 NearbyGemsOptionsList(
-                    filters = convertToApiFilters(filterList).joinToString(",")
+                    filters = convertToApiFilters(filterList).joinToString(",").let {
+                        it.ifEmpty {
+                            null
+                        }
+                    }
                 ) {
                     showNearbyGems = it
                     onShowChange(it)
@@ -48,13 +52,4 @@ fun GemCreationSheet(onShowChange: (Boolean)-> Unit, showBottomSheet: Boolean) {
 
         }
     }
-}
-
-@Preview
-@Composable
-fun GemCreationSheetPreview(){
-
-    var showSheet by remember { mutableStateOf(true) }
-
-    GemCreationSheet({showSheet = it}, showSheet)
 }
