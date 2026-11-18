@@ -76,7 +76,6 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 
-<a name="uc1"></a>
 #### Use Case 1: Add a Gem
 **Description**: A User adds a place near them as a gem, picking it from a list of nearby places that can be filtered by type. The new gem is scored and shown to nearby users.
 
@@ -114,7 +113,6 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 - 5e. The gem can't be added (no connection, a server error, or Google Places is unavailable).
     - 5e1. The app shows "Couldn't add the gem, try again". Nothing is added.
 
-<a name="uc2"></a>
 #### Use Case 2: View a Gem
 **Description**: A User finds a gem on the map or the dashboard and opens it to see its photo, details and Gem Score.
 
@@ -141,7 +139,6 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 - 6a. The gem has no photo, or the photo can't be loaded.
     - 6a1. The app shows a placeholder image instead; the rest of the details still show.
 
-<a name="uc3"></a>
 #### Use Case 3: Contribute to GemScore
 **Description**: A User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
 
@@ -162,7 +159,6 @@ Excavator is an app designed to let you find niche, high quality locations in yo
     - 3c1. The app shows "Couldn't save your rating, try again".
     - 3c2. The gem keeps its previous Gem Score and the User's previous rating.
 
-<a name="uc4"></a>
 #### Use Case 4: View new Gems nearby
 **Description**: A User with the Dashboard open sees the newest gems, and gems that are added or re-scored near them appear without refreshing.
 
@@ -186,7 +182,6 @@ Excavator is an app designed to let you find niche, high quality locations in yo
     - 4a2. The list keeps the gems it already shows, and the app tries to reconnect.
     - 4a3. Once reconnected, the message disappears and new gems appear again.
 
-<a name="uc5"></a>
 #### Use Case 5: Make comments
 **Description**: A User writes a comment on a gem. The comment appears, with their name, in the gem's comments for every user who opens the gem.
 
@@ -218,7 +213,6 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ![Frontend Screens Diagram](images/frontend_screens_diagram.jpg)
 
 ### **3.7. Non-Functional Requirements**
-<a name="nfr1"></a>
 
 1. **Live updates arrive within 1 second**
     - **Description**: When a gem is added, or its Gem Score changes because someone rated it, every user whose map is open within range of it receives the update within 1 second of the request that caused it, even with 250 users connected at once. Users out of range receive nothing.
@@ -359,20 +353,20 @@ The lifelines are the actors of 3.3 and the components of the dependencies diagr
 
 Sources: `documentation/diagrams/` (Mermaid).
 
-1. [**Add a Gem**](#uc1), in two parts: first choosing the place from the nearby places, then adding it.\
+1. [**Add a Gem**](#use-case-1-add-a-gem), in two parts: first choosing the place from the nearby places, then adding it.\
 ![Add a Gem: choosing the place](images/uc1a_choose_a_place.png)
 ![Add a Gem: adding the place](images/uc1b_add_a_gem.png)
-2. [**View a Gem**](#uc2)\
+2. [**View a Gem**](#use-case-2-view-a-gem)\
 ![View a Gem](images/uc2_view_a_gem.png)
-3. [**Contribute to GemScore**](#uc3)\
+3. [**Contribute to GemScore**](#use-case-3-contribute-to-gemscore)\
 ![Contribute to GemScore](images/uc3_contribute_to_gemscore.png)
-4. [**View new Gems nearby**](#uc4)\
+4. [**View new Gems nearby**](#use-case-4-view-new-gems-nearby)\
 ![View new Gems nearby](images/uc4_view_new_gems_nearby.png)
-5. [**Make comments**](#uc5)\
+5. [**Make comments**](#use-case-5-make-comments)\
 ![Make comments](images/uc5_make_comments.png)
 
 ### **4.7. Design of Non-Functional Requirements**
-1. [**Live updates arrive within 1 second**](#nfr1)
+1. [**Live updates arrive within 1 second**](#37-non-functional-requirements)
     - **Implementation**: Updates are pushed over an open WebSocket rather than polled, so an update leaves the server as soon as the gem is stored. The feed keeps every connection's location in memory, and publishing is a single pass that checks each connection's distance to the gem and sends to those in range; it never touches the database. Publishing happens right after the write and never makes the request wait for or fail on it. Dead connections are dropped by a heartbeat so they don't slow publishing down. Verified by `backend/tests/nfr/feedLatency.test.ts` with 200 users in range and 50 out of range.
 2. [**The map stays fast with many gems**](#37-non-functional-requirements)
     - **Implementation**: Gem locations are stored as GeoJSON points with a 2dsphere index, so MongoDB answers "gems near this point" (`$nearSphere`) and "gems inside this map area" (`$geoWithin`) from the index instead of scanning every gem; gems are also indexed by Gem Score for the "best first" order. Every map query has a result limit (at most 50), so responses stay small however many gems match. Verified by `backend/tests/nfr/mapQueryTime.test.ts` with 10,000 gems.
