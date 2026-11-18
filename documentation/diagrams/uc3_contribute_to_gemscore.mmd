@@ -1,0 +1,42 @@
+sequenceDiagram
+  actor U as User
+  participant F as :Frontend
+  participant G as :Gems
+  participant US as :Users
+  participant DB as :Database
+  participant LF as :Live Feed
+  participant OF as :Frontend (other users)
+
+  U->>F: choose S stars (1–5) on gem places/{pk}
+  F->>+G: PUT /gem/{pk}/rating { stars: S } + login token
+  G->>+US: check the login token
+  US-->>-G: the user, or invalid
+  opt token valid
+    G->>+DB: does gem places/{pk} exist
+    DB-->>-G: yes, no, or an error
+    opt gem exists
+      G->>+DB: save the user's rating S (replaces their earlier one), recount the gem's ratings
+      DB-->>-G: rating count and average, or an error
+      opt saved
+        G->>G: recompute the Gem Score
+        G->>+DB: save the rating totals and Gem Score
+        DB-->>-G: updated gem, or an error
+        opt updated
+          G->>+LF: publish the updated gem
+          LF-)OF: gem.updated (to each app whose area contains it)
+          LF-->>-G: done
+        end
+      end
+    end
+  end
+  G-->>-F: 200 { stars, gem }, 401 (login invalid or expired), 404 "No such Gem.", or 500 "Rate Gem failed."
+  alt 200 rated
+    F-->>U: the gem's new Gem Score
+  else 401 login expired
+    F-->>U: back to the sign-in screen
+  else 404 gem deleted
+    F-->>U: "This gem is no longer available"
+  else 500 database error
+    F-->>U: "Couldn't save your rating, try again", previous score and rating kept
+  end
+  Note over U,OF: If the server can't be reached, the Frontend shows "No connection, try again"
