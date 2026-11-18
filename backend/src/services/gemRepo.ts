@@ -235,13 +235,32 @@ export class GemRepo {
   }
 
   /**
+   * Takes the next rating sequence number of a Gem, atomically, so concurrent ratings get different ones.
+   *
+   * @param name Gem name.
+   * @returns the new sequence number (1 for the first rating), or `undefined` if there is no such Gem.
+   */
+  async nextRatingSeq(name: string): Promise<number | undefined> {
+    const doc = await GemModel.findOneAndUpdate(
+      { name },
+      { $inc: { ratingSeq: 1 } },
+      { returnDocument: 'after', projection: { ratingSeq: 1 } },
+    ).lean<{ ratingSeq?: number | null }>();
+
+    return doc?.ratingSeq ?? undefined;
+  }
+
+  /**
    * Stores a Gem's GemScore and the values it was computed from, leaving everything else as stored.
    * `$set` rather than a replace, so `createdAt` (used by the newest-Gems list) is kept.
    * A value that is now `undefined` (e.g. the last rating was removed) is unset.
    *
    * @param gem the rescored Gem.
+   * @param ratingSeq with rating totals from `nextRatingSeq`: only store them if no rating with a later
+   *   sequence number has stored its totals yet (its recount already includes this rating).
+   * @returns `false` if nothing was stored because a later rating's totals already are (or the Gem is gone).
    */
-  async saveScore(gem: Gem): Promise<void> {
+  async saveScore(gem: Gem, ratingSeq?: number): Promise<boolean> {
     const fields = {
       score: gem.getScore(),
       scoreTime: gem.getScoreTime(),
@@ -251,10 +270,17 @@ export class GemRepo {
     };
     const unset = Object.fromEntries(Object.entries(fields).filter(entry => entry[1] === undefined).map(entry => [entry[0], 1]));
 
-    await GemModel.updateOne(
-      { name: gem.name },
-      { $set: definedOnly(fields), ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}) },
+    const filter = ratingSeq === undefined
+      ? { name: gem.name }
+      : { name: gem.name, $or: [{ ratingSeqApplied: { $lt: ratingSeq } }, { ratingSeqApplied: { $exists: false } }] };
+    const set = ratingSeq === undefined ? definedOnly(fields) : { ...definedOnly(fields), ratingSeqApplied: ratingSeq };
+
+    const res = await GemModel.updateOne(
+      filter,
+      { $set: set, ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}) },
     );
+
+    return res.matchedCount > 0;
   }
 
 }

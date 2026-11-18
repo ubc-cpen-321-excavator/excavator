@@ -34,6 +34,10 @@ const gemSchema = new Schema({
   reviewCount: { type: Number }, // Google Places review count (userRatingCount)
   ratingCount: { type: Number }, // Number of Excavator users' ratings (see ratingModel.ts)
   ratingAverage: { type: Number }, // Average of the Excavator users' ratings, 1–5
+  // Concurrent ratings: each rating takes the next ratingSeq after it is stored, and its totals are only
+  // saved if no later rating's totals already were (ratingSeqApplied), so an older recount can't overwrite a newer one.
+  ratingSeq: { type: Number }, // Ratings stored so far, counting changed ones
+  ratingSeqApplied: { type: Number }, // ratingSeq of the rating whose totals are stored
 
   addedBy: { type: String }, // User id (Google sub) of the user who added the gem
 }, { timestamps: true });

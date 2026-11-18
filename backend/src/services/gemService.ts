@@ -206,15 +206,35 @@ class GemService {
   }
 
   /**
-   * Stores a Gem's new Excavator rating totals and the GemScore they lead to.
+   * Takes the sequence number of a rating just stored, for `applyAppRatings`. Call it after storing the
+   * rating and before recounting, so a rating with a later number always has a recount that includes it.
+   *
+   * @param name Gem name, `places/<place ID>`.
+   * @returns the sequence number.
+   * @throws `NoSuchGemError` if there is no such Gem.
+   */
+  async nextRatingSeq(name: string): Promise<number> {
+    const seq = await this.repo.nextRatingSeq(name);
+    if (seq === undefined) {
+      throw new NoSuchGemError('No such Gem.');
+    }
+
+    return seq;
+  }
+
+  /**
+   * Stores a Gem's new Excavator rating totals and the GemScore they lead to, unless a later rating's
+   * totals are already stored: those come from a later recount, which also counts this rating, so an
+   * older recount never overwrites them when two users rate at once.
    *
    * @param name Gem name, `places/<place ID>`.
    * @param count number of Excavator users' ratings.
    * @param average their average, 1–5.
-   * @returns the rescored Gem.
+   * @param ratingSeq the rating's sequence number, from `nextRatingSeq`.
+   * @returns the Gem as stored: rescored with these totals, or with a later rating's.
    * @throws `NoSuchGemError` if there is no such Gem; nothing is stored.
    */
-  async applyAppRatings(name: string, count: number, average: number | undefined): Promise<Gem> {
+  async applyAppRatings(name: string, count: number, average: number | undefined, ratingSeq: number): Promise<Gem> {
     const gem = await this.getGem(name);
     if (!gem) {
       throw new NoSuchGemError('No such Gem.');
@@ -222,9 +242,15 @@ class GemService {
 
     gem.setAppRatings(count, average);
     gem.rescore();
-    await this.repo.saveScore(gem);
+    if (await this.repo.saveScore(gem, ratingSeq)) {
+      return gem;
+    }
 
-    return gem;
+    const current = await this.getGem(name);
+    if (!current) {
+      throw new NoSuchGemError('No such Gem.');
+    }
+    return current;
   }
 
   /**
