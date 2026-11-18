@@ -33,7 +33,10 @@ fun GemCreationSheet(onShowChange: (Boolean)-> Unit, showBottomSheet: Boolean) {
         ModalBottomSheet(
             modifier = Modifier.fillMaxHeight(),
             sheetState = sheetState,
-            onDismissRequest = { onShowChange(false) }
+            onDismissRequest = {
+                showNearbyGems = false
+                onShowChange(false)
+            }
         ) {
             if (!showNearbyGems) {
                 NewGemFiltersForm(filterList) { showNearbyGems = it }

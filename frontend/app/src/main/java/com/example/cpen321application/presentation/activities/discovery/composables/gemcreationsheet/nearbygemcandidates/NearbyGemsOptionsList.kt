@@ -28,8 +28,6 @@ fun NearbyGemsOptionsList (
         viewModel.getGemCandidates(filters)
     }
 
-    // TODO: make viewmodel call GetGemCandidiates and see if that will cause new gems to appear
-
     if (gemCandidateState.errorMessage != null) {
         NoGemCandidateDisplay(
             message = gemCandidateState.errorMessage!!
