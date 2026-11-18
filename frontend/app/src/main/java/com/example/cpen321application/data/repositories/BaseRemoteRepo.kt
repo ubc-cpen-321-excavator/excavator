@@ -1,6 +1,7 @@
 package com.example.cpen321application.data.repositories
 
 import android.R.attr.data
+import android.util.Log
 import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.data.remote.error.APIErrorResponse
 import com.google.gson.Gson
