@@ -132,7 +132,7 @@ export function lookupFromGoogle(gPlace: GooglePlace): PlaceLookup {
  * @param from where the user is, to measure the distance from.
  * @returns the candidate, or `undefined` if the place has no valid name or location.
  */
-export function candidateFromGoogle(gPlace: GooglePlace, from: LatLng): Omit<PlaceCandidate, 'isGem'> | undefined {
+export function candidateFromGoogle(gPlace: GooglePlace, from: LatLng): PlaceCandidate | undefined {
   const location = locationFromGoogle(gPlace);
   if (!isValidGemName(gPlace.name) || location === undefined) {
     return undefined;

@@ -247,7 +247,7 @@ class GemService {
    * @param location where the user is.
    * @param types Google Places types to limit the search to, e.g. `['cafe', 'park']`; a place
    *   matching any of them is listed. Empty or left out: all places.
-   * @returns up to 20 places, each marked with whether it is already a Gem.
+   * @returns up to 20 places that are not Gems yet, nearest first; places that already are Gems are left out.
    * @throws `InvalidPlaceTypeError` if a type is malformed, there are more than `MAX_PLACE_TYPES`,
    *   or Google does not know one of them.
    * @throws `PlacesUnavailableError` if Google Places fails otherwise.
@@ -279,9 +279,10 @@ class GemService {
     // Leaves out anything Google returns that couldn't be added as a Gem anyway.
     const candidates = (res[0].places ?? []).flatMap(gPlace => candidateFromGoogle(gPlace, location) ?? []);
 
+    // Places that are already Gems can't be added again, so they aren't offered.
     const gems = await this.repo.namesIn(candidates.map(c => c.name));
 
-    return candidates.map(c => ({ ...c, isGem: gems.has(c.name) }));
+    return candidates.filter(c => !gems.has(c.name));
   }
 
   /**

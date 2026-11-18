@@ -35,7 +35,7 @@ describeWithPlaces('Unmocked: GET /place/nearby with Google Places', () => {
   // Input: GET /place/nearby next to Google Sydney; one nearby place is already a Gem
   // Expected status code: 200
   // Expected behavior: Google Places lists places within 200 m, nearest first
-  // Expected output: up to 20 places, each within 200 m; the stored one has isGem: true
+  // Expected output: up to 20 places, each within 200 m; the one stored as a Gem is left out
   test('Places found', async () => {
     const first = await request(createApp()).get('/place/nearby').query(AT_GOOGLE_SYDNEY);
     expect(first.status).toBe(200);
@@ -49,7 +49,7 @@ describeWithPlaces('Unmocked: GET /place/nearby with Google Places', () => {
     const distances = (second.body as { distance: number }[]).map(p => p.distance);
     expect(distances).toEqual([...distances].sort((a, b) => a - b));
     expect(Math.max(...distances)).toBeLessThanOrEqual(200);
-    expect(second.body.find((p: { name: string }) => p.name === first.body[0].name)).toMatchObject({ isGem: true });
+    expect((second.body as { name: string }[]).map(p => p.name)).not.toContain(first.body[0].name);
   }, 20_000);
 
   // Input: GET /place/nearby with a well-formed type Google doesn't know

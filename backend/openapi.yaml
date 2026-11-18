@@ -443,8 +443,8 @@ paths:
       operationId: findNearbyPlaces
       summary: Places within 200 m of the user that they could add as a Gem
       description: |
-        For places that are not labelled on the map. Lists up to 20 places, nearest first; the user picks one
-        and the app sends its `name` to `POST /gem`. To narrow the list, pass one or more Google Places types in
+        For places that are not labelled on the map. Lists up to 20 places, nearest first, leaving out places that
+        are already Gems (they can't be added again); the user picks one and the app sends its `name` to `POST /gem`. To narrow the list, pass one or more Google Places types in
         `type`; a place matching any of them is listed.
       parameters:
         - { $ref: '#/components/parameters/Lat' }
@@ -766,7 +766,7 @@ components:
         gem: { $ref: '#/components/schemas/GemName' }
     PlaceCandidate:
       type: object
-      required: [name, displayName, latitude, longitude, distance, isGem]
+      required: [name, displayName, latitude, longitude, distance]
       properties:
         name: { $ref: '#/components/schemas/GemName' }
         displayName: { type: string, description: Falls back to `name` if Google has none. }
@@ -775,7 +775,6 @@ components:
         latitude: { $ref: '#/components/schemas/Latitude' }
         longitude: { $ref: '#/components/schemas/Longitude' }
         distance: { type: integer, minimum: 0, maximum: 200, description: 'Metres from the user, rounded.' }
-        isGem: { type: boolean, description: Whether the place is already a Gem. }
     Error:
       type: object
       required: [message]
