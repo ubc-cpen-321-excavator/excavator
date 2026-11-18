@@ -13,11 +13,12 @@ class GetGemCandidatesUseCase @Inject constructor (
 ): BaseUseCase<GetGemCandidatesUseCase.Params, Resource<Flow<List<GemCandidate>>>>() {
 
     data class Params (
-        val coords: LatLng
+        val coords: LatLng,
+        val filters: String?
     )
 
     override suspend fun invoke(parameters: Params): Resource<Flow<List<GemCandidate>>> {
-        return repository.getGemCandidates(parameters.coords)
+        return repository.getGemCandidates(parameters.coords,parameters.filters)
     }
 
 

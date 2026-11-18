@@ -18,13 +18,14 @@ import com.google.android.gms.maps.model.LatLng
 fun NearbyGemsOptionsList (
     modifier: Modifier = Modifier,
     viewModel: GemViewModel = hiltViewModel(),
+    filters: String?,
     onOptionsClosed: (Boolean) -> Unit
 ) {
 
     val gemCandidateState by viewModel.gemCandidate.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.getGemCandidates()
+        viewModel.getGemCandidates(filters)
     }
 
     // TODO: make viewmodel call GetGemCandidiates and see if that will cause new gems to appear

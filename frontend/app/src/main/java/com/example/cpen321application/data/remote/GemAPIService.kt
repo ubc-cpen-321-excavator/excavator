@@ -41,6 +41,7 @@ interface GemAPIService {
     suspend fun getNearestGemCandidates(
         @Query("lat") latitude: Double,
         @Query("lng") longitude: Double,
+        @Query("type", encoded = true) filters: String?
     ) : Response<List<GemCandidate>>
 
     @GET(USER_FAVORITE_GEMS_ENDPOINT)

@@ -46,10 +46,10 @@ class GemRepositoryImpl @Inject constructor(
 
     }
 
-    override suspend fun getGemCandidates(coords: LatLng): Resource<Flow<List<GemCandidate>>> {
+    override suspend fun getGemCandidates(coords: LatLng, filters: String?): Resource<Flow<List<GemCandidate>>> {
 
         return safeApiCall(candidatesMapper) {
-            service.getNearestGemCandidates(coords.latitude, coords.longitude)
+            service.getNearestGemCandidates(coords.latitude, coords.longitude, filters)
         }
 
     }

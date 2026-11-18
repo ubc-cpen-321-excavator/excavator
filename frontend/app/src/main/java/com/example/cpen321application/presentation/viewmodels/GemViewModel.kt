@@ -141,12 +141,12 @@ class GemViewModel @Inject constructor(
         }
     }
 
-    fun getGemCandidates() {
+    fun getGemCandidates(filters: String? = null) {
         launch {
             val firstFix = coordinates.filterNotNull().first()
             val coords = LatLng(firstFix.latitude,firstFix.longitude)
 
-            when (val result = getGemCandidatesUseCase(GetGemCandidatesUseCase.Params(coords))) {
+            when (val result = getGemCandidatesUseCase(GetGemCandidatesUseCase.Params(coords,filters))) {
                 is Resource.Error -> {
                     _gemCandidates.value = getErrorState(
                         result.message,

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.nearbygemcandidates.NearbyGemsOptionsList
 import com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.newgemfilters.NewGemFiltersForm
+import com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.newgemfilters.convertToApiFilters
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,7 +38,9 @@ fun GemCreationSheet(onShowChange: (Boolean)-> Unit, showBottomSheet: Boolean) {
             if (!showNearbyGems) {
                 NewGemFiltersForm(filterList) { showNearbyGems = it }
             } else {
-                NearbyGemsOptionsList() {
+                NearbyGemsOptionsList(
+                    filters = convertToApiFilters(filterList).joinToString(",")
+                ) {
                     showNearbyGems = it
                     onShowChange(it)
                 }
