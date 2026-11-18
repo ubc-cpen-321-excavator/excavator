@@ -19,20 +19,20 @@ flowchart TB
   Places["Google Places API"]
   DB[("Database<br/>(MongoDB)")]
 
-  App -->|"get Google ID token"| SignIn
-  App -->|"sign in, profile"| Users
-  App -->|"favorites"| Favs
-  App -->|"gems, nearby places,<br/>comments, ratings"| Gems
-  App <-->|"subscribe /<br/>live gem updates"| Feed
+  App --> SignIn
+  App --> Users
+  App --> Favs
+  App --> Gems
+  App <--> Feed
 
-  Favs -->|"check login"| Users
-  Gems -->|"check login"| Users
-  Favs -->|"check and load gems"| Gems
-  Gems -->|"publish new and<br/>updated gems"| Feed
+  Favs --> Users
+  Gems --> Users
+  Favs --> Gems
+  Gems --> Feed
 
-  Users -->|"verify ID token"| SignIn
-  Gems -->|"nearby search,<br/>place details"| Places
+  Users --> SignIn
+  Gems --> Places
 
-  Users -->|"users"| DB
-  Favs -->|"favorites"| DB
-  Gems -->|"gems, comments, ratings"| DB
+  Users --> DB
+  Favs --> DB
+  Gems --> DB

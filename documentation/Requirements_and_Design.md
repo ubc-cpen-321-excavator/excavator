@@ -19,6 +19,7 @@
 | 2026-11-04 | 3.5, 4.6 | Wrote the five formal use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Mark a Gem as favorite) with every failure scenario. Replaced Initialize session with Mark a Gem as favorite, since the formal use cases must exclude authentication. Add a Gem now matches the app: the place is picked from the list of nearby places. |
 | 2026-11-17 | 4.1, 4.2 | Gems: new `GET /gem/:pk/photo` and a `photoUrl` on every gem, so the dashboard can show place photos; `GET /gem/newest` can be limited to gems near the user. Gems store the name of their Google photo. |
 | 2026-11-17 | 3.2, 3.3, 3.4, 3.5 | Following the CP2 feedback: one User actor, since the Guest actor could only sign in; no include or extend relationships in the use case diagram, so *View comments* is its own goal and choosing a place is part of *Add a Gem*; the formal use cases are reordered (*Add a Gem* first), *Make comments* replaces *Mark a Gem as favorite*, and losing the live-update connection in Use Case 4 now shows a message. |
+| 2026-11-17 | 4.2, 4.5, 4.6 | Following the CP2 feedback: 4.2 now says there is one database with five collections; the dependencies diagram has no labels on its arrows; every sequence diagram now branches after a result (one return per call, then `alt` on it), and they follow the new order of 3.5, with *Make comments* in place of *Mark a Gem as favorite*. |
 
 ---
 
@@ -291,15 +292,17 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 
 
 ### **4.2. Databases**
-1. **Gems DB (MongoDB, `gems` collection)**
+Excavator has one database, a MongoDB database, with the five collections below. Each collection belongs to one component of 4.1: `gems`, `comments` and `ratings` to Gems, `users` to Users, and `favorites` to Favorites.
+
+1. **`gems` collection**
     - **Purpose**: Stores every gem in Excavator. Each gem holds its Google Places place (place ID, display name, location and the name of its first Google photo), its type and description, the user who added it, and its Gem Score together with the inputs the score is computed from (the Google rating and review count, the nicheness derived from the review count, and the number and average of Excavator users' ratings) and the time the score was last computed. The location is indexed for geospatial queries, so the discovery screen can load the gems around the user and the dashboard can show nearby gems. Gems are also indexed by type for filtering and by Gem Score for recommendations.
-2. **Users DB (MongoDB, `users` collection)**
+2. **`users` collection**
     - **Purpose**: Stores every Excavator user, keyed by their Google account ID. Each user holds their name from Google and the name shown to other users. A user is created the first time they sign in with Google, and the same ID is what each gem stores as the user who added it.
-3. **Comments DB (MongoDB, `comments` collection)**
+3. **`comments` collection**
     - **Purpose**: Stores the comments users leave on gems. Comments are a weak entity of gems (many comments to one gem): each comment belongs to exactly one gem and is identified by that gem together with its own comment ID, and holds the comment body, the user who wrote it, and their name at the time (so listing comments needs no user lookups). Comments are indexed by gem, so a gem's comments can be listed oldest first.
-4. **Ratings DB (MongoDB, `ratings` collection)**
+4. **`ratings` collection**
     - **Purpose**: Stores users' 1–5 star ratings of gems. Ratings are a weak entity of gems, identified by their gem together with the user who gave them, so a user has at most one rating per gem and rating again replaces it. After each rating, MongoDB recounts the gem's ratings and their average, which are stored on the gem for its Gem Score.
-5. **Favorites DB (MongoDB, `favorites` collection)**
+5. **`favorites` collection**
     - **Purpose**: Stores which gems each user marked as favorites. Users and gems are many-to-many through favorites, so each favorite is its own document identified by the user and the gem together, rather than a list on the user: this keeps them in the order they were added, makes adding the same favorite twice harmless, and keeps user documents small. Favorites are indexed by user and date, so a user's favorites are listed newest first.
 
 
@@ -343,28 +346,29 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ### **4.5. Dependencies Diagram**
 ![Dependencies diagram](images/dependencies.png)
 
-A high-level view: boxes are components, and an arrow A → B means A calls B for what is written on the arrow (the exact interfaces are listed in 4.1). The Frontend and the Live Feed call each other (A ↔ B) over a WebSocket: the Frontend subscribes, and the Live Feed pushes live gem updates back. The four back-end components run in one server. All data is in one MongoDB database, in the collections listed in 4.2. The Frontend never talks to the database, and only the back end calls Google Places, so the API key stays on the server. Source: `documentation/diagrams/dependencies.mmd` (Mermaid).
+A high-level view: boxes are the components of 4.1 and the external services of 4.3, and an arrow A → B means A uses B (the interfaces are listed in 4.1). The Frontend and the Live Feed use each other (A ↔ B): the Frontend subscribes over a WebSocket, and the Live Feed pushes live gem updates back. The four back-end components run in one server and share one MongoDB database, each using its own collections (4.2). The Frontend never talks to the database, and only the back end calls Google Places, so the API key stays on the server. Source: `documentation/diagrams/dependencies.mmd` (Mermaid).
 
 ### **4.6. Use Case Sequence Diagram (5 Most Major Use Cases)**
 The lifelines are the actors of 3.3 and the components of the dependencies diagram (4.5); the user only talks to the Frontend. Messages are the REST interfaces of 4.1; database and internal calls are described in words, at the level of what is read or written. Notation:
-- A **solid arrow with a filled head** is a synchronous call. Its result comes back on the **dashed arrow** after it, labelled with what is returned (HTTP status and body for REST calls).
+- A **solid arrow with a filled head** is a synchronous call. Its one result comes back on the **dashed arrow** after it, labelled with everything it can return (HTTP status and body for REST calls).
+- Branches come after a result: the caller gets the result, then an `alt` box branches on it, with what the user sees in each case. An `opt` box is a step that only happens for one result (e.g. the gem is only stored if the place is close enough).
 - A **solid arrow with an open head** is an asynchronous message with no reply: WebSocket messages between the Frontend and the Live Feed, and updates the Frontend shows without the user asking.
-- Every failure the use case can run into is an `alt` branch at the step where it happens, with what the user then sees. A failure that applies to every request, the server not being reachable, is written once per diagram as a note. An invalid or expired login token is an `alt` branch in the use cases that need sign-in (it sends the user back to sign in). Requests the app never sends (e.g. a malformed place name) are rejected with 400; see 4.1.
+- A failure that applies to every request, the server not being reachable, is written once per diagram as a note. Requests the app never sends (e.g. a malformed place name) are rejected with 400; see 4.1.
 - Values flow from earlier messages: e.g. the place picked from the nearby places is the place that is then added.
 
-Sources: `documentation/diagrams/`.
+Sources: `documentation/diagrams/` (Mermaid).
 
-1. [**View a Gem**](#uc2)\
-![View a Gem](images/uc1_view_a_gem.png)
-2. [**Add a Gem**](#uc1), in two parts: first choosing the place from the nearby places, then adding it.\
-![Add a Gem: choosing the place](images/uc2a_choose_a_place.png)
-![Add a Gem](images/uc2b_add_a_gem.png)
+1. [**Add a Gem**](#uc1), in two parts: first choosing the place from the nearby places, then adding it.\
+![Add a Gem: choosing the place](images/uc1a_choose_a_place.png)
+![Add a Gem: adding the place](images/uc1b_add_a_gem.png)
+2. [**View a Gem**](#uc2)\
+![View a Gem](images/uc2_view_a_gem.png)
 3. [**Contribute to GemScore**](#uc3)\
 ![Contribute to GemScore](images/uc3_contribute_to_gemscore.png)
 4. [**View new Gems nearby**](#uc4)\
 ![View new Gems nearby](images/uc4_view_new_gems_nearby.png)
-5. **Mark a Gem as favorite**\
-![Mark a Gem as favorite](images/uc5_mark_a_gem_as_favorite.png)
+5. [**Make comments**](#uc5)\
+![Make comments](images/uc5_make_comments.png)
 
 ### **4.7. Design of Non-Functional Requirements**
 1. [**Live updates arrive within 1 second**](#nfr1)
