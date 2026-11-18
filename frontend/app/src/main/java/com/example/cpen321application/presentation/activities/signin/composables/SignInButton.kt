@@ -22,6 +22,7 @@ import java.io.IOException
 
 @Composable
 fun SignInButton(
+    modifier: Modifier = Modifier,
     authAPIService: AuthAPIService,
     tokenStore: TokenStore,
     sessionEventBus: SessionEventBus,

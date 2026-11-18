@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -25,8 +26,11 @@ fun FavoritesScreen(
 ) {
     val context = LocalContext.current
 
-    val gems by viewModel.favoriteGems.collectAsState()
-    viewModel.getFavoriteGems()
+    val favoriteGemState by viewModel.favoriteGems.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.getFavoriteGems()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -40,7 +44,7 @@ fun FavoritesScreen(
         Column(modifier = Modifier.padding(innerPadding)) {
             Text("Favorites", fontSize = 30.sp)
             GemCardGrid(
-                gems = gems,
+                gemState = favoriteGemState,
                 context = context,
                 title = "Your favorites:",
                 isFavorite = true,

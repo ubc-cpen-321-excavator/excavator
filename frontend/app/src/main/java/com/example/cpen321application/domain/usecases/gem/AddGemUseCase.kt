@@ -1,6 +1,7 @@
 package com.example.cpen321application.domain.usecases.gem
 
 import com.example.cpen321application.data.remote.NewGemRequestBody
+import com.example.cpen321application.data.repositories.Resource
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.domain.repositories.GemRepository
 import com.example.cpen321application.domain.usecases.BaseUseCase
@@ -11,14 +12,14 @@ import javax.inject.Inject
 
 class AddGemUseCase @Inject constructor(
     private val repository: GemRepository
-): BaseUseCase<AddGemUseCase.Params, Flow<Gem>>(){
+): BaseUseCase<AddGemUseCase.Params, Resource<Flow<Gem>>>(){
 
     data class Params (
         val title: String,
         val coords: LatLng,
     )
 
-    override suspend fun invoke(parameters: Params): Flow<Gem> {
+    override suspend fun invoke(parameters: Params): Resource<Flow<Gem>> {
 
         return repository.addGem(
             NewGemRequestBody(
