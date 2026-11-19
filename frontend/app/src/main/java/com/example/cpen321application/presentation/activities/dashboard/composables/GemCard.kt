@@ -81,13 +81,3 @@ fun GemCard(
         }
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun GemCardPreview() {
-    val gem = Gem("Nitobe Memorial Garden", LatLng(49.2663, -123.2599), "places/seed-nitobe-garden")
-    Row {
-        GemCard(gem = gem, context = LocalContext.current)
-        GemCard(gem = gem, context = LocalContext.current, isFavorite = true)
-    }
-}

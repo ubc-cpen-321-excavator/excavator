@@ -27,7 +27,8 @@ class GemMapper : Mapper<Gem, GemDTO> {
                 dtoObject.place.latitude,
                 dtoObject.place.longitude
             ),
-            placesName = dtoObject.place.name
+            placesName = dtoObject.place.name,
+            score = dtoObject.score ?: 0.0
         )
     }
 
