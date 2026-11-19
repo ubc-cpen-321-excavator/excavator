@@ -1,6 +1,7 @@
 package e2e
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
@@ -27,6 +28,8 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import androidx.test.uiautomator.UiDevice
 import com.example.cpen321application.R
 import com.example.cpen321application.presentation.TestTags
@@ -68,10 +71,42 @@ abstract class E2ETestBase {
         LOCATION_PERMISSIONS.forEach { shell("pm grant ${appContext.packageName} $it") }
     }
 
+    /**
+     * Closes every activity the test opened, not only the Dashboard that [launchDashboard] started:
+     * the navigation bar opens Discovery and Favorites as separate activities. This must happen here,
+     * before the Compose rule ends. When the rule ends it cancels the compositions that are still alive
+     * on the test thread, and the Discovery map then calls Google Maps off the main thread, which
+     * Google Maps rejects ("Not on the main thread"). Finished here, each activity is destroyed on the
+     * main thread and the map is cleaned up there.
+     */
     @After
     fun closeApp() {
-        scenario?.close()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.runOnMainSync { liveActivities().forEach { it.finish() } }
+        val deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS
+        var remaining = activitiesStillAlive()
+        while (remaining.isNotEmpty() && SystemClock.uptimeMillis() < deadline) {
+            SystemClock.sleep(POLL_MS)
+            remaining = activitiesStillAlive()
+        }
+        check(remaining.isEmpty()) { "These activities were not destroyed after the test: $remaining" }
+        runCatching { scenario?.close() }
         scenario = null
+    }
+
+    /** The names of the app's activities that are not destroyed yet. */
+    private fun activitiesStillAlive(): List<String> {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        var names = emptyList<String>()
+        instrumentation.runOnMainSync { names = liveActivities().map { it.javaClass.simpleName } }
+        return names
+    }
+
+    /** The app's activities in any stage before destroyed. Must be called on the main thread. */
+    private fun liveActivities(): List<Activity> {
+        val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+        return LIVE_STAGES.flatMap { monitor.getActivitiesInStage(it) }
     }
 
     /** The signed-in user's token, as the app stores it (TokenStore). */
@@ -239,6 +274,16 @@ abstract class E2ETestBase {
         private val STAR_GREY = Color.Gray
         private const val COLOR_TOLERANCE = 0.06f
         private const val MIN_STAR_PIXELS = 20
+
+        private val LIVE_STAGES = listOf(
+            Stage.PRE_ON_CREATE,
+            Stage.CREATED,
+            Stage.STARTED,
+            Stage.RESUMED,
+            Stage.PAUSED,
+            Stage.STOPPED,
+            Stage.RESTARTED,
+        )
 
         private val LOCATION_PERMISSIONS = listOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
