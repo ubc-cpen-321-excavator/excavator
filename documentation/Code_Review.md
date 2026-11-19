@@ -207,7 +207,7 @@ The 29 issues Codacy reports are listed below by code pattern. Most are false po
 
 - **Peer group reviewed:** TradeOff ([`juliselormey/cpen321-TradeOff`](https://github.com/juliselormey/cpen321-TradeOff))
 - **Commit SHA reviewed:** `7ee336bea9c67146034e78bde72eb18ff6143139` (`main`, Nov 10, 2026), with their `CP2_TradeOff.apk`
-- **Date the artifacts were exchanged:** [WRITE_HERE]
+- **Date the artifacts were exchanged:** November 18, 2026
 - **Review report submitted:** [`CP3_TradeOff_Review.pdf`](res/CP3_TradeOff_Review.pdf)
 
 We read their back end (Express, Prisma and MySQL) and Android front end, ran their back-end Jest suite from a fresh clone with coverage, and compared their tests and Codacy results against their documents.
