@@ -16,7 +16,8 @@ class Constants {
         val PLACEHOLDER_SELECTED_GEM = Gem(
             title = "Placeholder",
             coords = LatLng(1.0, 1.0),
-            placesName = "Placeholder places name"
+            placesName = "Placeholder places name",
+            score = 50.0
         )
 
     }

@@ -59,8 +59,8 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
 
                 // TODO: replace dummy values with the gem's real score once the data is available
                 GemScoreBar(
-                    score = 7,
-                    maxScore = 10,
+                    score = gem.score,
+                    maxScore = 100.0,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)

@@ -17,6 +17,7 @@ object GemExtras {
     const val LATITUDE = "gem_coords_latitude"
     const val LONGITUDE = "gem_coords_longitude"
     const val PLACES_NAME = "gem_places_name"
+    const val SCORE = "gem_score"
 }
 
 fun navigateTo(
@@ -48,6 +49,7 @@ fun navigateToDiscovery(context: Context, gem: Gem? = null) {
             putDouble(GemExtras.LATITUDE, it.coords.latitude)
             putDouble(GemExtras.LONGITUDE, it.coords.longitude)
             putString(GemExtras.PLACES_NAME, it.placesName)
+            putDouble(GemExtras.SCORE, it.score)
         }
     }
     navigateTo(context, NavDestination.DISCOVERY, extras)
