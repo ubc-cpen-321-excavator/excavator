@@ -125,15 +125,17 @@ Run them with `./scripts/run-backend-nfr-tests.sh`, or `npm test -- tests/nfr/` 
 
 | **File** | **Contents** |
 | --- | --- |
-| `AddGemE2ETest.kt` | Use case 2: Add a Gem (6 tests) |
+| `AddGemE2ETest.kt` | Use case 2: Add a Gem (4 tests) |
 | `CommentOnGemE2ETest.kt` | Use case 4: Comment on a Gem (5 tests) |
 | `ManageFavoritesE2ETest.kt` | Use case 5: Manage Favorite Gems (4 tests) |
-| `E2ETestBase.kt` | Setup shared by every test: checks that a user is signed in, sets the device's location, starts a mock location |
-| `AppDriver.kt` | UI actions: the Jetpack Compose testing APIs for the app's screens, UI Automator for Google Maps markers and system dialogs |
+| `E2ETestBase.kt` | Setup shared by every test: checks that a user is signed in, turns the device's location on, grants location permission, starts a mock location |
+| `AppDriver.kt` | UI actions: the Jetpack Compose testing APIs for the app's screens, UI Automator for Google Maps markers and the system Back button |
 | `TestData.kt`, `BackendClient.kt`, `ApiModels.kt` | Create and clean up test data through the backend's authenticated API, as the signed-in user |
 | `DeviceControl.kt`, `MockLocation.kt`, `E2EConfig.kt`, `GeoPoint.kt` | Device settings, mock location, fixed test values |
 
-The tests talk to the real backend (nothing is mocked) and never sign in: each one starts on the main screen (the Dashboard) as the user who is already signed in on the device. Each test runs in its own app process (one `am instrument` call per test) and creates the data it needs, so the tests do not depend on each other.
+There are 13 tests. They talk to the real backend (nothing is mocked) and never sign in: each one starts on the main screen (the Dashboard) as the user who is already signed in on the device. Each test runs in its own app process (one `am instrument` call per test) and creates the data it needs, so the tests do not depend on each other.
+
+The tests look for UI bugs a user would meet when using the app normally, so they assume normal conditions: Wi-Fi (internet) on, the device's location on, and the app's location permission granted. The run script and each test's setup make sure location is on and the permission is granted.
 
 #### 4.1.1. Commit Hash Where Tests Run
 
@@ -167,10 +169,19 @@ Both scripts do the same:
 2. Pick the device, then build and install the app and the test APK on it (`gradlew installDebug installDebugAndroidTest`). The app is updated in place: the script never uninstalls it, never runs `pm clear` and never clears its data, so the sign-in is kept.
 3. Open the app and wait for a user to sign in (prerequisite 5).
 4. Grant the app location permission, turn the device's location on, and let the app use mock locations. Debug builds declare `ACCESS_MOCK_LOCATION` for this, in `frontend/app/src/debug/AndroidManifest.xml`; release builds do not.
-5. Run each test in its own call: `adb shell am instrument -w -r -e class e2e.<Class>#<method> com.example.cpen321application.test/androidx.test.runner.AndroidJUnitRunner`. Just before `AddGemE2ETest#scenario2a_locationPermissionDenied` it revokes the app's location permission, and it grants it back afterwards, even if the test fails or the run is interrupted.
-6. Print a pass/fail table to paste into 4.2, save the full log as `frontend/app/build/e2e-logs/e2e-<date>-<time>.log`, and exit with a non-zero status unless every test passed. Each result is `PASS`, `FAIL`, `FAIL (app crashed)` or `BLOCKED` (Use case 5, step 4a, without the seed endpoint).
+5. Run each test in its own call: `adb shell am instrument -w -r -e class e2e.<Class>#<method> com.example.cpen321application.test/androidx.test.runner.AndroidJUnitRunner`. Before each test it checks that the device is still connected.
+6. Print a results table to paste into 4.2, save the full log as `frontend/app/build/e2e-logs/e2e-<date>-<time>.log` (including any error adb printed), and exit with a non-zero status unless every test passed. Each result is one of:
 
-To rerun a single test after the script has installed the app, use the `am instrument` command from step 5 with that test's name. `AddGemE2ETest#scenario2a_locationPermissionDenied` also needs `adb shell pm revoke com.example.cpen321application android.permission.ACCESS_FINE_LOCATION` and the same for `android.permission.ACCESS_COARSE_LOCATION` first.
+   | **Result** | **Meaning** |
+   | --- | --- |
+   | `PASS` | The test passed. |
+   | `FAIL` | The test finished and a check failed. |
+   | `BLOCKED` | Use case 5, step 4a, while the seed endpoint does not exist. |
+   | `CRASH (process died)` | The app's process, which also runs the test, died before the test finished. This is often an app crash; see `adb logcat -b crash`. |
+   | `CRASH (no result)` | The test gave no final result: its output stopped early or was empty, usually because adb lost the device. |
+   | `NOT RUN (device disconnected)` | The device was not connected when the test was due to start. |
+
+To rerun a single test after the script has installed the app, use the `am instrument` command from step 5 with that test's name.
 
 #### 4.1.4. Test Data and Data Left Behind
 
@@ -197,10 +208,14 @@ Test areas (latitude, longitude): 1: 49.2820, -123.1207; 2: 49.2849, -123.1166; 
 
 #### 4.1.5. Scenarios Not Tested
 
-Only scenarios that would need a mocked backend or a forced network failure are left out, as the course's "Add Todo Items" example does for its step 5b.
+Two kinds of scenario are left out:
+- scenarios that would need a mocked backend or a forced network failure, as the course's "Add Todo Items" example does for its step 5b;
+- scenarios about the device's location or the app's location permission. Location is used by the whole app, not just by one use case, and these tests check the app under normal conditions (4.1).
 
 | **Use Case** | **Scenario** | **Why It Is Not Tested** |
 | --- | --- | --- |
+| 2. Add a Gem | 2a. The user has denied the app access to their location. | Location and permission handling is app-wide; to be covered in M3. |
+| 2. Add a Gem | 2b. The device's location is turned off. | Location and permission handling is app-wide; to be covered in M3. |
 | 2. Add a Gem | 7b. Google Places is unavailable. | Google Places can only be made to fail by mocking it. |
 | 2. Add a Gem | 9c. The Excavator server cannot be reached. | Needs a forced network failure or a mocked backend. |
 | 4. Comment on a Gem | 5a. The Excavator server cannot be reached. | Needs a forced network failure or a mocked backend. |
@@ -211,22 +226,29 @@ Use case 1 (Sign In with Google) and Use case 3 (Rate a Gem) are not among the t
 
 #### 4.1.6. Known App Bugs That Make Tests Fail
 
-Expected from the current code; the logs in 4.2 hold the actual results.
+These results are what the current code should give. **No run has confirmed them yet.** The logs in 4.2 will hold the actual results.
+
+The first run, on 18 November 2026, gave no usable results:
+- During the Compose test rule's cleanup, the Google Maps composables were run off the main thread (`Not on the main thread`). That error replaced each map test's real result.
+- The map was never updated while the test waited for a marker with UI Automator.
+- The phone lost its adb connection during `ManageFavoritesE2ETest#scenario3a_tapGoldStar`.
+
+The test code has since been fixed: an unconfined test dispatcher for the Compose rule, and Compose is kept running while a marker is being looked for.
+
+Expected summary: 4 of the 13 tests pass (the four Comment tests marked "Pass" below), 1 is `BLOCKED`, 7 fail with `FAIL`, and 1 should show as `CRASH (process died)` because the app crashes.
 
 | **Test** | **Expected Result** | **Cause in the App** |
 | --- | --- | --- |
 | `AddGemE2ETest#mainSuccessScenario` | Fails at step 7 | The list of places is never requested (`GemViewModel.getGemCandidates()` is never called, and the app calls `/places/nearby` while the backend serves `/place/nearby`). Selected filters are lost (`GemCreationSheet`, `NewGemFiltersForm`). The add request misspells `latitude` and sends the place's location instead of the user's (`GemAPIService`, `NearbyGemsOptionsList`). |
-| `AddGemE2ETest#scenario2a_locationPermissionDenied` | Fails at step 1 | The location prompts appear on the Dashboard as soon as the app opens (`LocationChecker` in `DashboardActivity`), not on Discovery as the use case says. Needs an app fix or a change to the use case. |
-| `AddGemE2ETest#scenario2b_locationTurnedOff` | Fails at step 1 | Same as above, for the "Location is turned off" dialog. |
 | `AddGemE2ETest#scenario7a_noPlacesNearby` | Fails at 7a1 | The message reads "No gem candididates found! Check back later" (`NearbyGemsOptionsList`). |
 | `AddGemE2ETest#scenario9a_placeBecameGemMeanwhile` | Fails at step 7 | The list of places never loads (see the main scenario). There is no "This place is already a gem." message, and the backend's 409 response crashes the app (`GemViewModel.handleError`). |
 | `AddGemE2ETest#scenario9b_userMovedAway` | Fails at step 7 | The list of places never loads. The app sends the place's location instead of the user's, so the backend cannot tell the user moved; there is no message, and a 422 response would crash the app. |
 | `CommentOnGemE2ETest#scenario4a_emptyOrSpacesOnly` | Fails at 4a1 | "Send Comment" is never disabled (`NewCommentInput`); sending a blank comment gets a 400 response, which crashes the app (`CommentViewModel.handleError`). |
-| `ManageFavoritesE2ETest#mainSuccessScenario` | Fails at step 4 | `POST /user/favorites` returns `{ gem }`, but the app reads it as a full gem and crashes (`GemRepositoryImpl.addFavoriteGem`). Removing a favorite also leaves its card on screen (step 8, `GemViewModel.deleteFavoriteGem`). |
+| `ManageFavoritesE2ETest#mainSuccessScenario` | Fails at step 4, as `CRASH (process died)` | `POST /user/favorites` returns `{ gem }`, but the app reads it as a full gem and crashes (`GemRepositoryImpl.addFavoriteGem`). Removing a favorite also leaves its card on screen (step 8, `GemViewModel.deleteFavoriteGem`). |
 | `ManageFavoritesE2ETest#scenario3a_tapGoldStar` | Fails at step 2 | The star always starts grey, whatever the server says (`FavoriteButton`); tapping a gold star adds the favorite again instead of removing it (`DiscoveryMap`). |
-| `ManageFavoritesE2ETest#scenario4a_atFavoritesLimit` | Blocked, then fails at 4a1 | Waiting for the data-population script. After that: there is no "You can have at most 500 favorites." message, and the backend's 409 response crashes the app. |
+| `ManageFavoritesE2ETest#scenario4a_atFavoritesLimit` | `BLOCKED`, then fails at 4a1 | Waiting for the data-population script. After that: there is no "You can have at most 500 favorites." message, and the backend's 409 response crashes the app. |
 | `ManageFavoritesE2ETest#scenario6a_noFavorites` | Fails at 6a1 | There is no "No favorites yet!" text (`FavoritesScreen`). |
-| The other four Comment tests | Pass | |
+| `CommentOnGemE2ETest#mainSuccessScenario`, `#scenario2a_noCommentsYet`, `#scenario3a_moreThan256Characters`, `#scenario3b_newLineOrTab` | Pass | |
 
 ### 4.2. Tests
 
@@ -242,7 +264,7 @@ Summary of the run (printed by `run-frontend-e2e-tests`):
 
     | **Scenario Steps** | **Test Case Steps** |
     | --- | --- |
-    | 1. The user opens the Discovery screen from the navigation bar. | Set the mock location to the first test area that has a restaurant that is not a gem yet.<br>Find the account's gem near it, or add one through `POST /gem` if there is none.<br>Open the app on the Dashboard.<br>Click the navigation-bar item labelled "Discovery". |
+    | 1. The user opens the Discovery screen from the navigation bar. | Set the mock location to the first test area that has a restaurant that is not a gem yet.<br>Find the account's gem near it among the 20 nearest gems (what the app's map loads), or add one through `POST /gem` if there is none.<br>Open the app on the Dashboard.<br>Click the navigation-bar item labelled "Discovery". |
     | 2. The app shows a map centred on the user's location, with markers for the gems around them, and an "Add gem" button. | Check that a button labelled "Add gem" is present on screen.<br>Check (UI Automator) that a map marker with the known gem's name is present. |
     | 3. The user taps "Add gem". | Click the button labelled "Add gem". |
     | 4. The app shows the "Add New Gem" sheet with a "Filters" button and a "Submit" button. | Check that the text "Add New Gem" is present on screen.<br>Check that a button whose label contains "Filters" is present on screen.<br>Check that a button labelled "Submit" is present on screen. |
@@ -260,38 +282,6 @@ Summary of the run (printed by `run-frontend-e2e-tests`):
   - **Test Logs:**
     ```
     [Placeholder: this test's section of frontend/app/build/e2e-logs/e2e-<date>-<time>.log]
-    ```
-
-- **Use Case 2: Add a Gem, failure scenario 2a** (`AddGemE2ETest#scenario2a_locationPermissionDenied`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens the Discovery screen from the navigation bar. | Check that the app's location permission is not granted (the run script revokes it just before this test).<br>Open the app on the Dashboard.<br>Check (UI Automator) that no other app's window is covering the app.<br>Click "Discovery". |
-    | 2a. The user has denied the app access to their location. | In the system's location-permission prompt, click "Don't allow" (UI Automator). |
-    | 2a1. The app shows a dialog explaining that Excavator needs their location, with a button to try again. | Check that a dialog with text mentioning "location" is present on screen.<br>Check that the dialog has a button labelled "Try again". |
-    | 2a2. If the user taps the button, the app asks for location access again and continues from step 2 once it is granted. | Click "Try again".<br>In the system's location-permission prompt, click "While using the app" (UI Automator).<br>Check that the button labelled "Add gem" is present on screen (step 2). |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 2: Add a Gem, failure scenario 2b** (`AddGemE2ETest#scenario2b_locationTurnedOff`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 2b. The device's location is turned off. | Before step 1, turn the device's location off (`cmd location set-location-enabled false`). |
-    | 1. The user opens the Discovery screen from the navigation bar. | Open the app on the Dashboard.<br>Check (UI Automator) that no other app's window is covering the app.<br>Click "Discovery". |
-    | 2b1. The app shows the dialog "Location is turned off" with a "Turn on location" button. | Check that the text "Location is turned off" is present on screen.<br>Check that a button labelled "Turn on location" is present on screen. |
-    | 2b2. If the user taps "Turn on location" and turns it on, the app continues from step 2. | Click "Turn on location".<br>In the system's prompt to turn on location, click "Turn on" (UI Automator).<br>Check that the button labelled "Add gem" is present on screen (step 2).<br>Check that the device's location is on. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
     ```
 
 - **Use Case 2: Add a Gem, failure scenario 7a** (`AddGemE2ETest#scenario7a_noPlacesNearby`)

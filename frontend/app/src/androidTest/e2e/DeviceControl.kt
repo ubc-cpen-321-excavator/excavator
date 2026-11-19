@@ -2,7 +2,6 @@ package e2e
 
 import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.ParcelFileDescriptor
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
@@ -29,14 +28,9 @@ object DeviceControl {
         LOCATION_PERMISSIONS.forEach { shell("pm grant ${E2EConfig.APP_PACKAGE} $it") }
     }
 
-    fun hasLocationPermission(): Boolean =
-        LOCATION_PERMISSIONS.any { appContext.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
-
     fun setLocationEnabled(enabled: Boolean) {
         shell("cmd location set-location-enabled $enabled")
     }
-
-    fun isLocationEnabled(): Boolean = shell("cmd location is-location-enabled").trim() == "true"
 
     fun allowMockLocation() {
         shell("appops set ${E2EConfig.APP_PACKAGE} android:mock_location allow")

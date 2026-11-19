@@ -176,17 +176,25 @@ $script:E2EDefaultBackendUrl = 'http://10.0.2.2:3000'   # same default as app\bu
 $script:E2EPollSeconds = 5
 $script:E2ESeedBlocked = 'blocked: waiting for the seed script'
 $script:E2ELocationPermissions = @('android.permission.ACCESS_FINE_LOCATION', 'android.permission.ACCESS_COARSE_LOCATION')
-# Tests that must start without location permission: it is revoked just before them and granted back after.
-$script:E2ERevokeTests = @('e2e.AddGemE2ETest#scenario2a_locationPermissionDenied')
+# Result labels. A crash or a missing result is never reported as a plain FAIL.
+$script:E2ECrashed = 'CRASH (process died)'
+$script:E2ENoResult = 'CRASH (no result)'
+$script:E2ENotRun = 'NOT RUN (device disconnected)'
 $script:E2ELastExitCode = 0
 
-# Runs a native command, discards its stderr and returns its output lines. Windows PowerShell turns
-# redirected native stderr into errors, which 'Stop' would make fatal, so this relaxes that briefly.
-function Invoke-E2ENative([string]$Exe, [string[]]$Arguments) {
+# Runs a native command and returns its output lines. Its stderr is discarded, or, with -KeepErrors,
+# returned with the output. Windows PowerShell turns redirected native stderr into errors, which
+# 'Stop' would make fatal, so this relaxes that briefly.
+function Invoke-E2ENative([string]$Exe, [string[]]$Arguments, [switch]$KeepErrors) {
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        $output = & $Exe @Arguments 2>$null
+        if ($KeepErrors) {
+            $output = & $Exe @Arguments 2>&1
+        }
+        else {
+            $output = & $Exe @Arguments 2>$null
+        }
         $script:E2ELastExitCode = $LASTEXITCODE
         return @($output | ForEach-Object { "$_".TrimEnd("`r") })
     }
@@ -195,8 +203,8 @@ function Invoke-E2ENative([string]$Exe, [string[]]$Arguments) {
     }
 }
 
-function Invoke-E2EAdb([string[]]$Arguments) {
-    return @(Invoke-E2ENative $script:Adb $Arguments)
+function Invoke-E2EAdb([string[]]$Arguments, [switch]$KeepErrors) {
+    return @(Invoke-E2ENative $script:Adb $Arguments -KeepErrors:$KeepErrors)
 }
 
 # API_BASE_URL from frontend\local.properties, read the way app\build.gradle.kts reads it.
@@ -358,23 +366,27 @@ function Wait-E2ESignIn {
     Info 'Signed in.'
 }
 
-# 'grant' or 'revoke'
-function Set-E2ELocationPermission([string]$Action) {
+function Grant-E2ELocationPermission {
     foreach ($permission in $script:E2ELocationPermissions) {
-        [void](Invoke-E2EAdb @('shell', 'pm', $Action, $script:AppId, $permission))
+        [void](Invoke-E2EAdb @('shell', 'pm', 'grant', $script:AppId, $permission))
     }
 }
 
 # Puts the device back as the tests need it. Runs on every exit, including errors and Ctrl+C.
 function Restore-E2EDeviceState {
-    Set-E2ELocationPermission 'grant'
+    Grant-E2ELocationPermission
     [void](Invoke-E2EAdb @('shell', 'cmd', 'location', 'set-location-enabled', 'true'))
 }
 
+# The tests assume normal conditions: location permission granted and the device's location on.
 function Initialize-E2EDevice {
-    Set-E2ELocationPermission 'grant'
+    Grant-E2ELocationPermission
     [void](Invoke-E2EAdb @('shell', 'cmd', 'location', 'set-location-enabled', 'true'))
     [void](Invoke-E2EAdb @('shell', 'appops', 'set', $script:AppId, 'android:mock_location', 'allow'))
+}
+
+function Test-E2EDeviceConnected {
+    return ((Invoke-E2EAdb @('get-state')) -join '').Trim() -ceq 'device'
 }
 
 # Returns "package.Class#method" for every @Test, in file order.
@@ -399,11 +411,15 @@ function Get-E2ETests {
     return $tests
 }
 
+# Reads one test's `am instrument` output. The "blocked" message is checked first, so a blocked test is
+# never counted as failed; a test without a final result line is reported as a crash, never as FAIL.
 function Get-E2EResult([string]$Output) {
-    if ($Output.Contains('OK (1 test)')) { return 'PASS' }
     if ($Output.Contains($script:E2ESeedBlocked)) { return 'BLOCKED' }
-    if ($Output.Contains('Process crashed')) { return 'FAIL (app crashed)' }
-    return 'FAIL'
+    if ($Output.Contains('Process crashed')) { return $script:E2ECrashed }
+    if (-not $Output.Contains('INSTRUMENTATION_CODE:')) { return $script:E2ENoResult }
+    if ($Output.Contains('OK (1 test)')) { return 'PASS' }
+    if ($Output.Contains('FAILURES!!!')) { return 'FAIL' }
+    return $script:E2ENoResult
 }
 
 function Add-E2ELog([string]$Text) {
@@ -411,12 +427,14 @@ function Add-E2ELog([string]$Text) {
 }
 
 # Runs one test in its own instrumentation process, appends its output to the log, returns its result.
+# adb's own error messages are kept in the log, so a lost device shows up there.
 function Invoke-E2ETest([string]$Test) {
-    $revoke = $script:E2ERevokeTests -ccontains $Test
-    if ($revoke) { Set-E2ELocationPermission 'revoke' }
+    if (-not (Test-E2EDeviceConnected)) {
+        Add-E2ELog "`n===== $Test =====`n(not run: $($env:ANDROID_SERIAL) is not connected)`n"
+        return $script:E2ENotRun
+    }
     $target = "$($script:AppId).test/$($script:E2ERunner)"
-    $output = (Invoke-E2EAdb @('shell', 'am', 'instrument', '-w', '-r', '-e', 'class', $Test, $target)) -join "`n"
-    if ($revoke) { Set-E2ELocationPermission 'grant' }
+    $output = (Invoke-E2EAdb @('shell', 'am', 'instrument', '-w', '-r', '-e', 'class', $Test, $target) -KeepErrors) -join "`n"
     Add-E2ELog "`n===== $Test =====`n$output`n"
     return Get-E2EResult $output
 }
@@ -425,21 +443,31 @@ function Invoke-E2ETest([string]$Test) {
 function Write-E2ESummary {
     $pass = 0
     $failed = 0
+    $crashed = 0
     $blocked = 0
+    $notRun = 0
     foreach ($result in $script:E2EResults) {
         if ($result -ceq 'PASS') { $pass++ }
         elseif ($result -ceq 'BLOCKED') { $blocked++ }
-        else { $failed++ }
+        elseif ($result -ceq 'FAIL') { $failed++ }
+        elseif ($result -ceq $script:E2ENotRun) { $notRun++ }
+        else { $crashed++ }
     }
     $lines = @('', "Frontend E2E test results ($(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))", '', '| # | Test | Result |', '| --- | --- | --- |')
     for ($i = 0; $i -lt $script:E2ETests.Count; $i++) {
         $lines += ('| {0} | `{1}` | {2} |' -f ($i + 1), $script:E2ETests[$i], $script:E2EResults[$i])
     }
     $lines += ''
-    $lines += "Passed: $pass, failed: $failed, blocked: $blocked, total: $($script:E2ETests.Count)"
+    $lines += "Passed: $pass, failed: $failed, crashed: $crashed, blocked: $blocked, not run: $notRun, total: $($script:E2ETests.Count)"
+    if ($crashed -gt 0 -or $notRun -gt 0) {
+        $lines += ''
+        $lines += "$($script:E2ECrashed): the app's process, which also runs the test, died. Often an app crash: see 'adb logcat -b crash'."
+        $lines += "$($script:E2ENoResult): the test gave no final result (its output stopped early or was empty), usually because adb lost the device. Any adb error is in the log."
+        $lines += "$($script:E2ENotRun): the device was not connected when the test was due to start."
+    }
     foreach ($line in $lines) { Write-Host $line }
     Add-E2ELog (($lines -join "`n") + "`n")
-    return ($failed -eq 0 -and $blocked -eq 0)
+    return ($pass -eq $script:E2ETests.Count)
 }
 
 function Run-E2ETests {

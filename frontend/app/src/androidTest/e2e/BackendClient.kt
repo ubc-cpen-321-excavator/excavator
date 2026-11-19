@@ -31,6 +31,11 @@ class BackendClient(baseUrl: String, private val token: String) {
             .map(ApiPlace::from)
     }
 
+    /**
+     * The gems within 200 m of [at], nearest first, at most as many as the app loads for its map
+     * (it calls GET /gem/nearby without a limit, so it gets the backend's default of 20). Each gem
+     * returned here is therefore one the app also shows when the user is at [at].
+     */
     fun gemsNear(at: GeoPoint): List<ApiGem> {
         val path = "/gem/nearby?${latLng(at)}&radius=${E2EConfig.NEARBY_RADIUS_M}&limit=$NEARBY_LIMIT"
         return JSONArray(request("GET", path).body).objects().map(ApiGem::from)
@@ -113,7 +118,8 @@ class BackendClient(baseUrl: String, private val token: String) {
         /** The authenticated endpoint the data-population script provides (see the seed contract). */
         const val SEED_FAVORITES_PATH = "/e2e/seed/favorites"
 
-        private const val NEARBY_LIMIT = 50
+        /** The backend's default `limit` for GET /gem/nearby, which is what the app's map gets. */
+        private const val NEARBY_LIMIT = 20
         private const val TIMEOUT_MS = 30_000
     }
 }

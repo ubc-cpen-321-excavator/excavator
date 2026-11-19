@@ -6,14 +6,11 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.cpen321application.presentation.TestTags
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -22,14 +19,14 @@ import org.junit.runner.RunWith
  *
  * Left out, because they would need a mocked backend or a forced network failure:
  * 7b (Google Places unavailable) and 9c (the server cannot be reached).
+ * Also left out: 2a (location permission denied) and 2b (location turned off). Location and its
+ * permission are handled app-wide, not by this use case; they are to be covered in M3.
  * Gems cannot be deleted through the API, so the main scenario and 9a each leave one gem behind.
  */
 @RunWith(AndroidJUnit4::class)
 class AddGemE2ETest : E2ETestBase() {
 
     private lateinit var area: GeoPoint
-
-    override val testsStartingWithoutLocationPermission = setOf(SCENARIO_2A)
 
     override fun startArea(): GeoPoint {
         area = data.areaWithCandidates(E2EConfig.RESTAURANT_TYPE)
@@ -70,42 +67,6 @@ class AddGemE2ETest : E2ETestBase() {
         ui.waitUntil("'${expected.displayName}' is the first latest gem") {
             ui.firstTextOrNull(latestGem) == expected.displayName
         }
-    }
-
-    @Test
-    fun scenario2a_locationPermissionDenied() {
-        assertFalse(PERMISSION_PRECONDITION, DeviceControl.hasLocationPermission())
-        ui.launchDashboard()
-        // 1. The user opens the Discovery screen from the navigation bar.
-        ui.assertAppInForeground("Step 1 (open Discovery)")
-        ui.tapNav(AppDriver.DISCOVERY)
-        // 2a. The user has denied the app access to their location.
-        ui.denyLocationPermission()
-        // 2a1. A dialog explains that Excavator needs their location, with a button to try again.
-        ui.displayed(hasText("location", substring = true, ignoreCase = true) and hasAnyAncestor(isDialog()))
-        val tryAgain = hasText("Try again") and hasAnyAncestor(isDialog())
-        ui.displayed(tryAgain)
-        // 2a2. The user taps the button, grants access, and the app continues from step 2.
-        ui.displayed(tryAgain).performClick()
-        ui.allowLocationPermission()
-        ui.displayed(hasContentDescription(AppDriver.ADD_GEM))
-    }
-
-    @Test
-    fun scenario2b_locationTurnedOff() {
-        // 2b. The device's location is turned off.
-        DeviceControl.setLocationEnabled(false)
-        ui.launchDashboard()
-        // 1. The user opens the Discovery screen from the navigation bar.
-        ui.assertAppInForeground("Step 1 (open Discovery)")
-        ui.tapNav(AppDriver.DISCOVERY)
-        // 2b1. The dialog "Location is turned off" with a "Turn on location" button.
-        ui.displayed(hasText("Location is turned off"))
-        // 2b2. The user taps "Turn on location", turns it on, and the app continues from step 2.
-        ui.displayed(hasText("Turn on location")).performClick()
-        ui.acceptTurnOnLocation()
-        ui.displayed(hasContentDescription(AppDriver.ADD_GEM))
-        assertTrue("The device's location should be on", DeviceControl.isLocationEnabled())
     }
 
     @Test
@@ -177,9 +138,6 @@ class AddGemE2ETest : E2ETestBase() {
     }
 
     private companion object {
-        const val SCENARIO_2A = "scenario2a_locationPermissionDenied"
         const val NO_CANDIDATES = "No gem candidates found! Check back later"
-        const val PERMISSION_PRECONDITION = "Precondition: location permission must be revoked before this test " +
-            "starts. Run it with scripts/run-frontend-e2e-tests, which does this (see Testing.md)."
     }
 }

@@ -22,15 +22,12 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiObject2
-import androidx.test.uiautomator.Until
 import com.example.cpen321application.presentation.TestTags
 import com.example.cpen321application.presentation.activities.dashboard.DashboardActivity
-import org.junit.Assert.assertEquals
-import java.util.regex.Pattern
 
 /**
  * Drives the app as a user would: the Compose testing APIs for the app's own screens, and UI Automator
- * for what is not a Compose node (Google Maps markers and system dialogs).
+ * for what is not a Compose node (Google Maps markers) and for the system Back button.
  */
 class AppDriver(private val compose: ComposeTestRule) {
 
@@ -103,10 +100,23 @@ class AppDriver(private val compose: ComposeTestRule) {
         displayed(hasContentDescription(destination)).performClick()
     }
 
-    /** Finds a Google Maps marker by its title. Markers are not Compose nodes, so this uses UI Automator. */
+    /**
+     * Finds a Google Maps marker by its title. Markers are not Compose nodes, so this uses UI Automator.
+     * Under the Compose test rule the app's screens only recompose when the test synchronises with
+     * Compose, so each poll first waits for Compose to be idle. Otherwise the map would never centre on
+     * the user or draw the gems that loaded after it opened, and the marker would never appear.
+     */
     fun findMarker(title: String): UiObject2 {
-        val marker = DeviceControl.uiDevice.wait(Until.findObject(By.descContains(title)), E2EConfig.MARKER_TIMEOUT_MS)
-        return checkNotNull(marker) { "Map marker '$title' was not found (UI Automator)" }
+        val selector = By.descContains(title)
+        val deadline = SystemClock.uptimeMillis() + E2EConfig.MARKER_TIMEOUT_MS
+        var marker = findAfterIdle(selector)
+        while (marker == null && SystemClock.uptimeMillis() < deadline) {
+            SystemClock.sleep(POLL_MS)
+            marker = findAfterIdle(selector)
+        }
+        return checkNotNull(marker) {
+            "Map marker '$title' was not found (UI Automator) within ${E2EConfig.MARKER_TIMEOUT_MS} ms"
+        }
     }
 
     fun openGemFromMarker(title: String) {
@@ -146,31 +156,10 @@ class AppDriver(private val compose: ComposeTestRule) {
         }
     }
 
-    /** Fails [step] if another app's window (for example a system dialog) is covering the app. */
-    fun assertAppInForeground(step: String) {
-        SystemClock.sleep(E2EConfig.SETTLE_MS)
-        val foreground = DeviceControl.uiDevice.currentPackageName
-        assertEquals("$step: a window from '$foreground' is covering the app", E2EConfig.APP_PACKAGE, foreground)
+    private fun findAfterIdle(selector: BySelector): UiObject2? {
+        compose.waitForIdle()
+        return DeviceControl.uiDevice.findObject(selector)
     }
-
-    fun denyLocationPermission() = clickSystemButton("the system location-permission prompt", DENY_BUTTONS)
-
-    fun allowLocationPermission() = clickSystemButton("the system location-permission prompt", ALLOW_BUTTONS)
-
-    fun acceptTurnOnLocation() = clickSystemButton("the system 'turn on location' prompt", TURN_ON_BUTTONS)
-
-    private fun clickSystemButton(what: String, selectors: List<BySelector>) {
-        val deadline = SystemClock.uptimeMillis() + E2EConfig.SYSTEM_DIALOG_TIMEOUT_MS
-        var button = findAny(selectors)
-        while (button == null && SystemClock.uptimeMillis() < deadline) {
-            SystemClock.sleep(POLL_MS)
-            button = findAny(selectors)
-        }
-        checkNotNull(button) { "No expected button was found on $what (UI Automator)" }.click()
-    }
-
-    private fun findAny(selectors: List<BySelector>): UiObject2? =
-        selectors.firstNotNullOfOrNull { DeviceControl.uiDevice.findObject(it) }
 
     private fun firstDisplayed(matcher: SemanticsMatcher, unmerged: Boolean): SemanticsNodeInteraction? {
         val nodes = compose.onAllNodes(matcher, useUnmergedTree = unmerged)
@@ -194,18 +183,5 @@ class AppDriver(private val compose: ComposeTestRule) {
 
         private const val POLL_MS = 500L
         private const val MAX_SWIPES = 20
-        private const val PERMISSION_IDS = "com.android.permissioncontroller:id/"
-
-        private val DENY_BUTTONS = listOf(
-            By.res(PERMISSION_IDS + "permission_deny_button"),
-            By.res(PERMISSION_IDS + "permission_deny_and_dont_ask_again_button"),
-            By.text(Pattern.compile("(?i)don.t allow|deny")),
-        )
-        private val ALLOW_BUTTONS = listOf(
-            By.res(PERMISSION_IDS + "permission_allow_foreground_only_button"),
-            By.res(PERMISSION_IDS + "permission_allow_button"),
-            By.text(Pattern.compile("(?i)while using the app|allow")),
-        )
-        private val TURN_ON_BUTTONS = listOf(By.text(Pattern.compile("(?i)turn on|ok")))
     }
 }

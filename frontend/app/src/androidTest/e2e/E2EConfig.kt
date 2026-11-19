@@ -37,8 +37,6 @@ object E2EConfig {
 
     const val UI_TIMEOUT_MS = 15_000L
     const val MARKER_TIMEOUT_MS = 20_000L
-    const val SYSTEM_DIALOG_TIMEOUT_MS = 10_000L
-    const val SETTLE_MS = 2_000L
 
     /** The app asks for a location fix every 10 s (LocationUtil), so wait a little longer than that. */
     const val LOCATION_SETTLE_MS = 12_000L

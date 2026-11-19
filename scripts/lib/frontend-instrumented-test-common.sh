@@ -142,8 +142,10 @@ E2E_DEFAULT_BACKEND_URL="http://10.0.2.2:3000"   # same default as app/build.gra
 E2E_POLL_S=5
 E2E_SEED_BLOCKED="blocked: waiting for the seed script"
 E2E_LOCATION_PERMISSIONS=(android.permission.ACCESS_FINE_LOCATION android.permission.ACCESS_COARSE_LOCATION)
-# Tests that must start without location permission: it is revoked just before them and granted back after.
-E2E_REVOKE_TESTS=(e2e.AddGemE2ETest#scenario2a_locationPermissionDenied)
+# Result labels. A crash or a missing result is never reported as a plain FAIL.
+E2E_CRASHED="CRASH (process died)"
+E2E_NO_RESULT="CRASH (no result)"
+E2E_NOT_RUN="NOT RUN (device disconnected)"
 
 # API_BASE_URL from frontend/local.properties, read the way app/build.gradle.kts reads it.
 e2e_backend_url() {
@@ -266,24 +268,28 @@ e2e_wait_for_sign_in() {
   info "Signed in."
 }
 
-# grant or revoke
-e2e_location_permission() {
+e2e_grant_location_permission() {
   local permission
   for permission in "${E2E_LOCATION_PERMISSIONS[@]}"; do
-    adb shell pm "$1" "$APP_ID" "$permission" >/dev/null 2>&1 || true
+    adb shell pm grant "$APP_ID" "$permission" >/dev/null 2>&1 || true
   done
 }
 
 # Puts the device back as the tests need it. Runs on every exit, including errors and Ctrl+C.
 e2e_restore_device_state() {
-  e2e_location_permission grant
+  e2e_grant_location_permission
   adb shell cmd location set-location-enabled true >/dev/null 2>&1 || true
 }
 
+# The tests assume normal conditions: location permission granted and the device's location on.
 e2e_prepare_device() {
-  e2e_location_permission grant
+  e2e_grant_location_permission
   adb shell cmd location set-location-enabled true >/dev/null 2>&1 || true
   adb shell appops set "$APP_ID" android:mock_location allow >/dev/null 2>&1 || true
+}
+
+e2e_device_connected() {
+  [[ "$(adb get-state 2>/dev/null | tr -d '\r')" == device ]]
 }
 
 # Fills E2E_TESTS with "package.Class#method" for every @Test, in file order.
@@ -303,43 +309,48 @@ e2e_discover_tests() {
   done
 }
 
+# Reads one test's `am instrument` output. The "blocked" message is checked first, so a blocked test is
+# never counted as failed; a test without a final result line is reported as a crash, never as FAIL.
 e2e_classify() {
   local output="$1"
-  if [[ "$output" == *"OK (1 test)"* ]]; then
-    echo "PASS"
-  elif [[ "$output" == *"$E2E_SEED_BLOCKED"* ]]; then
+  if [[ "$output" == *"$E2E_SEED_BLOCKED"* ]]; then
     echo "BLOCKED"
   elif [[ "$output" == *"Process crashed"* ]]; then
-    echo "FAIL (app crashed)"
-  else
+    echo "$E2E_CRASHED"
+  elif [[ "$output" != *"INSTRUMENTATION_CODE:"* ]]; then
+    echo "$E2E_NO_RESULT"
+  elif [[ "$output" == *"OK (1 test)"* ]]; then
+    echo "PASS"
+  elif [[ "$output" == *"FAILURES!!!"* ]]; then
     echo "FAIL"
+  else
+    echo "$E2E_NO_RESULT"
   fi
 }
 
 # Runs one test in its own instrumentation process; sets E2E_RESULT and appends the output to the log.
+# adb's own error messages are kept in the log, so a lost device shows up there.
 e2e_run_one() {
-  local test="$1" output revoke=no candidate
-  for candidate in "${E2E_REVOKE_TESTS[@]}"; do
-    if [[ "$candidate" == "$test" ]]; then revoke=yes; fi
-  done
-  if [[ "$revoke" == yes ]]; then
-    e2e_location_permission revoke
+  local test="$1" output
+  if ! e2e_device_connected; then
+    printf '\n===== %s =====\n(not run: %s is not connected)\n' "$test" "$ANDROID_SERIAL" >>"$E2E_LOG"
+    E2E_RESULT="$E2E_NOT_RUN"
+    return 0
   fi
-  output="$(adb shell am instrument -w -r -e class "$test" "$APP_ID.test/$E2E_RUNNER" 2>/dev/null | tr -d '\r' || true)"
-  if [[ "$revoke" == yes ]]; then
-    e2e_location_permission grant
-  fi
+  output="$(adb shell am instrument -w -r -e class "$test" "$APP_ID.test/$E2E_RUNNER" 2>&1 | tr -d '\r' || true)"
   printf '\n===== %s =====\n%s\n' "$test" "$output" >>"$E2E_LOG"
   E2E_RESULT="$(e2e_classify "$output")"
 }
 
 e2e_write_summary() {
-  local i pass=0 failed=0 blocked=0
+  local i pass=0 failed=0 crashed=0 blocked=0 not_run=0
   for i in "${!E2E_RESULTS[@]}"; do
     case "${E2E_RESULTS[$i]}" in
       PASS) pass=$((pass + 1)) ;;
       BLOCKED) blocked=$((blocked + 1)) ;;
-      *) failed=$((failed + 1)) ;;
+      FAIL) failed=$((failed + 1)) ;;
+      "$E2E_NOT_RUN") not_run=$((not_run + 1)) ;;
+      *) crashed=$((crashed + 1)) ;;
     esac
   done
   {
@@ -352,10 +363,16 @@ e2e_write_summary() {
       echo "| $((i + 1)) | \`${E2E_TESTS[$i]}\` | ${E2E_RESULTS[$i]} |"
     done
     echo
-    echo "Passed: $pass, failed: $failed, blocked: $blocked, total: ${#E2E_TESTS[@]}"
+    echo "Passed: $pass, failed: $failed, crashed: $crashed, blocked: $blocked, not run: $not_run, total: ${#E2E_TESTS[@]}"
+    if (( crashed > 0 || not_run > 0 )); then
+      echo
+      echo "$E2E_CRASHED: the app's process, which also runs the test, died. Often an app crash: see 'adb logcat -b crash'."
+      echo "$E2E_NO_RESULT: the test gave no final result (its output stopped early or was empty), usually because adb lost the device. Any adb error is in the log."
+      echo "$E2E_NOT_RUN: the device was not connected when the test was due to start."
+    fi
   } | tee -a "$E2E_LOG"
   E2E_ALL_PASSED=no
-  if (( failed == 0 && blocked == 0 )); then E2E_ALL_PASSED=yes; fi
+  if (( pass == ${#E2E_TESTS[@]} )); then E2E_ALL_PASSED=yes; fi
 }
 
 run_e2e_tests() {

@@ -3,13 +3,14 @@ package e2e
 import android.content.Context
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import com.example.cpen321application.BuildConfig
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
-import org.junit.rules.TestName
 
 /**
- * Shared setup for every end-to-end test. Before each test it:
+ * Shared setup for every end-to-end test. The tests check the app under normal conditions: Wi-Fi on,
+ * the device's location on and the app's location permission granted. Before each test it:
  *  - checks that a user is signed in (tests never sign in themselves; see Testing.md),
  *  - turns the device's location on, grants location permission and starts a mock location,
  *  - creates the API client ([api]), the test data helper ([data]) and the UI driver ([ui]).
@@ -17,11 +18,16 @@ import org.junit.rules.TestName
  */
 abstract class E2ETestBase {
 
+    /**
+     * While this rule is active, every Compose screen in the app runs its coroutines on the rule's
+     * test dispatcher. The default one (StandardTestDispatcher) queues them, and whatever is still
+     * queued when the test ends is run on the test thread. The Google Maps composables then call the
+     * map off the main thread, which Google Maps rejects ("Not on the main thread"). An unconfined
+     * test dispatcher runs each coroutine straight away on the thread that resumes it: the main
+     * thread for map callbacks, for frames and for the activity being closed.
+     */
     @get:Rule
-    val compose = createEmptyComposeRule()
-
-    @get:Rule
-    val testName = TestName()
+    val compose = createEmptyComposeRule(effectContext = UnconfinedTestDispatcher())
 
     protected lateinit var api: BackendClient
     protected lateinit var data: TestData
@@ -31,9 +37,6 @@ abstract class E2ETestBase {
     /** Where the device pretends to be when the test starts. */
     protected abstract fun startArea(): GeoPoint
 
-    /** Tests that must start without location permission (the run script revokes it beforehand). */
-    protected open val testsStartingWithoutLocationPermission: Set<String> = emptySet()
-
     @Before
     fun setUpBase() {
         api = BackendClient(BuildConfig.API_BASE_URL, signedInToken())
@@ -41,18 +44,14 @@ abstract class E2ETestBase {
         data = TestData(api)
         ui = AppDriver(compose)
         DeviceControl.setLocationEnabled(true)
-        if (testName.methodName !in testsStartingWithoutLocationPermission) {
-            DeviceControl.grantLocationPermission()
-            mockLocation.start(startArea())
-        }
+        DeviceControl.grantLocationPermission()
+        mockLocation.start(startArea())
     }
 
     @After
     fun tearDownBase() {
         if (::ui.isInitialized) ui.close()
         mockLocation.stop()
-        DeviceControl.grantLocationPermission()
-        DeviceControl.setLocationEnabled(true)
     }
 
     private fun signedInToken(): String {
