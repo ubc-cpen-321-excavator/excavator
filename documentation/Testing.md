@@ -11,6 +11,7 @@
 | 2026-11-18 | 2.1 | `POST /user/favorites` tests expect the whole gem; updated the favorites test locations. |
 | 2026-11-18 | 2.1, 2.4 | Added a test of two users rating a gem at once (`PUT /gem/:pk/rating`, found in peer review); updated the rating test locations and the uncovered line in `ratingService.ts`. |
 | 2026-11-18 | 2.1.2, 2.3, 2.4, 2.5, 3.2 | Re-ran every backend test on the current code: new coverage screenshots and numbers, uncovered lines updated after `gemService.ts` was split into five files, two new mocked tests of `GET /gem/:pk/photo` for Google failing while it looks up or searches for the photo (those lines were not covered before), and new non-functional requirement logs. |
+| 2026-11-18 | 4.1, 4.2 | Replaced the template with the front-end end-to-end tests: where they are, how to run them, and the expected behaviours of Add a Gem, Make comments, Mark a Gem as favorite and Remove a favorite. |
 
 ---
 
@@ -153,40 +154,104 @@ Run them with `./scripts/run-backend-nfr-tests.sh`, or `npm test -- tests/nfr/` 
 
 ### 4.1. Location in Git of Front-end Test Suite:
 
-`frontend/src/androidTest/java/com/studygroupfinder/`
+`frontend/app/src/androidTest/e2e/`
+
+| **File** | **Contents** |
+| -------- | ------------ |
+| [`AddGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/AddGemE2ETest.kt) | Use Case 1: Add a Gem. |
+| [`CommentOnGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/CommentOnGemE2ETest.kt) | Use Case 5: Make comments. |
+| [`FavoriteGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/FavoriteGemE2ETest.kt) | Mark a Gem as favorite, and Remove a favorite. |
+| [`E2ETestBase.kt`](../frontend/app/src/androidTest/e2e/E2ETestBase.kt) | Setup shared by every test (location on, location permission granted, app opened on the Dashboard) and the UI helpers (waiting for elements, opening and expanding a gem's info sheet, reading the star's colour). |
+| [`BackendClient.kt`](../frontend/app/src/androidTest/e2e/BackendClient.kt) | Calls the backend as the signed-in user. Only used to set up and clean up the favorites tests, never to check a result. |
+
+`frontend/app/build.gradle.kts` adds `src/androidTest/e2e` to the `androidTest` source set. The tests use the Compose UI test framework with UI Automator, and find elements by the test tags in `TestTags`.
+
+The tests run the real app against the real backend, with no mocks, as the user who is signed in on the device. The tests never sign in themselves.
+
+**How to run the tests:**
+
+1. Connect a phone (USB debugging on) or start an emulator. If several are connected, set `ANDROID_SERIAL`.
+2. Set `API_BASE_URL` in `frontend/local.properties` to the backend. If it is `10.0.2.2`, `localhost` or `127.0.0.1`, the script starts the local backend (`scripts/run-backend.sh`, which needs Docker and `backend/.env`); set `E2E_START_BACKEND=yes|no` to override. `10.0.2.2` only works on an emulator.
+3. Run the script from the repository root, on the computer whose debug key Google Sign-In trusts (the script builds and installs both the app and the test APK):
+   - macOS/Linux: `./scripts/run-frontend-e2e-tests.sh`
+   - Windows: `.\scripts\run-frontend-e2e-tests.ps1`
+4. Sign in to the app on the device when asked. The script waits up to `E2E_SIGNIN_TIMEOUT` seconds (default 300).
+
+The script runs each test in its own instrumentation process, prints a pass/fail table, saves the full log in `frontend/app/build/e2e-logs/`, and exits non-zero unless every test passed. It never uninstalls the app or clears its data.
+
+**Data the tests need on the device:**
+
+- *Add a Gem*: the device needs a location fix with at least one place within 200 m that is not a gem yet. Gems can't be deleted, so each run leaves one new gem behind.
+- *Make comments*: the Dashboard must list at least one gem. Comments can't be deleted, so each run leaves one comment starting with "UI test comment".
+- *Favorites*: the Dashboard must list at least one gem. The newest gem is removed from the user's favorites through the backend before and after each test, so its star starts grey and no favorite is left behind.
 
 ### 4.2. Tests
 
-- **Use Case: Login**
+- **Use Case: Add a Gem (Use Case 1)**
 
-  - **Expected Behaviors:**
-    | **Scenario Steps** | **Test Case Steps** |
-    | ------------------ | ------------------- |
-    | 1. The user opens "Add Todo Items" screen. | Open "Add Todo Items" screen. |
-    | 2. The app shows an input text field and an "Add" button. The add button is disabled. | Check that the text field is present on screen.<br>Check that the button labelled "Add" is present on screen.<br>Check that the "Add" button is disabled. |
-    | 3a. The user inputs an ill-formatted string. | Input "_^_^^OQ#$" in the text field. |
-    | 3a1. The app displays an error message prompting the user for the expected format. | Check that a dialog is opened with the text: "Please use only alphanumeric characters ". |
-    | 3. The user inputs a new item for the list and the add button becomes enabled. | Input "buy milk" in the text field.<br>Check that the button labelled "add" is enabled. |
-    | 4. The user presses the "Add" button. | Click the button labelled "add ". |
-    | 5. The screen refreshes and the new item is at the bottom of the todo list. | Check that a text box with the text "buy milk" is present on screen.<br>Input "buy chocolate" in the text field.<br>Click the button labelled "add".<br>Check that two text boxes are present on the screen with "buy milk" on top and "buy chocolate" at the bottom. |
-    | 5a. The list exceeds the maximum todo-list size. | Repeat steps 3 to 5 ten times.<br>Check that a dialog is opened with the text: "You have too many items, try completing one first". |
-
-  - **Test Logs:**
-    ```
-    [Placeholder for Espresso test execution logs]
-    ```
-
-- **Use Case: ...**
-
+  - **Test:** `AddGemE2ETest.addNewGem`
   - **Expected Behaviors:**
 
     | **Scenario Steps** | **Test Case Steps** |
     | ------------------ | ------------------- |
-    | ...                | ...                 |
+    | 1. The User taps "Add gem" on the Discovery screen. | Open the app on the Dashboard.<br>Tap "Discovery" in the navigation bar.<br>Tap the "Add gem" button (`ADD_GEM_BUTTON`).<br>Check that the "Add New Gem" sheet is displayed. |
+    | 2. The app gets the User's location, asking for location permission if it hasn't been granted. | Before the test, switch on the device's location and grant the app `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`, so no system dialog covers the app. |
+    | 3. The User optionally selects type filters (e.g. café, park). | Select no filter.<br>Tap "Submit" (`SUBMIT_BUTTON`). |
+    | 4. The app lists the places within 200 m of the User that aren't gems yet, nearest first. | Check that at least one place card (`CANDIDATE_CARD`) is displayed within 30 s.<br>Read the name of the first place. |
+    | 5. The User picks a place and confirms adding it. | Tap the first place card.<br>Check that the list of places closes. |
+    | 6. The app shows the new gem, with its Gem Score, on the map. | Tap "Dashboard" in the navigation bar.<br>Check that "Latest Gems:" is displayed.<br>Check that the first gem card (`GEM_CARD`) under "Latest Gems:" has the name of the picked place. |
 
   - **Test Logs:**
     ```
-    [Placeholder for Espresso test execution logs]
+    [Placeholder: paste the AddGemE2ETest output from frontend/app/build/e2e-logs/]
     ```
 
-- **...**
+- **Use Case: Make comments (Use Case 5)**
+
+  - **Test:** `CommentOnGemE2ETest.addCommentToExistingGem`
+  - **Expected Behaviors:**
+
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The User opens a gem (Use Case 2) and opens its comments. | Open the app on the Dashboard.<br>Check that "Latest Gems:" is displayed.<br>Tap the first gem card (`GEM_CARD`).<br>Check that the gem's info sheet opens on the Discovery map, showing the gem's title and the favorite star.<br>Drag the sheet's handle to the top of the screen.<br>Check that the sheet is fully expanded (its handle now offers "collapse"). |
+    | 2. The app shows the gem's comments, oldest first. | Check that the new comment field (`COMMENT_INPUT`) is displayed. |
+    | 3. The User types a comment and taps "Post". | Type "UI test comment &lt;current time in ms&gt;" in the comment field.<br>Check that the field holds the typed comment.<br>Tap "Send Comment" (`SEND_COMMENT_BUTTON`). |
+    | 4. The app adds the comment at the bottom of the list, with the User's name. | Check that the comment field is cleared.<br>Scroll the comment list to a comment body (`COMMENT_BODY`) with the typed text.<br>Check that the comment is displayed. |
+
+  - **Test Logs:**
+    ```
+    [Placeholder: paste the CommentOnGemE2ETest output from frontend/app/build/e2e-logs/]
+    ```
+
+- **Use Case: Mark a Gem as favorite**
+
+  - **Test:** `FavoriteGemE2ETest.addGemAsFavorite`
+  - **Expected Behaviors:**
+
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The User opens a gem that is not a favorite. | Before the test, get the newest gem from the backend (`GET /gem/newest`) and remove it from the user's favorites (`DELETE /user/favorites/:placeId`).<br>Open the app on the Dashboard.<br>Scroll the "Latest Gems:" grid to the gem's card and tap it.<br>Check that the gem's info sheet opens, and fully expand it.<br>Check that the star is grey. |
+    | 2. The User taps "favorite" on the gem. | Tap the star.<br>Check that the star turns yellow. |
+    | 3. The gem is in the User's favorites. | Close the info sheet with the Back button.<br>Tap "Favorites" in the navigation bar.<br>Check that "Your favorites:" is displayed.<br>Check that the gem's card, with the ★ badge, is displayed.<br>After the test, remove the gem from the user's favorites through the backend. |
+
+  - **Test Logs:**
+    ```
+    [Placeholder: paste the FavoriteGemE2ETest#addGemAsFavorite output from frontend/app/build/e2e-logs/]
+    ```
+
+- **Use Case: Remove a favorite**
+
+  - **Test:** `FavoriteGemE2ETest.removeGemFromFavorites`
+  - **Expected Behaviors:**
+
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The User has a gem in their favorites. | Make the newest gem a favorite through the UI, with the same steps as `addGemAsFavorite`. |
+    | 2. The User opens the gem. | Tap "Dashboard" in the navigation bar.<br>Tap the gem's card and fully expand its info sheet.<br>Check that the star is yellow. |
+    | 3. The User removes the gem from their favorites. | Tap the star.<br>Check that the star turns grey. |
+    | 4. The gem is no longer in the User's favorites. | Close the info sheet with the Back button.<br>Tap "Favorites" in the navigation bar.<br>Check that "Your favorites:" is displayed.<br>Check that the gem's card is no longer displayed.<br>After the test, remove the gem from the user's favorites through the backend (does nothing if it is not one). |
+
+  - **Test Logs:**
+    ```
+    [Placeholder: paste the FavoriteGemE2ETest#removeGemFromFavorites output from frontend/app/build/e2e-logs/]
+    ```
