@@ -10,6 +10,7 @@
 | 2026-11-17 | 2.1 | Added the tests of `GET /gem/:pk/photo`; updated the gem test locations. |
 | 2026-11-18 | 2.1 | `POST /user/favorites` tests expect the whole gem; updated the favorites test locations. |
 | 2026-11-18 | 2.1, 2.4 | Added a test of two users rating a gem at once (`PUT /gem/:pk/rating`, found in peer review); updated the rating test locations and the uncovered line in `ratingService.ts`. |
+| 2026-11-18 | 2.1.2, 2.3, 2.4, 2.5, 3.2 | Re-ran every backend test on the current code: new coverage screenshots and numbers, uncovered lines updated after `gemService.ts` was split into five files, two new mocked tests of `GET /gem/:pk/photo` for Google failing while it looks up or searches for the photo (those lines were not covered before), and new non-functional requirement logs. |
 
 ---
 
@@ -46,7 +47,7 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 
 #### 2.1.2. Commit Hash Where Tests Run
 
-`7e2dd810ac358ab7b6e5164353eae6746b4630cb` (the head of `main`; the tests are unchanged since then)
+`[MAIN COMMIT SHA AFTER THE FINAL MERGE]`
 
 #### 2.1.3. Explanation on How to Run the Tests
 
@@ -70,19 +71,19 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 
 ### 2.3. Jest Coverage Report Screenshots With Mocks
 
-`tests/mock/` only: 88.1% of lines, 81.6% of branches.
+`tests/mock/` only: 89.2% of lines, 81.8% of branches (160 tests).
 
 ![Coverage with mocks](images/coverage_mock.png)
 
 ### 2.4. Jest Coverage Report Screenshots Without Mocks
 
-`tests/no-mock/` only: 73.9% of lines, 60.1% of branches. Lower than with mocks because database and Google failures can only be produced with mocks.
+`tests/no-mock/` only: 71.9% of lines, 57.2% of branches (73 tests; the 6 that call the real Google Places API are skipped without a key). Lower than with mocks because database and Google failures can only be produced with mocks.
 
 ![Coverage without mocks](images/coverage_no_mock.png)
 
 ### 2.5. Jest Coverage Report Screenshots With and Without Mocks Combined
 
-`tests/mock/` and `tests/no-mock/` together: 90.9% of lines, 84.3% of branches. All five models are at 100% and all seven controllers except the Live Feed at 100% of lines. The backend's unit tests (`tests/unit/`, not part of these interface runs) cover most of the remaining lines: with them, the whole suite reaches 95.6% of lines and 93.6% of branches.
+`tests/mock/` and `tests/no-mock/` together: 91.9% of lines, 84.5% of branches (233 tests). All five models are at 100%, and all seven controllers except the Live Feed are at 100% of lines. The backend's unit tests (`tests/unit/`, not part of these interface runs) cover most of the remaining lines: with them, the whole suite (478 tests) reaches 96.1% of lines and 93.8% of branches, and only the lines marked "not covered by any test" below remain.
 
 **Why the remaining lines are not covered by the interface tests** (line numbers from the combined run above):
 
@@ -95,15 +96,18 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 | `src/utils/http.ts` | 31 | Passes a rejected `async` handler to Express. No handler rejects: each catches its own errors. |
 | `src/utils/log.ts` | 31 | `logInfo`, only used by `index.ts` at start-up. |
 | `src/controllers/feedController.ts` | 68, 71, 85, 121–122, 133–134, 138–139 | Lines 68 and 71 decode WebSocket messages delivered as an array of Buffers or an ArrayBuffer; `ws` delivers a single Buffer with our settings. Lines 85–139 reject binary messages, unknown message types, invalid radii and too-frequent subscriptions; the interface tests cover invalid JSON and locations, and these four cases are covered by the unit tests of `handleFeedMessage` in `tests/unit/feedMessage.test.ts`. |
-| `src/services/gemService.ts` | 466, 491, 505, 526, 606 | Input checks the controllers already make: the routes answer 400 before calling the service, so the service's own check can't be reached through the API. Kept so the service is safe when called from other code; covered by `tests/unit/gemService.test.ts` (except 466 and 505, which their callers always check first). |
-| `src/services/gemService.ts` | 359, 376, 404, 705, 755, 757, 570 | Guards for cases the API can't produce on demand: Google returning a place without a name or location (359, 376, 404), a stored gem without coordinates (705; the schema requires them), two users adding the same gem at the same instant (755, 757), and a gem deleted while it is being rated (570). Covered by the unit tests with mocked Google and database responses, except 705. |
-| `src/services/gemService.ts` | 547–555 | `scoreGem`, which no route calls: gems are scored when added and when rated (`newGem`, `applyAppRatings`). Covered by the unit tests. |
-| `src/services/authService.ts` | 81, 147, 185, 246–247, 261–262, 271, 285, 290, 97–98 | Guards the API can't reach: `currentUser` before `reqJwt` (81, a programming error), `JWT_SECRET` missing (147; the tests set it), a Google token without an account ID (185), a valid token without a user ID (246–247; the server never issues one), a database failure during the login check (261–262), `getUser`, which no route calls (271), and an invalid profile update or a user deleted mid-request in the service (97–98, 285, 290; the route checks first). All are covered by `tests/unit/authService.test.ts`. |
+| `src/services/gemService.ts` | 116, 141, 155, 176, 284 | The service's own input checks, which the controllers already make: the routes answer 400 before calling the service, so these can't be reached through the API. They are kept so the service is safe when called from other code. Covered by `tests/unit/gemService.test.ts`, except 116 and 155, which are not covered by any test: their only callers (`addGem` for 116; comments, ratings and favorites for 155) always check the name first. |
+| `src/services/gemService.ts` | 197–205 | `scoreGem`, which no route calls: gems are scored when added and when rated. Covered by the unit tests. |
+| `src/services/gemService.ts` | 219, 240, 251 | A gem deleted while it is being rated, which the API can't produce on demand. 219 and 240 are covered by the unit tests; 251 (the gem deleted between saving its new totals and reading it back) is not covered by any test. |
+| `src/services/gem.ts` | 72 | `parsePlaceTypes` rejecting a `type` that is not a string. Express only gives the route strings or lists of strings, so this can't come from a request. Covered by the unit tests. |
+| `src/services/gemRepo.ts` | 57, 107–110 | A stored gem without coordinates (57; the schema requires them, so not covered by any test), and two users adding the same gem at the same instant (107–110; covered by the unit tests). |
+| `src/services/googlePlaces.ts` | 75, 109, 138 | Google returning a place without a name or location, which the API can't produce on demand. Covered by the unit tests with mocked Google responses. |
+| `src/services/authService.ts` | 81, 97–98, 147, 185, 246–247, 261–271, 285, 290 | Guards the API can't reach: `currentUser` before `reqJwt` (81, a programming error), `JWT_SECRET` missing (147; the tests set it), a Google token without an account ID (185), a valid token without a user ID (246–247; the server never issues one), a database failure during the login check (261–262), `getUser`, which no route calls (266–271), and an invalid profile update or a user deleted mid-request in the service (97–98, 285, 290; the route checks first). All are covered by `tests/unit/authService.test.ts`. |
 | `src/services/commentService.ts`, `ratingService.ts` | 30–31, 149; 17–18, 60 | The services' own body and star checks and their error classes; the routes reject invalid input with 400 first. Covered by the unit tests. |
 | `src/services/favoriteService.ts` | 125–128 | Two requests adding the same favorite at the same instant (duplicate-key error). Covered by the unit tests. |
 | `src/services/feedService.ts` | 108 | Drops a client whose socket throws while sending, which a real socket in the tests doesn't do. Covered by the unit tests. |
 
-Branch-only gaps (lines that run, with one side of a condition never taken) are of the same kinds: `req.body ?? {}` when a request has no JSON body (`authController.ts` 73, `ratingController.ts` 83), a Google API key always being set in CI (`gemService.ts` 424), and optional fields Google or MongoDB always return in the tests.
+Branch-only gaps (lines that run, with one side of a condition never taken) are of the same kinds: `req.body ?? {}` when a request has no JSON body (`authController.ts` 73, `ratingController.ts` 83), a Gem Score input without an Excavator average (`gemScore.ts` 64) or a non-finite number (`geo.ts` 33), which the routes reject first, and optional fields Google or MongoDB always return in the tests.
 
 ---
 
@@ -125,21 +129,21 @@ Run them with `./scripts/run-backend-nfr-tests.sh`, or `npm test -- tests/nfr/` 
   - **Verification:** The test starts the real server with its real WebSocket feed and a real in-memory MongoDB, then connects 250 WebSocket clients: 200 subscribed 5 km around UBC and 50 around Toronto. It adds a gem at UBC through `POST /gem` (signed in, as the app does) and records when each client receives it, measured from the moment the request is sent; it then rates the gem through `PUT /gem/:pk/rating` and measures the `gem.updated` messages the same way. The requirement is met when all 200 UBC clients receive each update, the slowest within 1000 ms, the update carries the new data (the rescored gem), and none of the Toronto clients receive anything. Only Google Places is mocked, since its response time is Google's rather than ours. The test logs the median and maximum latency of each run.
   - **Log Output**
     ```
-    $ npx jest tests/nfr   (2026-10-31, MacBook Air, Node 22)
+    $ npx jest tests/nfr   (2026-11-18, Linux, 2 vCPUs, Node 22)
      PASS  tests/nfr/feedLatency.test.ts
-      [NFR1] gem.added: 200 clients, median 27 ms, max 28 ms (limit 1000 ms)
-      [NFR1] gem.updated: 200 clients, median 17 ms, max 18 ms (limit 1000 ms)
+      [NFR1] gem.added: 200 clients, median 36 ms, max 38 ms (limit 1000 ms)
+      [NFR1] gem.updated: 200 clients, median 26 ms, max 28 ms (limit 1000 ms)
     ```
-    Every one of the 200 nearby clients received both updates, the slowest within 28 ms, and none of the 50 far-away clients received anything, so the requirement is met with a wide margin.
+    Every one of the 200 nearby clients received both updates, the slowest within 38 ms, and none of the 50 far-away clients received anything, so the requirement is met with a wide margin.
 
 - **The map stays fast with many gems**
   - **Verification:** The test stores 10,000 gems spread over Metro Vancouver (generated from a fixed seed, so every run uses the same data) in a real in-memory MongoDB with the app's indexes, then times 50 requests to `GET /gem/within`, over map areas from neighbourhood size (about 1 km) to city size (about 20 km), and 50 requests to `GET /gem/nearby` with a 5 km radius at random points, all with the app's maximum page size of 50. Each request goes through the full app (routing, validation, query, JSON). The requirement is met when the 95th-percentile response time of each query type is under 500 ms; nothing is mocked. The test logs the median, 95th-percentile and maximum response times.
   - **Log Output**
     ```
-    $ npx jest tests/nfr   (2026-10-31, MacBook Air, Node 22)
+    $ npx jest tests/nfr   (2026-11-18, Linux, 2 vCPUs, Node 22)
      PASS  tests/nfr/mapQueryTime.test.ts
-      [NFR2] GET /gem/within: 50 requests on 10000 Gems, median 3.4 ms, p95 6.0 ms, max 17.3 ms (limit p95 500 ms)
-      [NFR2] GET /gem/nearby: 50 requests on 10000 Gems, median 2.1 ms, p95 3.1 ms, max 3.2 ms (limit p95 500 ms)
+      [NFR2] GET /gem/within: 50 requests on 10000 Gems, median 8.6 ms, p95 14.3 ms, max 31.2 ms (limit p95 500 ms)
+      [NFR2] GET /gem/nearby: 50 requests on 10000 Gems, median 5.1 ms, p95 9.5 ms, max 21.3 ms (limit p95 500 ms)
     ```
     Both query types answer far under the 500 ms limit at the 95th percentile, so the requirement is met with a wide margin.
 
