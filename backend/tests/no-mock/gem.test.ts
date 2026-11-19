@@ -35,6 +35,7 @@ describe('Unmocked: GET /gem', () => {
     expect(response.body).toEqual({
       name: 'places/cafe',
       place: { name: 'places/cafe', displayName: 'cafe', ...UBC },
+      photoUrl: '/gem/cafe/photo',
       score: 82.2,
       scoreTime: SEED_SCORE_TIME,
     });
@@ -286,6 +287,22 @@ describe('Unmocked: GET /gem/newest', () => {
     expect(response.body).toEqual([]);
   });
 
+  // Input: Gems at UBC (older) and downtown (newer); GET /gem/newest near UBC with a 5 km radius
+  // Expected status code: 200
+  // Expected behavior: Gems further than the radius are left out; newest first
+  // Expected output: [ubc-new, ubc-old]
+  test('Newest near a point', async () => {
+    await seedGem('ubc-old', UBC);
+    await seedGem('downtown', DOWNTOWN);
+    await seedGem('ubc-new', NEAR_UBC);
+
+    const response = await request(createApp()).get('/gem/newest')
+      .query({ lat: String(UBC.latitude), lng: String(UBC.longitude), radius: '5000' });
+
+    expect(response.status).toBe(200);
+    expect(names(response.body as { name: string }[])).toEqual(['places/ubc-new', 'places/ubc-old']);
+  });
+
   // Input: GET /gem/newest?limit=0
   // Expected status code: 400
   // Expected output: { message: "Invalid limit." }
@@ -295,4 +312,52 @@ describe('Unmocked: GET /gem/newest', () => {
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ message: 'Invalid limit.' });
   });
+});
+
+// Interface GET /gem/:pk/photo
+describe('Unmocked: GET /gem/:pk/photo', () => {
+  // Input: GET /gem/unknown/photo with an empty database
+  // Expected status code: 404
+  // Expected behavior: Google is not called; nothing changes
+  // Expected output: { message: "No such Gem." }
+  test('No such Gem', async () => {
+    const response = await request(createApp()).get('/gem/unknown/photo');
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ message: 'No such Gem.' });
+  });
+
+  // Input: GET with a malformed place ID, or with maxWidth=0, for a stored Gem
+  // Expected status code: 400
+  // Expected behavior: nothing changes
+  // Expected output: { message }
+  test.each([
+    ['/gem/a%20b/photo', 'Invalid Gem ID.'],
+    ['/gem/cafe/photo?maxWidth=0', 'Invalid width.'],
+  ])('Invalid request %s', async (path, message) => {
+    await seedGem('cafe', UBC);
+
+    const response = await request(createApp()).get(path);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ message });
+  });
+});
+
+// Interface GET /gem/:pk/photo (with Google Places)
+describeWithPlaces('Unmocked: GET /gem/:pk/photo with Google Places', () => {
+  // Input: Google Sydney stored as a Gem with no photo name; GET its photo
+  // Expected status code: 302
+  // Expected behavior: the place's first photo is looked up on Google Places and its name stored on the Gem
+  // Expected output: redirect to an https image URL
+  test('Photo of a real place', async () => {
+    await seedGem(GOOGLE_SYDNEY.slice('places/'.length), AT_GOOGLE_SYDNEY);
+
+    const response = await request(createApp()).get(`/gem/${GOOGLE_SYDNEY.slice('places/'.length)}/photo`);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toMatch(/^https:\/\//);
+    const stored = await GemModel.findOne({ name: GOOGLE_SYDNEY }).lean();
+    expect(stored?.place.photoName?.startsWith(`${GOOGLE_SYDNEY}/photos/`)).toBe(true);
+  }, 20_000);
 });

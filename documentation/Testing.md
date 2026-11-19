@@ -6,7 +6,10 @@
 | ----------------- | --------------------- | ------------- |
 | 2026-10-31 | 2.1, 2.2, 2.5 | Listed every backend interface's test groups, how to run them, and the CI workflow. |
 | 2026-10-31 | 3 | Added the two non-functional requirement tests and how they verify the requirements. |
-| 2026-11-18 | 4 | Added the front-end end-to-end tests for Add a Gem, Comment on a Gem and Manage Favorite Gems: location, prerequisites, how to run them, test data, omitted scenarios, known app bugs, and one scenario-to-test-step table per test. |
+| 2026-11-03 | 2.3, 2.4, 2.5 | Added the coverage of the mocked, unmocked and combined interface tests, and why the remaining lines are not covered. Coverage now maps to the TypeScript source lines (source maps enabled for the tests). |
+| 2026-11-17 | 2.1 | Added the tests of `GET /gem/:pk/photo`; updated the gem test locations. |
+| 2026-11-18 | 2.1 | `POST /user/favorites` tests expect the whole gem; updated the favorites test locations. |
+| 2026-11-18 | 2.1, 2.4 | Added a test of two users rating a gem at once (`PUT /gem/:pk/rating`, found in peer review); updated the rating test locations and the uncovered line in `ratingService.ts`. |
 
 ---
 
@@ -22,28 +25,28 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 
 | **Interface** | **Describe Group Location, No Mocks** | **Describe Group Location, With Mocks** | **Mocked Components** |
 | --- | --- | --- | --- |
-| **GET /gem** | [`tests/no-mock/gem.test.ts#L24`](../backend/tests/no-mock/gem.test.ts#L24) | [`tests/mock/gem.test.ts#L59`](../backend/tests/mock/gem.test.ts#L59) | Gems DB |
-| **POST /gem** | [`tests/no-mock/gem.test.ts#L67`](../backend/tests/no-mock/gem.test.ts#L67), [`tests/no-mock/gem.test.ts#L119`](../backend/tests/no-mock/gem.test.ts#L119) | [`tests/mock/gem.test.ts#L187`](../backend/tests/mock/gem.test.ts#L187), [`tests/mock/gem.test.ts#L303`](../backend/tests/mock/gem.test.ts#L303), [`tests/mock/gem.test.ts#L341`](../backend/tests/mock/gem.test.ts#L341) | Gems DB, Users DB (login check), Google Places API |
-| **GET /gem/nearby** | [`tests/no-mock/gem.test.ts#L161`](../backend/tests/no-mock/gem.test.ts#L161) | [`tests/mock/gem.test.ts#L402`](../backend/tests/mock/gem.test.ts#L402) | Gems DB |
-| **GET /gem/within** | [`tests/no-mock/gem.test.ts#L218`](../backend/tests/no-mock/gem.test.ts#L218) | [`tests/mock/gem.test.ts#L474`](../backend/tests/mock/gem.test.ts#L474) | Gems DB |
-| **GET /gem/newest** | [`tests/no-mock/gem.test.ts#L261`](../backend/tests/no-mock/gem.test.ts#L261) | [`tests/mock/gem.test.ts#L527`](../backend/tests/mock/gem.test.ts#L527) | Gems DB |
-| **GET /gem/:pk/comments** | [`tests/no-mock/comment.test.ts#L68`](../backend/tests/no-mock/comment.test.ts#L68) | [`tests/mock/comment.test.ts#L51`](../backend/tests/mock/comment.test.ts#L51) | Comments DB, Gems DB |
-| **POST /gem/:pk/comments** | [`tests/no-mock/comment.test.ts#L17`](../backend/tests/no-mock/comment.test.ts#L17) | [`tests/mock/comment.test.ts#L150`](../backend/tests/mock/comment.test.ts#L150) | Comments DB, Gems DB, Users DB (login check) |
-| **PUT /gem/:pk/rating** | [`tests/no-mock/rating.test.ts#L20`](../backend/tests/no-mock/rating.test.ts#L20) | [`tests/mock/rating.test.ts#L55`](../backend/tests/mock/rating.test.ts#L55) | Ratings DB, Gems DB, Users DB (login check), Live Feed |
-| **GET /gem/:pk/rating** | [`tests/no-mock/rating.test.ts#L81`](../backend/tests/no-mock/rating.test.ts#L81) | [`tests/mock/rating.test.ts#L161`](../backend/tests/mock/rating.test.ts#L161) | Ratings DB, Gems DB, Users DB (login check) |
-| **GET /place/nearby** | [`tests/no-mock/place.test.ts#L11`](../backend/tests/no-mock/place.test.ts#L11), [`tests/no-mock/place.test.ts#L34`](../backend/tests/no-mock/place.test.ts#L34) | [`tests/mock/place.test.ts#L40`](../backend/tests/mock/place.test.ts#L40) | Google Places API, Gems DB |
-| **POST /user/auth/google** | [`tests/no-mock/auth.test.ts#L15`](../backend/tests/no-mock/auth.test.ts#L15) | [`tests/mock/auth.test.ts#L35`](../backend/tests/mock/auth.test.ts#L35) | Google Sign-In, Users DB |
-| **Login check (`reqJwt`, all routes requiring login)** | [`tests/no-mock/auth.test.ts#L47`](../backend/tests/no-mock/auth.test.ts#L47) | [`tests/mock/auth.test.ts#L119`](../backend/tests/mock/auth.test.ts#L119) | Users DB |
-| **GET /user/me** | [`tests/no-mock/profile.test.ts#L16`](../backend/tests/no-mock/profile.test.ts#L16) | [`tests/mock/auth.test.ts#L119`](../backend/tests/mock/auth.test.ts#L119) | Users DB |
-| **PATCH /user/me** | [`tests/no-mock/profile.test.ts#L39`](../backend/tests/no-mock/profile.test.ts#L39) | [`tests/mock/auth.test.ts#L146`](../backend/tests/mock/auth.test.ts#L146) | Users DB |
-| **GET /user/favorites** | [`tests/no-mock/favorite.test.ts#L75`](../backend/tests/no-mock/favorite.test.ts#L75) | [`tests/mock/favorite.test.ts#L49`](../backend/tests/mock/favorite.test.ts#L49) | Favorites DB, Gems DB, Users DB (login check) |
-| **POST /user/favorites** | [`tests/no-mock/favorite.test.ts#L25`](../backend/tests/no-mock/favorite.test.ts#L25) | [`tests/mock/favorite.test.ts#L109`](../backend/tests/mock/favorite.test.ts#L109) | Favorites DB, Gems DB, Users DB (login check) |
-| **DELETE /user/favorites/:placeId** | [`tests/no-mock/favorite.test.ts#L108`](../backend/tests/no-mock/favorite.test.ts#L108) | [`tests/mock/favorite.test.ts#L206`](../backend/tests/mock/favorite.test.ts#L206) | Favorites DB, Users DB (login check) |
-| **WebSocket /feed** | [`tests/no-mock/feed.test.ts#L40`](../backend/tests/no-mock/feed.test.ts#L40) | [`tests/mock/feed.test.ts#L73`](../backend/tests/mock/feed.test.ts#L73) | Gems DB, Users DB, Google Places API (gems are added through POST /gem) |
+| **GET /gem** | [`tests/no-mock/gem.test.ts#L24`](../backend/tests/no-mock/gem.test.ts#L24) | [`tests/mock/gem.test.ts#L65`](../backend/tests/mock/gem.test.ts#L65) | gems collection |
+| **POST /gem** | [`tests/no-mock/gem.test.ts#L68`](../backend/tests/no-mock/gem.test.ts#L68), [`tests/no-mock/gem.test.ts#L120`](../backend/tests/no-mock/gem.test.ts#L120) | [`tests/mock/gem.test.ts#L195`](../backend/tests/mock/gem.test.ts#L195), [`tests/mock/gem.test.ts#L311`](../backend/tests/mock/gem.test.ts#L311), [`tests/mock/gem.test.ts#L349`](../backend/tests/mock/gem.test.ts#L349) | gems collection, users collection (login check), Google Places API |
+| **GET /gem/nearby** | [`tests/no-mock/gem.test.ts#L162`](../backend/tests/no-mock/gem.test.ts#L162) | [`tests/mock/gem.test.ts#L411`](../backend/tests/mock/gem.test.ts#L411) | gems collection |
+| **GET /gem/within** | [`tests/no-mock/gem.test.ts#L219`](../backend/tests/no-mock/gem.test.ts#L219) | [`tests/mock/gem.test.ts#L483`](../backend/tests/mock/gem.test.ts#L483) | gems collection |
+| **GET /gem/newest** | [`tests/no-mock/gem.test.ts#L262`](../backend/tests/no-mock/gem.test.ts#L262) | [`tests/mock/gem.test.ts#L536`](../backend/tests/mock/gem.test.ts#L536) | gems collection |
+| **GET /gem/:pk/photo** | [`tests/no-mock/gem.test.ts#L318`](../backend/tests/no-mock/gem.test.ts#L318), [`tests/no-mock/gem.test.ts#L348`](../backend/tests/no-mock/gem.test.ts#L348) | [`tests/mock/gem.test.ts#L617`](../backend/tests/mock/gem.test.ts#L617) | gems collection, Google Places API |
+| **GET /gem/:pk/comments** | [`tests/no-mock/comment.test.ts#L68`](../backend/tests/no-mock/comment.test.ts#L68) | [`tests/mock/comment.test.ts#L51`](../backend/tests/mock/comment.test.ts#L51) | comments collection, gems collection |
+| **POST /gem/:pk/comments** | [`tests/no-mock/comment.test.ts#L17`](../backend/tests/no-mock/comment.test.ts#L17) | [`tests/mock/comment.test.ts#L150`](../backend/tests/mock/comment.test.ts#L150) | comments collection, gems collection, users collection (login check) |
+| **PUT /gem/:pk/rating** | [`tests/no-mock/rating.test.ts#L21`](../backend/tests/no-mock/rating.test.ts#L21) | [`tests/mock/rating.test.ts#L56`](../backend/tests/mock/rating.test.ts#L56) | ratings collection, gems collection, users collection (login check), Live Feed |
+| **GET /gem/:pk/rating** | [`tests/no-mock/rating.test.ts#L121`](../backend/tests/no-mock/rating.test.ts#L121) | [`tests/mock/rating.test.ts#L162`](../backend/tests/mock/rating.test.ts#L162) | ratings collection, gems collection, users collection (login check) |
+| **GET /place/nearby** | [`tests/no-mock/place.test.ts#L11`](../backend/tests/no-mock/place.test.ts#L11), [`tests/no-mock/place.test.ts#L34`](../backend/tests/no-mock/place.test.ts#L34) | [`tests/mock/place.test.ts#L40`](../backend/tests/mock/place.test.ts#L40) | Google Places API, gems collection |
+| **POST /user/auth/google** | [`tests/no-mock/auth.test.ts#L15`](../backend/tests/no-mock/auth.test.ts#L15) | [`tests/mock/auth.test.ts#L35`](../backend/tests/mock/auth.test.ts#L35) | Google Sign-In, users collection |
+| **Login check (`reqJwt`, all routes requiring login)** | [`tests/no-mock/auth.test.ts#L47`](../backend/tests/no-mock/auth.test.ts#L47) | [`tests/mock/auth.test.ts#L119`](../backend/tests/mock/auth.test.ts#L119) | users collection |
+| **GET /user/me** | [`tests/no-mock/profile.test.ts#L16`](../backend/tests/no-mock/profile.test.ts#L16) | [`tests/mock/auth.test.ts#L119`](../backend/tests/mock/auth.test.ts#L119) | users collection |
+| **GET /user/favorites** | [`tests/no-mock/favorite.test.ts#L78`](../backend/tests/no-mock/favorite.test.ts#L78) | [`tests/mock/favorite.test.ts#L61`](../backend/tests/mock/favorite.test.ts#L61) | favorites collection, gems collection, users collection (login check) |
+| **POST /user/favorites** | [`tests/no-mock/favorite.test.ts#L25`](../backend/tests/no-mock/favorite.test.ts#L25) | [`tests/mock/favorite.test.ts#L121`](../backend/tests/mock/favorite.test.ts#L121) | favorites collection, gems collection, users collection (login check) |
+| **DELETE /user/favorites/:placeId** | [`tests/no-mock/favorite.test.ts#L111`](../backend/tests/no-mock/favorite.test.ts#L111) | [`tests/mock/favorite.test.ts#L218`](../backend/tests/mock/favorite.test.ts#L218) | favorites collection, users collection (login check) |
+| **WebSocket /feed** | [`tests/no-mock/feed.test.ts#L40`](../backend/tests/no-mock/feed.test.ts#L40) | [`tests/mock/feed.test.ts#L73`](../backend/tests/mock/feed.test.ts#L73) | gems collection, users collection, Google Places API (gems are added through POST /gem) |
 
 #### 2.1.2. Commit Hash Where Tests Run
 
-`[Insert Commit SHA here]`
+`7e2dd810ac358ab7b6e5164353eae6746b4630cb` (the head of `main`; the tests are unchanged since then)
 
 #### 2.1.3. Explanation on How to Run the Tests
 
@@ -67,15 +70,40 @@ The no-mock tests that call the real Google Places API (marked "with Google Plac
 
 ### 2.3. Jest Coverage Report Screenshots With Mocks
 
-Screenshot of the coverage report with mocks enabled: to be added.
+`tests/mock/` only: 88.1% of lines, 81.6% of branches.
+
+![Coverage with mocks](images/coverage_mock.png)
 
 ### 2.4. Jest Coverage Report Screenshots Without Mocks
 
-Screenshot of the coverage report without mocks: to be added.
+`tests/no-mock/` only: 73.9% of lines, 60.1% of branches. Lower than with mocks because database and Google failures can only be produced with mocks.
+
+![Coverage without mocks](images/coverage_no_mock.png)
 
 ### 2.5. Jest Coverage Report Screenshots With and Without Mocks Combined
 
-Screenshot of the combined coverage report: to be added.
+`tests/mock/` and `tests/no-mock/` together: 90.9% of lines, 84.3% of branches. All five models are at 100% and all seven controllers except the Live Feed at 100% of lines. The backend's unit tests (`tests/unit/`, not part of these interface runs) cover most of the remaining lines: with them, the whole suite reaches 95.6% of lines and 93.6% of branches.
+
+**Why the remaining lines are not covered by the interface tests** (line numbers from the combined run above):
+
+| File | Lines | Why not covered |
+| ---- | ----- | --------------- |
+| `src/index.ts` | all | Starts the real server: listens on `PORT`, connects to the production MongoDB and handles `SIGINT`/`SIGTERM`. The tests import the app from `createApp()` in `app.ts` instead, so every route is still tested without opening a port or a real database. |
+| `src/config/db.ts` | all | Connects to `MONGODB_URI`; only called by `index.ts`. The no-mock tests connect Mongoose to an in-memory MongoDB in `tests/helpers/db.ts`. |
+| `src/config/env.ts` | 10 | Throws when `PORT` is not a valid port. It runs once when the module loads, so testing it would stop the test process. |
+| `src/app.ts` | 37–38, 47–53 | The app-wide error handler's fallbacks. Every route catches its own errors and answers itself, so these only run for errors Express raises other than malformed JSON (which is tested in `tests/no-mock/errors.test.ts`), or for a response that was already started. |
+| `src/utils/http.ts` | 31 | Passes a rejected `async` handler to Express. No handler rejects: each catches its own errors. |
+| `src/utils/log.ts` | 31 | `logInfo`, only used by `index.ts` at start-up. |
+| `src/controllers/feedController.ts` | 68, 71, 85, 121–122, 133–134, 138–139 | Lines 68 and 71 decode WebSocket messages delivered as an array of Buffers or an ArrayBuffer; `ws` delivers a single Buffer with our settings. Lines 85–139 reject binary messages, unknown message types, invalid radii and too-frequent subscriptions; the interface tests cover invalid JSON and locations, and these four cases are covered by the unit tests of `handleFeedMessage` in `tests/unit/feedMessage.test.ts`. |
+| `src/services/gemService.ts` | 466, 491, 505, 526, 606 | Input checks the controllers already make: the routes answer 400 before calling the service, so the service's own check can't be reached through the API. Kept so the service is safe when called from other code; covered by `tests/unit/gemService.test.ts` (except 466 and 505, which their callers always check first). |
+| `src/services/gemService.ts` | 359, 376, 404, 705, 755, 757, 570 | Guards for cases the API can't produce on demand: Google returning a place without a name or location (359, 376, 404), a stored gem without coordinates (705; the schema requires them), two users adding the same gem at the same instant (755, 757), and a gem deleted while it is being rated (570). Covered by the unit tests with mocked Google and database responses, except 705. |
+| `src/services/gemService.ts` | 547–555 | `scoreGem`, which no route calls: gems are scored when added and when rated (`newGem`, `applyAppRatings`). Covered by the unit tests. |
+| `src/services/authService.ts` | 81, 147, 185, 246–247, 261–262, 271, 285, 290, 97–98 | Guards the API can't reach: `currentUser` before `reqJwt` (81, a programming error), `JWT_SECRET` missing (147; the tests set it), a Google token without an account ID (185), a valid token without a user ID (246–247; the server never issues one), a database failure during the login check (261–262), `getUser`, which no route calls (271), and an invalid profile update or a user deleted mid-request in the service (97–98, 285, 290; the route checks first). All are covered by `tests/unit/authService.test.ts`. |
+| `src/services/commentService.ts`, `ratingService.ts` | 30–31, 149; 17–18, 60 | The services' own body and star checks and their error classes; the routes reject invalid input with 400 first. Covered by the unit tests. |
+| `src/services/favoriteService.ts` | 125–128 | Two requests adding the same favorite at the same instant (duplicate-key error). Covered by the unit tests. |
+| `src/services/feedService.ts` | 108 | Drops a client whose socket throws while sending, which a real socket in the tests doesn't do. Covered by the unit tests. |
+
+Branch-only gaps (lines that run, with one side of a condition never taken) are of the same kinds: `req.body ?? {}` when a request has no JSON body (`authController.ts` 73, `ratingController.ts` 83), a Google API key always being set in CI (`gemService.ts` 424), and optional fields Google or MongoDB always return in the tests.
 
 ---
 
@@ -121,389 +149,40 @@ Run them with `./scripts/run-backend-nfr-tests.sh`, or `npm test -- tests/nfr/` 
 
 ### 4.1. Location in Git of Front-end Test Suite:
 
-`frontend/app/src/androidTest/e2e/` (package `e2e`; Gradle compiles this folder through `sourceSets` in `frontend/app/build.gradle.kts`).
-
-| **File** | **Contents** |
-| --- | --- |
-| `AddGemE2ETest.kt` | Use case 2: Add a Gem (4 tests) |
-| `CommentOnGemE2ETest.kt` | Use case 4: Comment on a Gem (5 tests) |
-| `ManageFavoritesE2ETest.kt` | Use case 5: Manage Favorite Gems (4 tests) |
-| `E2ETestBase.kt` | Setup shared by every test: checks that a user is signed in, turns the device's location on, grants location permission, starts a mock location |
-| `AppDriver.kt` | UI actions: the Jetpack Compose testing APIs for the app's screens, UI Automator for Google Maps markers and the system Back button |
-| `TestData.kt`, `BackendClient.kt`, `ApiModels.kt` | Create and clean up test data through the backend's authenticated API, as the signed-in user |
-| `DeviceControl.kt`, `MockLocation.kt`, `E2EConfig.kt`, `GeoPoint.kt` | Device settings, mock location, fixed test values |
-
-There are 13 tests. They talk to the real backend (nothing is mocked) and never sign in: each one starts on the main screen (the Dashboard) as the user who is already signed in on the device. Each test runs in its own app process (one `am instrument` call per test) and creates the data it needs, so the tests do not depend on each other.
-
-The tests look for UI bugs a user would meet when using the app normally, so they assume normal conditions: Wi-Fi (internet) on, the device's location on, and the app's location permission granted. The run script and each test's setup make sure location is on and the permission is granted.
-
-#### 4.1.1. Commit Hash Where Tests Run
-
-`[Insert Commit SHA on main here]`
-
-#### 4.1.2. Prerequisites
-
-1. **A device:** an Android phone with USB debugging on, or an emulator, listed by `adb devices`, with Google Play services. If several are connected, choose one with `ANDROID_SERIAL=<serial>`.
-2. **The right computer:** run the tests on the computer whose debug key Google Sign-In trusts (its debug keystore's SHA-1 is registered with the app's OAuth client). The script builds and installs both the app and the test APK on that computer, so both are signed with the same key, which Android requires. On another computer, Google Sign-In fails.
-3. **Configuration:** `frontend/local.properties` (`sdk.dir`, `API_BASE_URL`, `GOOGLE_CLIENT_ID`) and the Maps key in `frontend/secrets.properties`, as for `scripts/run-frontend.*`.
-4. **A reachable backend:** the app uses the backend in `API_BASE_URL`, fixed when the app is built.
-   - If it is `10.0.2.2`, `localhost` or `127.0.0.1`, the script starts the local backend with `scripts/run-backend.*` (needs Docker and `backend/.env`). `10.0.2.2` is only reachable from an emulator.
-   - Otherwise (for example the deployed server), the script only checks that `GET /health` answers.
-   - `E2E_START_BACKEND=yes` starts the local backend anyway (for example when `API_BASE_URL` is this computer's network address, for a phone); `E2E_START_BACKEND=no` never starts it.
-   - The tests add data to that backend; see 4.1.4.
-5. **Signed in on that device:** the script opens the app and waits until a user has signed in (300 seconds by default; change it with `E2E_SIGNIN_TIMEOUT`). If the app is already signed in, it continues straight away.
-6. **Only for Use case 5, step 4a:** the backend must provide the data-population endpoint `POST /e2e/seed/favorites` (enabled with `E2E_SEED_ENABLED=true` in the backend's environment). Without it, that test reports `BLOCKED`.
-
-#### 4.1.3. How to Run the Tests
-
-From the repository root:
-
-```
-./scripts/run-frontend-e2e-tests.sh       # macOS, Linux or Git Bash
-.\scripts\run-frontend-e2e-tests.ps1      # Windows PowerShell
-```
-
-Both scripts do the same:
-
-1. Read `API_BASE_URL`, then start or check the backend (prerequisite 4).
-2. Pick the device, then build and install the app and the test APK on it (`gradlew installDebug installDebugAndroidTest`). The app is updated in place: the script never uninstalls it, never runs `pm clear` and never clears its data, so the sign-in is kept.
-3. Open the app and wait for a user to sign in (prerequisite 5).
-4. Grant the app location permission, turn the device's location on, and let the app use mock locations. Debug builds declare `ACCESS_MOCK_LOCATION` for this, in `frontend/app/src/debug/AndroidManifest.xml`; release builds do not.
-5. Run each test in its own call: `adb shell am instrument -w -r -e class e2e.<Class>#<method> com.example.cpen321application.test/androidx.test.runner.AndroidJUnitRunner`. Before each test it checks that the device is still connected.
-6. Print a results table to paste into 4.2, save the full log as `frontend/app/build/e2e-logs/e2e-<date>-<time>.log` (including any error adb printed), and exit with a non-zero status unless every test passed. Each result is one of:
-
-   | **Result** | **Meaning** |
-   | --- | --- |
-   | `PASS` | The test passed. |
-   | `FAIL` | The test finished and a check failed. |
-   | `BLOCKED` | Use case 5, step 4a, while the seed endpoint does not exist. |
-   | `CRASH (process died)` | The app's process, which also runs the test, died before the test finished. This is often an app crash; see `adb logcat -b crash`. |
-   | `CRASH (no result)` | The test gave no final result: its output stopped early or was empty, usually because adb lost the device. |
-   | `NOT RUN (device disconnected)` | The device was not connected when the test was due to start. |
-
-To rerun a single test after the script has installed the app, use the `am instrument` command from step 5 with that test's name.
-
-#### 4.1.4. Test Data and Data Left Behind
-
-Each test creates the data it needs, either through the app's screens or through the backend's public, authenticated API, using the session of the user signed in on the device. Nothing writes to the database directly. The checks only look at data the test created, never at totals across the backend.
-
-- **Location:** the tests set the device's location with a mock location, to one of five spots in downtown Vancouver (below) or, for Use case 2 step 7a, to open water with no places nearby.
-- **Shared gem:** most Comment and Favorites tests reuse one gem, the signed-in account's own gem nearest to test area 1. It is added on the first run and reused afterwards.
-- **Favorites:** before each Favorites test, the account's favorites are saved to a file on the device; afterwards they are put back exactly (extra ones removed, missing ones re-added in the same order). If a test crashes, the next Favorites test puts them back first.
-
-Gems and comments cannot be deleted through the API, so the following stay in the backend. "The account" is the Google account signed in on the device when the tests run (for example a TA's account).
-
-| **Data left behind** | **Created by** | **Added by** | **Where** | **How many** |
-| --- | --- | --- | --- | --- |
-| Shared gem | the first Comment or Favorites test run | the account | within 200 m of test area 1 | one per account, reused |
-| A known gem for the map | `AddGemE2ETest#mainSuccessScenario` (step 2 checks its marker) | the account | within 200 m of the test area used (the shared gem in area 1) | at most one per account and area, reused |
-| A new gem with no comments | `CommentOnGemE2ETest#scenario2a_noCommentsYet` | the account | within 200 m of the first test area with a place that is not a gem yet | one per run |
-| The gem added through the app | `AddGemE2ETest#mainSuccessScenario` (only once the app can add gems) | the account | within 200 m of the test area used | one per run |
-| The gem added for "another user" | `AddGemE2ETest#scenario9a_placeBecameGemMeanwhile` | the account | within 200 m of the test area used | one per run |
-| Comments starting with "E2E test comment" | `CommentOnGemE2ETest#mainSuccessScenario` | the account | on the shared gem | two per run |
-| Seed gems `places/e2e-seed-001` to `places/e2e-seed-500` | the data-population script for Use case 5 step 4a, once it exists | none (shared by all accounts) | one remote point chosen by the script | 500 in total, reused |
-| Favorites | none | none | none | none: put back after every test |
-
-Test areas (latitude, longitude): 1: 49.2820, -123.1207; 2: 49.2849, -123.1166; 3: 49.2790, -123.1240; 4: 49.2862, -123.1300; 5: 49.2765, -123.1185. Open water for Use case 2 step 7a: 49.2000, -123.6000. A test area is only used once the areas before it have no place left that is not a gem yet. On the device, the app is left with location permission granted, the device's location on, and mock locations allowed for the app.
-
-#### 4.1.5. Scenarios Not Tested
-
-Two kinds of scenario are left out:
-- scenarios that would need a mocked backend or a forced network failure, as the course's "Add Todo Items" example does for its step 5b;
-- scenarios about the device's location or the app's location permission. Location is used by the whole app, not just by one use case, and these tests check the app under normal conditions (4.1).
-
-| **Use Case** | **Scenario** | **Why It Is Not Tested** |
-| --- | --- | --- |
-| 2. Add a Gem | 2a. The user has denied the app access to their location. | Location and permission handling is app-wide; to be covered in M3. |
-| 2. Add a Gem | 2b. The device's location is turned off. | Location and permission handling is app-wide; to be covered in M3. |
-| 2. Add a Gem | 7b. Google Places is unavailable. | Google Places can only be made to fail by mocking it. |
-| 2. Add a Gem | 9c. The Excavator server cannot be reached. | Needs a forced network failure or a mocked backend. |
-| 4. Comment on a Gem | 5a. The Excavator server cannot be reached. | Needs a forced network failure or a mocked backend. |
-| 5. Manage Favorite Gems | 4b. The Excavator server cannot be reached. | Needs a forced network failure or a mocked backend. |
-| 5. Manage Favorite Gems | 8a. The Excavator server cannot be reached. | Needs a forced network failure or a mocked backend. |
-
-Use case 1 (Sign In with Google) and Use case 3 (Rate a Gem) are not among the three features tested. Scenarios the app does not implement yet are not left out: they are tested, fail for now, and are listed in 4.1.6.
-
-#### 4.1.6. Known App Bugs That Make Tests Fail
-
-These results are what the current code should give. **No run has confirmed them yet.** The logs in 4.2 will hold the actual results.
-
-The first run, on 18 November 2026, gave no usable results:
-- During the Compose test rule's cleanup, the Google Maps composables were run off the main thread (`Not on the main thread`). That error replaced each map test's real result.
-- The map was never updated while the test waited for a marker with UI Automator.
-- The phone lost its adb connection during `ManageFavoritesE2ETest#scenario3a_tapGoldStar`.
-
-The test code has since been fixed: an unconfined test dispatcher for the Compose rule, and Compose is kept running while a marker is being looked for.
-
-Expected summary: 4 of the 13 tests pass (the four Comment tests marked "Pass" below), 1 is `BLOCKED`, 7 fail with `FAIL`, and 1 should show as `CRASH (process died)` because the app crashes.
-
-| **Test** | **Expected Result** | **Cause in the App** |
-| --- | --- | --- |
-| `AddGemE2ETest#mainSuccessScenario` | Fails at step 7 | The list of places is never requested (`GemViewModel.getGemCandidates()` is never called, and the app calls `/places/nearby` while the backend serves `/place/nearby`). Selected filters are lost (`GemCreationSheet`, `NewGemFiltersForm`). The add request misspells `latitude` and sends the place's location instead of the user's (`GemAPIService`, `NearbyGemsOptionsList`). |
-| `AddGemE2ETest#scenario7a_noPlacesNearby` | Fails at 7a1 | The message reads "No gem candididates found! Check back later" (`NearbyGemsOptionsList`). |
-| `AddGemE2ETest#scenario9a_placeBecameGemMeanwhile` | Fails at step 7 | The list of places never loads (see the main scenario). There is no "This place is already a gem." message, and the backend's 409 response crashes the app (`GemViewModel.handleError`). |
-| `AddGemE2ETest#scenario9b_userMovedAway` | Fails at step 7 | The list of places never loads. The app sends the place's location instead of the user's, so the backend cannot tell the user moved; there is no message, and a 422 response would crash the app. |
-| `CommentOnGemE2ETest#scenario4a_emptyOrSpacesOnly` | Fails at 4a1 | "Send Comment" is never disabled (`NewCommentInput`); sending a blank comment gets a 400 response, which crashes the app (`CommentViewModel.handleError`). |
-| `ManageFavoritesE2ETest#mainSuccessScenario` | Fails at step 4, as `CRASH (process died)` | `POST /user/favorites` returns `{ gem }`, but the app reads it as a full gem and crashes (`GemRepositoryImpl.addFavoriteGem`). Removing a favorite also leaves its card on screen (step 8, `GemViewModel.deleteFavoriteGem`). |
-| `ManageFavoritesE2ETest#scenario3a_tapGoldStar` | Fails at step 2 | The star always starts grey, whatever the server says (`FavoriteButton`); tapping a gold star adds the favorite again instead of removing it (`DiscoveryMap`). |
-| `ManageFavoritesE2ETest#scenario4a_atFavoritesLimit` | `BLOCKED`, then fails at 4a1 | Waiting for the data-population script. After that: there is no "You can have at most 500 favorites." message, and the backend's 409 response crashes the app. |
-| `ManageFavoritesE2ETest#scenario6a_noFavorites` | Fails at 6a1 | There is no "No favorites yet!" text (`FavoritesScreen`). |
-| `CommentOnGemE2ETest#mainSuccessScenario`, `#scenario2a_noCommentsYet`, `#scenario3a_moreThan256Characters`, `#scenario3b_newLineOrTab` | Pass | |
+`frontend/src/androidTest/java/com/studygroupfinder/`
 
 ### 4.2. Tests
 
-Summary of the run (printed by `run-frontend-e2e-tests`):
+- **Use Case: Login**
 
-```
-[Placeholder: paste the summary table printed by the run script]
-```
+  - **Expected Behaviors:**
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The user opens "Add Todo Items" screen. | Open "Add Todo Items" screen. |
+    | 2. The app shows an input text field and an "Add" button. The add button is disabled. | Check that the text field is present on screen.<br>Check that the button labelled "Add" is present on screen.<br>Check that the "Add" button is disabled. |
+    | 3a. The user inputs an ill-formatted string. | Input "_^_^^OQ#$" in the text field. |
+    | 3a1. The app displays an error message prompting the user for the expected format. | Check that a dialog is opened with the text: "Please use only alphanumeric characters ". |
+    | 3. The user inputs a new item for the list and the add button becomes enabled. | Input "buy milk" in the text field.<br>Check that the button labelled "add" is enabled. |
+    | 4. The user presses the "Add" button. | Click the button labelled "add ". |
+    | 5. The screen refreshes and the new item is at the bottom of the todo list. | Check that a text box with the text "buy milk" is present on screen.<br>Input "buy chocolate" in the text field.<br>Click the button labelled "add".<br>Check that two text boxes are present on the screen with "buy milk" on top and "buy chocolate" at the bottom. |
+    | 5a. The list exceeds the maximum todo-list size. | Repeat steps 3 to 5 ten times.<br>Check that a dialog is opened with the text: "You have too many items, try completing one first". |
 
-- **Use Case 2: Add a Gem, main success scenario** (`AddGemE2ETest#mainSuccessScenario`)
+  - **Test Logs:**
+    ```
+    [Placeholder for Espresso test execution logs]
+    ```
+
+- **Use Case: ...**
 
   - **Expected Behaviors:**
 
     | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens the Discovery screen from the navigation bar. | Set the mock location to the first test area that has a restaurant that is not a gem yet.<br>Find the account's gem near it among the 20 nearest gems (what the app's map loads), or add one through `POST /gem` if there is none.<br>Open the app on the Dashboard.<br>Click the navigation-bar item labelled "Discovery". |
-    | 2. The app shows a map centred on the user's location, with markers for the gems around them, and an "Add gem" button. | Check that a button labelled "Add gem" is present on screen.<br>Check (UI Automator) that a map marker with the known gem's name is present. |
-    | 3. The user taps "Add gem". | Click the button labelled "Add gem". |
-    | 4. The app shows the "Add New Gem" sheet with a "Filters" button and a "Submit" button. | Check that the text "Add New Gem" is present on screen.<br>Check that a button whose label contains "Filters" is present on screen.<br>Check that a button labelled "Submit" is present on screen. |
-    | 5. The user optionally taps "Filters" and selects the types of place they want to add. | Click "Filters".<br>Click the category "Food".<br>Click the chip "Restaurant".<br>Check that the "Restaurant" chip is selected. |
-    | 6. The user taps "Submit". | Click "Submit". |
-    | 7. The app shows a list of the places within 200 m of the user that are not gems yet, nearest first, limited to the selected types. | Get the nearest restaurant within 200 m that is not a gem yet (`GET /place/nearby?type=restaurant`).<br>Check that the list of places is present on screen and that its first card shows that restaurant's name. |
-    | 8. The user taps a place in the list. | Click the card with that name. |
-    | 9. The app adds the place as a gem and closes the sheet. The new gem appears as a marker on the map and at the top of the Dashboard's latest gems, and is pushed to other users near it. | Check that "Add New Gem" is no longer on screen.<br>Check (UI Automator) that a map marker with the place's name is present.<br>Click "Dashboard".<br>Check that the first card under "Latest Gems:" shows the place's name.<br>"Pushed to other users": checked by User B, below. |
-
-  - **Manual steps for User B** (step 9, the new gem is pushed to other users near it):
-    1. On a second device, sign in to Excavator with a different Google account and stay on the Dashboard. The device's location (real or mock) must be within 5 km of the test area User A's test uses (test area 1 unless the log shows another).
-    2. Run User A's test.
-    3. When User A's test reaches step 9, check that the new gem appears at the top of "Latest Gems:" on User B's Dashboard within a few seconds, without refreshing.
+    | ------------------ | ------------------- |
+    | ...                | ...                 |
 
   - **Test Logs:**
     ```
-    [Placeholder: this test's section of frontend/app/build/e2e-logs/e2e-<date>-<time>.log]
+    [Placeholder for Espresso test execution logs]
     ```
 
-- **Use Case 2: Add a Gem, failure scenario 7a** (`AddGemE2ETest#scenario7a_noPlacesNearby`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens the Discovery screen from the navigation bar. | Check that there is no place within 200 m of the open-water point that is not a gem yet (`GET /place/nearby`).<br>Set the mock location to that point.<br>Open the app on the Dashboard.<br>Click "Discovery". |
-    | 2. The app shows a map with an "Add gem" button. | Check that a button labelled "Add gem" is present on screen. |
-    | 3. The user taps "Add gem". | Click "Add gem". |
-    | 4. The app shows the "Add New Gem" sheet with a "Submit" button. | Check that a button labelled "Submit" is present on screen. |
-    | 5. The user optionally selects types of place. | No filter is chosen. |
-    | 6. The user taps "Submit". | Click "Submit". |
-    | 7a. There are no places within 200 m that are not gems yet. | Ensured by the check in step 1. |
-    | 7a1. The app shows the message "No gem candidates found! Check back later" with an "Ok" button. | Check that the text "No gem candidates found! Check back later" is present on screen.<br>Check that a button labelled "Ok" is present on screen. |
-    | 7a2. The user taps "Ok" and the app closes the sheet. | Click "Ok".<br>Check that "Add New Gem" is no longer on screen. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 2: Add a Gem, failure scenario 9a** (`AddGemE2ETest#scenario9a_placeBecameGemMeanwhile`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens the Discovery screen from the navigation bar. | Set the mock location to the first test area with a restaurant that is not a gem yet.<br>Open the app on the Dashboard.<br>Click "Discovery". |
-    | 2. The app shows a map with an "Add gem" button. | Check that a button labelled "Add gem" is present on screen. |
-    | 3. The user taps "Add gem". | Click "Add gem". |
-    | 4. The app shows the "Add New Gem" sheet with a "Submit" button. | Check that a button labelled "Submit" is present on screen. |
-    | 5. The user optionally selects types of place. | No filter is chosen. |
-    | 6. The user taps "Submit". | Click "Submit". |
-    | 7. The app shows the list of places within 200 m that are not gems yet. | Check that the list of places is present on screen.<br>Note the name on its first card. |
-    | 9a. Another user added the same place as a gem after the list was shown. | Add that place as a gem through `POST /gem` with the test account, standing in for User B (see the manual steps below). |
-    | 8. The user taps a place in the list. | Click the card with that name. |
-    | 9a1. The app shows the message "This place is already a gem." | Check that the text "This place is already a gem." is present on screen. |
-    | 9a2. The app reloads the list without that place. | Check that the list of places is present on screen.<br>Check that no card with that name is on screen. |
-
-  - **Manual steps for User B** (to check the two-user version of 9a by hand):
-    1. User A (the device under test) opens Discovery, taps "Add gem", then "Submit", and leaves the list of places open.
-    2. User B, signed in with a different Google account on a second device, with its location within 200 m of the same place, taps "Add gem", "Submit", and then the place at the top of User A's list, which adds it as a gem.
-    3. User A taps that place.
-    4. Check that User A sees "This place is already a gem." and that the place disappears from User A's list.
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 2: Add a Gem, failure scenario 9b** (`AddGemE2ETest#scenario9b_userMovedAway`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens the Discovery screen from the navigation bar. | Set the mock location to the first test area with a restaurant that is not a gem yet.<br>Open the app on the Dashboard.<br>Click "Discovery". |
-    | 2. The app shows a map with an "Add gem" button. | Check that a button labelled "Add gem" is present on screen. |
-    | 3. The user taps "Add gem". | Click "Add gem". |
-    | 4. The app shows the "Add New Gem" sheet with a "Submit" button. | Check that a button labelled "Submit" is present on screen. |
-    | 5. The user optionally selects types of place. | No filter is chosen. |
-    | 6. The user taps "Submit". | Click "Submit". |
-    | 7. The app shows the list of places within 200 m that are not gems yet. | Check that the list of places is present on screen.<br>Note the name on its first card. |
-    | 9b. The user has moved more than 200 m away from the place. | Move the mock location 500 m north.<br>Wait 12 seconds (the app reads the location every 10 seconds). |
-    | 8. The user taps a place in the list. | Click the card with the noted name. |
-    | 9b1. The app shows the message "You must be within 200 m of a place to add it." | Check that the text "You must be within 200 m of a place to add it." is present on screen. |
-    | 9b2. The app reloads the list for the user's new location. | Get the nearest place within 200 m of the new location that is not a gem yet (`GET /place/nearby`).<br>Check that the first card of the list shows that place's name, or, if there is none, that the text "No gem candidates found! Check back later" is present on screen. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 4: Comment on a Gem, main success scenario** (`CommentOnGemE2ETest#mainSuccessScenario`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens a gem, by tapping its marker on the Discovery map. | Find or add the shared gem (`POST /gem`) and set the mock location to test area 1.<br>Open the app on the Dashboard.<br>Click "Discovery".<br>Click (UI Automator) the map marker with the gem's name.<br>Check that the gem sheet's title is the gem's name. |
-    | 2. The app shows the gem's sheet with a "Comments" list, oldest first, each comment showing its author's display name and text, and a "New comment..." text field with a "Send Comment" button. | Check that the text "Comments" is present on screen.<br>Check that a text field with the placeholder "New comment..." is present on screen.<br>Check that a button labelled "Send Comment" is present on screen.<br>If the gem already has comments (`GET /gem/:pk/comments`), check that the first comment shown is the oldest one. |
-    | 3. The user types a comment of up to 256 characters. | Input "E2E test comment first &lt;time&gt;" in the text field.<br>Check that the text field contains it. |
-    | 4. The user taps "Send Comment". | Click "Send Comment". |
-    | 5. The app posts the comment, clears the text field, and shows the comment at the bottom of the list with the user's display name. | Check that the text field is empty.<br>Scroll to the end of the list; check that the last comment's text is the one just sent.<br>Check that the last comment's author is the signed-in user's display name (`GET /user/me`).<br>Repeat steps 3 to 5 with "E2E test comment second &lt;time&gt;".<br>Check that the first comment is above the second one. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 4: Comment on a Gem, failure scenario 2a** (`CommentOnGemE2ETest#scenario2a_noCommentsYet`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens a gem, by tapping its card on the Dashboard. | Add a new gem through `POST /gem`, so it has no comments.<br>Open the app on the Dashboard.<br>Click the card with the new gem's name under "Latest Gems:".<br>Check that the gem sheet's title is the gem's name. |
-    | 2. The app shows the gem's sheet with a "Comments" list. | Check that the text "Comments" is present on screen. |
-    | 2a. The gem has no comments yet. | Ensured by adding the gem in step 1. |
-    | 2a1. The app shows "No comments yet!" under "Comments". | Check that the text "No comments yet!" is present on screen. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 4: Comment on a Gem, failure scenario 3a** (`CommentOnGemE2ETest#scenario3a_moreThan256Characters`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens a gem, by tapping its marker on the Discovery map. | Find or add the shared gem and set the mock location to test area 1.<br>Open the app on the Dashboard.<br>Click "Discovery".<br>Click (UI Automator) the map marker with the gem's name. |
-    | 2. The app shows the gem's sheet with a "New comment..." text field. | Check that the comment text field is present on screen. |
-    | 3a. The user types more than 256 characters. | Input "E2E test comment 3a " followed by "x" up to exactly 256 characters.<br>Check that the text field contains all 256 characters.<br>Input "y". |
-    | 3a1. The text field does not accept characters beyond the 256th. | Check that the text field still contains the same 256 characters. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 4: Comment on a Gem, failure scenario 3b** (`CommentOnGemE2ETest#scenario3b_newLineOrTab`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens a gem, by tapping its marker on the Discovery map. | Find or add the shared gem and set the mock location to test area 1.<br>Open the app on the Dashboard.<br>Click "Discovery".<br>Click (UI Automator) the map marker with the gem's name. |
-    | 2. The app shows the gem's sheet with a "New comment..." text field. | Check that the comment text field is present on screen. |
-    | 3. The user types a comment. | Input "E2E test comment 3b" in the text field. |
-    | 3b. The user types a new line or a tab. | Input a new line.<br>Then input a tab. |
-    | 3b1. The text field ignores it. | After the new line, check that the text field still contains "E2E test comment 3b".<br>After the tab, check the same again. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 4: Comment on a Gem, failure scenario 4a** (`CommentOnGemE2ETest#scenario4a_emptyOrSpacesOnly`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens a gem, by tapping its marker on the Discovery map. | Find or add the shared gem and set the mock location to test area 1.<br>Open the app on the Dashboard.<br>Click "Discovery".<br>Click (UI Automator) the map marker with the gem's name. |
-    | 2. The app shows the gem's sheet with a "New comment..." text field and a "Send Comment" button. | Check that the "Send Comment" button is present on screen. |
-    | 4a. The text field is empty or contains only spaces. | Leave the text field empty, and later input three spaces. |
-    | 4a1. The "Send Comment" button is disabled, so nothing is posted. | With the field empty, check that "Send Comment" is disabled.<br>Input three spaces; check that "Send Comment" is still disabled. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 5: Manage Favorite Gems, main success scenario** (`ManageFavoritesE2ETest#mainSuccessScenario`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens a gem, by tapping its marker on the Discovery map. | Find or add the shared gem, remove it from the account's favorites, and save the account's favorites (they are put back after the test).<br>Set the mock location to test area 1.<br>Open the app on the Dashboard.<br>Click "Discovery".<br>Click (UI Automator) the map marker with the gem's name. |
-    | 2. The app shows the gem's sheet with a star button, grey if the gem is not one of the user's favorites and gold if it is. | Check that the star button is not selected (grey). |
-    | 3. The user taps the grey star. | Click the star button. |
-    | 4. The app saves the gem as a favorite and the star turns gold. | Check that the star button is selected (gold).<br>Check that the gem is in the account's favorites (`GET /user/favorites`). |
-    | 5. The user opens the Favorites screen from the navigation bar. | Press Back to close the gem sheet.<br>Click the navigation-bar item labelled "Favorites". |
-    | 6. The app shows "Your favorites:" with a card for each favorite gem, most recently added first, each with a gold border and a ★ badge. | Check that the text "Your favorites:" is present on screen.<br>Check that the first card is the gem's card.<br>Check that the gem's card shows a ★ badge. (The gold border's colour cannot be read by the Compose testing APIs.) |
-    | 7. The user long-presses a gem's card. | Long-press the gem's card. |
-    | 8. The app removes the gem from the user's favorites and its card disappears from the screen. | Check that the gem's card is no longer on screen.<br>Check that the gem is no longer in the account's favorites (`GET /user/favorites`). |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 5: Manage Favorite Gems, failure scenario 3a** (`ManageFavoritesE2ETest#scenario3a_tapGoldStar`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 1. The user opens a gem, by tapping its marker on the Discovery map. | Find or add the shared gem and save the account's favorites.<br>Add the gem to the account's favorites (`POST /user/favorites`).<br>Set the mock location to test area 1.<br>Open the app on the Dashboard.<br>Click "Discovery".<br>Click (UI Automator) the map marker with the gem's name. |
-    | 2. The app shows the gem's sheet with a star button, gold because the gem is a favorite. | Check that the star button is selected (gold). |
-    | 3a. The gem is already a favorite (gold star) and the user taps the star. | Click the star button. |
-    | 3a1. The app removes the gem from the user's favorites and the star turns grey. | Check that the star button is not selected (grey).<br>Check that the gem is no longer in the account's favorites (`GET /user/favorites`). |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 5: Manage Favorite Gems, failure scenario 4a** (`ManageFavoritesE2ETest#scenario4a_atFavoritesLimit`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 4a. The user already has 500 favorites. | Save the account's favorites, then remove them all.<br>Call the data-population script through `TestData.seedFavorites(500)` (`POST /e2e/seed/favorites`, which favorites 500 seed gems).<br>Check that the account now has exactly 500 favorites. Until the script exists, the test stops here and reports `BLOCKED`. |
-    | 1. The user opens a gem, by tapping its marker on the Discovery map. | Set the mock location to test area 1.<br>Open the app on the Dashboard.<br>Click "Discovery".<br>Click (UI Automator) the map marker with the shared gem's name. |
-    | 2. The app shows the gem's sheet with a grey star. | Check that the star button is not selected (grey). |
-    | 3. The user taps the grey star. | Click the star button. |
-    | 4a1. The app shows the message "You can have at most 500 favorites." | Check that the text "You can have at most 500 favorites." is present on screen. |
-    | 4a2. The star stays grey. | Check that the star button is not selected (grey).<br>Check that the gem is not in the account's favorites (`GET /user/favorites`).<br>After the test, the seeded favorites are removed and the account's own favorites are put back. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
-
-- **Use Case 5: Manage Favorite Gems, failure scenario 6a** (`ManageFavoritesE2ETest#scenario6a_noFavorites`)
-
-  - **Expected Behaviors:**
-
-    | **Scenario Steps** | **Test Case Steps** |
-    | --- | --- |
-    | 6a. The user has no favorites. | Save the account's favorites, then remove them all (they are put back after the test).<br>Open the app on the Dashboard. |
-    | 5. The user opens the Favorites screen from the navigation bar. | Click the navigation-bar item labelled "Favorites". |
-    | 6a1. The app shows "No favorites yet!" under "Your favorites:". | Check that the text "Your favorites:" is present on screen.<br>Check that the text "No favorites yet!" is present on screen. |
-
-  - **Test Logs:**
-    ```
-    [Placeholder: this test's section of the run log]
-    ```
+- **...**

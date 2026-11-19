@@ -9,6 +9,20 @@
 | 2026-10-31 | 4.1 | Gems: ratings, login on writes, internal interfaces. Live Feed: `gem.updated`. Users: profile routes. New Favorites component. Matches the implemented backend. |
 | 2026-10-31 | 4.2 | Added the Favorites and Ratings collections; Gems store rating totals; comments store their author. |
 | 2026-10-31 | 4.4 | Added the backend frameworks and libraries. |
+| 2026-11-03 | 4.5 | Added the dependencies diagram: front end, the four back-end components, the five MongoDB collections and the two Google services, with the interfaces each arrow uses. |
+| 2026-11-03 | 4.6 | Added sequence diagrams for the five major use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Initialize session), using the components and interfaces of 4.1 and 4.5. |
+| 2026-11-03 | 4.1 | Corrected the interfaces to match the code: `GET /user/me` returns `name` as an object; feed messages over 1024 bytes close the connection; rating and favorites routes answer 401 before 405; added default and maximum values (radius, limit, comment length) and the missing 400, 401 and 404 responses. |
+| 2026-11-04 | 4.1 | `GET /place/nearby` now takes several place types in `type`, so the app can search with all the filters the user selected. |
+| 2026-11-04 | 3.1, 3.2, 3.3, 3.4 | Updated the features, use case diagram, actors and use cases to match the implemented app: added Favorites, Browse Gems on the map, Choose a place to add, and Sign out; removed the nicheness API (nicheness is computed by the Gem Score formula) and "Authenticate API calls" (the app does it on every request; it is not a user goal); described the Google actors. |
+| 2026-11-04 | 4.5, 4.6 | Redid the diagrams to the course conventions: every synchronous call has a labelled return, WebSocket messages are asynchronous, database calls are the real queries, error cases are in `alt` frames, values flow from earlier messages, and lifeline and actor names match 3.3 and 4.5 (Frontend, Google Places API, Signed-in User, Guest). |
+| 2026-11-04 | 4.5, 4.6 | Simplified the diagrams to a high level: one database, plain-language labels instead of function names. Every failure is now an `alt` branch at the step where it happens. Add a Gem is split into Choose a place to add and adding the picked place, so a failed search ends the flow. |
+| 2026-11-04 | 3.5, 4.6 | Wrote the five formal use cases (View a Gem, Add a Gem, Contribute to GemScore, View new Gems nearby, Mark a Gem as favorite) with every failure scenario. Replaced Initialize session with Mark a Gem as favorite, since the formal use cases must exclude authentication. Add a Gem now matches the app: the place is picked from the list of nearby places. |
+| 2026-11-17 | 4.1, 4.2 | Gems: new `GET /gem/:pk/photo` and a `photoUrl` on every gem, so the dashboard can show place photos; `GET /gem/newest` can be limited to gems near the user. Gems store the name of their Google photo. |
+| 2026-11-17 | 3.2, 3.3, 3.4, 3.5 | Following the CP2 feedback: one User actor, since the Guest actor could only sign in; no include or extend relationships in the use case diagram, so *View comments* is its own goal and choosing a place is part of *Add a Gem*; the formal use cases are reordered (*Add a Gem* first), *Make comments* replaces *Mark a Gem as favorite*, and losing the live-update connection in Use Case 4 now shows a message. |
+| 2026-11-17 | 4.2, 4.5, 4.6 | Following the CP2 feedback: 4.2 now says there is one database with five collections; the dependencies diagram has no labels on its arrows; every sequence diagram now branches after a result (one return per call, then `alt` on it), and they follow the new order of 3.5, with *Make comments* in place of *Mark a Gem as favorite*. |
+| 2026-11-18 | 3.4, 3.5, 4.1, 4.6 | `GET /place/nearby` leaves out places that are already gems instead of marking them with `isGem`, so the list when adding a gem only shows places that can be added. |
+| 2026-11-18 | 4.1 | Favorites: `POST /user/favorites` returns the whole gem, like `GET /user/favorites`, instead of only its name, so the app can show it without another request. |
+| 2026-11-18 | 4.1, 4.2 | Ratings: two users rating a gem at once could leave the older totals and Gem Score stored (found in peer review). Each rating now takes a sequence number, and only the latest rating's totals are saved. |
 
 ---
 
@@ -21,190 +35,186 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ## 3. Requirements Specification
 
 ### **3.1. List of Features**
-
+1. **Authentication**: Users sign in with their Google account (Google OAuth). The server then issues its own login token (JWT), which the app sends with every request.
+2. **Gems and Gem Score**: A gem is a real place that users add from nearby places. Each gem has a Gem Score from 0 to 100 that rewards places that are both well rated and little known. Users browse gems on a map and open a gem to see its details and score.
+3. **Live feed**: New gems, and gems whose Gem Score changed, appear in real time for users near them, without refreshing.
+4. **In-app ratings**: Users rate gems from 1 to 5 stars, and their ratings feed into the gem's Gem Score.
+5. **Comments**: Users read and write comments on gems.
+6. **Favorites**: Users save gems to a favorites list that follows their account.
 
 ### **3.2. Use Case Diagram**
-
+![Use case diagram](./images/use_case_diagram.png)
 
 ### **3.3. Actors Description**
-1. **[WRITE_NAME_HERE]**: ...
-2. **[WRITE_NAME_HERE]**: ...
+1. **User**: Someone using the app with their Google account. They sign in first, and can then use every feature of the app. There is no admin or other role.
+2. **Google Sign-In**: Google's authentication service. It signs the user in and gives the app an ID token, which the server verifies.
+3. **Google Places API**: Google's place database. It lists the places near a user who is adding a gem, gives the chosen place's location, rating and review count, and provides the photos shown for each gem.
 
 ### **3.4. Use Case Description**
-- Use cases for feature 1: [WRITE_FEATURE_1_NAME_HERE]
-1. **[WRITE_NAME_HERE]**: ...
-2. **[WRITE_NAME_HERE]**: ...
-- Use cases for feature 2: [WRITE_FEATURE_2_NAME_HERE]
-3. **[WRITE_NAME_HERE]**: ...
-4. **[WRITE_NAME_HERE]**: ...
-...
+- Use cases for feature 1: Authentication
+1. **Sign in**: The User signs in with their Google account, the first time they open the app or after their login has expired.
+2. **Sign out**: The User signs out, and the app forgets their login.
+
+- Use cases for feature 2: Gems and Gem Score
+3. **Add a Gem**: The User picks a place within 200 m of them from a list of nearby places that aren't gems yet, optionally filtered by type (e.g. café, park), and adds it as a gem; the gem is then scored and shared with nearby users.
+4. **Browse Gems on the map**: The User sees the gems in the area shown on the map, highest Gem Score first.
+5. **View a Gem**: The User opens a gem and sees its photo, its details and its Gem Score.
+
+- Use cases for feature 3: Live feed
+6. **View newest Gems**: The User opens the dashboard and sees the most recently added gems near them, with their photos.
+7. **View new Gems nearby**: With the app open, gems added near the User, and gems whose Gem Score changed, appear without refreshing.
+
+- Use cases for feature 4: In-app ratings
+8. **Contribute to GemScore**: The User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
+
+- Use cases for feature 5: Comments
+9. **View comments**: The User opens a gem's comments and reads what other users wrote, oldest first.
+10. **Make comments**: The User writes a comment on a gem and posts it; it shows their name.
+
+- Use cases for feature 6: Favorites
+11. **Mark a Gem as favorite**: The User taps "favorite" on a gem to add it to their favorites.
+12. **View favorites**: The User opens the favorites screen and sees their favorite gems, most recently added first.
+13. **Remove a favorite**: The User removes a gem from their favorites.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
-<a name="uc1"></a>
 
-#### Use Case 1: Sign In with Google
-
-**Description**: The user signs in to Excavator with their Google account so they can add, rate, comment on and favorite gems. Excavator creates their account the first time they sign in.
-
-**Primary actor(s)**: User, Google Sign-In
-
-**Main success scenario**:
-1. The user opens the app.
-2. The app shows the sign-in screen with a "Sign in with Google" button.
-3. The user taps "Sign in with Google".
-4. The app shows Google's account chooser.
-5. The user chooses a Google account.
-6. The app sends the account's Google ID token to the Excavator server, which verifies it, creates the user if this is their first sign-in, and returns a session.
-7. The app shows the Dashboard.
-
-**Failure scenario(s)**:
-- 1a. The user is already signed in and their session has not expired.
-    - 1a1. The app skips the sign-in screen and shows the Dashboard.
-- 4a. The device has no Google account.
-    - 4a1. The app shows the message "Sign in failed!".
-    - 4a2. The app stays on the sign-in screen.
-- 5a. The user closes the account chooser without choosing an account.
-    - 5a1. The app shows the message "Sign-in cancelled".
-    - 5a2. The app stays on the sign-in screen.
-- 6a. The Excavator server cannot be reached.
-    - 6a1. The app shows the message "Failed to connect to server. Please try again later".
-    - 6a2. The app stays on the sign-in screen.
-- 6b. The Excavator server rejects the Google ID token.
-    - 6b1. The app shows the message "Sign in failed!".
-    - 6b2. The app stays on the sign-in screen.
-
-<a name="uc2"></a>
-
-#### Use Case 2: Add a Gem
-
-**Description**: The user adds a place near them as a new gem. The place must exist on Google Places, be within 200 m of the user, and not already be a gem. The new gem is scored and appears for the user and for other users nearby.
-
-**Primary actor(s)**: User, Google Places
-
-**Main success scenario**:
-1. The user opens the Discovery screen from the navigation bar.
-2. The app shows a map centred on the user's location, with markers for the gems around them, and an "Add gem" button.
-3. The user taps "Add gem".
-4. The app shows the "Add New Gem" sheet with a "Filters" button and a "Submit" button.
-5. The user optionally taps "Filters" and selects the types of place they want to add.
-6. The user taps "Submit".
-7. The app shows a list of the places within 200 m of the user that are not gems yet, nearest first, limited to the selected types.
-8. The user taps a place in the list.
-9. The app adds the place as a gem and closes the sheet. The new gem appears as a marker on the map and at the top of the Dashboard's latest gems, and is pushed to other users near it.
-
-**Failure scenario(s)**:
-- 2a. The user has denied the app access to their location.
-    - 2a1. The app shows a dialog explaining that Excavator needs their location, with a button to try again.
-    - 2a2. If the user taps the button, the app asks for location access again and continues from step 2 once it is granted.
-- 2b. The device's location is turned off.
-    - 2b1. The app shows the dialog "Location is turned off" with a "Turn on location" button.
-    - 2b2. If the user taps "Turn on location" and turns it on, the app continues from step 2.
-- 7a. There are no places within 200 m that are not gems yet.
-    - 7a1. The app shows the message "No gem candidates found! Check back later" with an "Ok" button.
-    - 7a2. The user taps "Ok" and the app closes the sheet.
-- 7b. Google Places is unavailable.
-    - 7b1. The app shows the message "Could not load nearby places. Please try again later."
-    - 7b2. The sheet stays open on the filters form.
-- 9a. Another user added the same place as a gem after the list was shown.
-    - 9a1. The app shows the message "This place is already a gem."
-    - 9a2. The app reloads the list without that place.
-- 9b. The user has moved more than 200 m away from the place.
-    - 9b1. The app shows the message "You must be within 200 m of a place to add it."
-    - 9b2. The app reloads the list for the user's new location.
-- 9c. The Excavator server cannot be reached.
-    - 9c1. The app shows the message "Failed to connect to server. Please try again later".
-    - 9c2. The list stays open so the user can try again.
-
-<a name="uc3"></a>
-
-#### Use Case 3: Rate a Gem
-
-**Description**: The user gives a gem a personal rating of 1 to 5 stars. Each user has one rating per gem, and rating again replaces it. The rating updates the gem's Gem Score, which updates live for everyone near the gem.
+#### Use Case 1: Add a Gem
+**Description**: A User adds a place near them as a gem, picking it from a list of nearby places that can be filtered by type. The new gem is scored and shown to nearby users.
 
 **Primary actor(s)**: User
 
 **Main success scenario**:
-1. The user opens a gem, by tapping its marker on the Discovery map or its card on the Dashboard or Favorites screen.
-2. The app shows the gem's sheet with its name, its Gem Score, a "Personal rating" row of 5 stars showing the user's current rating (empty if they have not rated it), and its comments.
-3. The user taps or drags across the stars to choose a rating from 1 to 5 whole stars.
-4. The app saves the rating, keeps the chosen stars filled, and shows the gem's updated Gem Score. Other users near the gem see the updated Gem Score.
+1. The User taps "Add gem" on the Discovery screen.
+2. The app gets the User's location, asking for location permission if it hasn't been granted.
+3. The User optionally selects type filters (e.g. café, park).
+4. The app lists the places within 200 m of the User that aren't gems yet, nearest first.
+5. The User picks a place and confirms adding it.
+6. The app shows the new gem, with its Gem Score, on the map.
+7. Other users with that area open see the new gem appear without refreshing.
 
 **Failure scenario(s)**:
-- 3a. The user has already rated the gem.
-    - 3a1. The app shows their previous rating in step 2.
-    - 3a2. The new rating replaces the previous one in step 4.
-- 3b. The user lifts their finger to the left of the first star (no stars chosen).
-    - 3b1. The app keeps the user's previous rating and saves nothing.
-- 4a. The Excavator server cannot be reached.
-    - 4a1. The app shows the message "Could not save your rating. Please try again."
-    - 4a2. The stars return to the user's previous rating.
+- 2a. The User denies location permission.
+    - 2a1. The app explains that the location is needed to add a gem.
+    - 2a2. The app returns to the Discovery screen.
+- 4a. There are no places within 200 m (for the selected filters).
+    - 4a1. The app shows "No places found within 200 m".
+    - 4a2. The User can change the filters or move and try again.
+- 4b. A selected filter is not a type Google Places knows.
+    - 4b1. The app shows "Unknown filter, try another".
+- 4c. Google Places is unavailable.
+    - 4c1. The app shows "Can't reach Google right now, try again later".
+- 5a. The place is already a gem (for example, another User added it at almost the same time).
+    - 5a1. The app shows that the place is already a gem.
+    - 5a2. The map is updated, so the place shows up as a gem.
+- 5b. The User is more than 200 m from the place.
+    - 5b1. The app shows "Move closer to the place to add it".
+- 5c. The place no longer exists on Google Places.
+    - 5c1. The app shows "This place can't be added".
+- 5d. The User's login has expired.
+    - 5d1. The app returns to the sign-in screen; after signing in, the User can try again.
+- 5e. The gem can't be added (no connection, a server error, or Google Places is unavailable).
+    - 5e1. The app shows "Couldn't add the gem, try again". Nothing is added.
 
-<a name="uc4"></a>
-
-#### Use Case 4: Comment on a Gem
-
-**Description**: The user reads a gem's comments and adds their own. Each comment shows the display name of the user who wrote it.
+#### Use Case 2: View a Gem
+**Description**: A User finds a gem on the map or the dashboard and opens it to see its photo, details and Gem Score.
 
 **Primary actor(s)**: User
 
 **Main success scenario**:
-1. The user opens a gem, by tapping its marker on the Discovery map or its card on the Dashboard or Favorites screen.
-2. The app shows the gem's sheet with a "Comments" list, oldest first, each comment showing its author's display name and text, and a "New comment..." text field with a "Send Comment" button.
-3. The user types a comment of up to 256 characters.
-4. The user taps "Send Comment".
-5. The app posts the comment, clears the text field, and shows the comment at the bottom of the list with the user's display name.
+1. The User opens the Discovery screen.
+2. The app shows a marker for each gem in the visible map area.
+3. The User taps a gem's marker (or a gem card on the Dashboard).
+4. A half-height panel appears with the gem's name, type and Gem Score.
+5. The User pulls up the panel to full screen.
+6. The app shows the gem's photo, type, description, Gem Score and number of ratings.
 
 **Failure scenario(s)**:
-- 2a. The gem has no comments yet.
-    - 2a1. The app shows "No comments yet!" under "Comments".
-- 3a. The user types more than 256 characters.
-    - 3a1. The text field does not accept characters beyond the 256th.
-- 3b. The user types a new line or a tab.
-    - 3b1. The text field ignores it.
-- 4a. The text field is empty or contains only spaces.
-    - 4a1. The "Send Comment" button is disabled, so nothing is posted.
-- 5a. The Excavator server cannot be reached.
-    - 5a1. The app shows the message "Could not post your comment. Please try again."
-    - 5a2. The comment stays in the text field so the user can send it again.
+- 2a. The gems can't be loaded (no connection, or a server error).
+    - 2a1. The app shows "Couldn't load gems, try again" and a retry option.
+- 2b. The visible map area is too large to search (e.g. it crosses the date line).
+    - 2b1. The app asks the User to zoom in.
+- 4a. The gem no longer exists (it was deleted after the map loaded).
+    - 4a1. The app shows "This gem is no longer available".
+    - 4a2. The app removes the gem's marker from the map.
+- 4b. The gem can't be loaded (no connection, or a server error) and it is not cached.
+    - 4b1. The panel appears with a message about the error and a retry option.
+- 6a. The gem has no photo, or the photo can't be loaded.
+    - 6a1. The app shows a placeholder image instead; the rest of the details still show.
 
-<a name="uc5"></a>
-
-#### Use Case 5: Manage Favorite Gems
-
-**Description**: The user marks gems as favorites to find them again later, sees them on the Favorites screen, and removes the ones they no longer want. Favorites are stored on the server, so they follow the user to other devices.
+#### Use Case 3: Contribute to GemScore
+**Description**: A User rates a gem from 1 to 5 stars; the gem's Gem Score is recomputed right away and shown to nearby users.
 
 **Primary actor(s)**: User
 
 **Main success scenario**:
-1. The user opens a gem, by tapping its marker on the Discovery map or its card on the Dashboard.
-2. The app shows the gem's sheet with a star button, grey if the gem is not one of the user's favorites and gold if it is.
-3. The user taps the grey star.
-4. The app saves the gem as a favorite and the star turns gold.
-5. The user opens the Favorites screen from the navigation bar.
-6. The app shows "Your favorites:" with a card for each favorite gem, most recently added first, each with a gold border and a ★ badge.
-7. The user long-presses a gem's card.
-8. The app removes the gem from the user's favorites and its card disappears from the screen.
+1. The User opens a gem (Use Case 2).
+2. The User selects 1 to 5 stars.
+3. The app shows the gem's new Gem Score. If the User had rated the gem before, the new rating replaces the old one.
+4. Other users with that area open see the gem's new Gem Score without refreshing.
 
 **Failure scenario(s)**:
-- 3a. The gem is already a favorite (gold star) and the user taps the star.
-    - 3a1. The app removes the gem from the user's favorites and the star turns grey.
-- 4a. The user already has 500 favorites.
-    - 4a1. The app shows the message "You can have at most 500 favorites."
-    - 4a2. The star stays grey.
-- 4b. The Excavator server cannot be reached.
-    - 4b1. The app shows the message "Could not update your favorites. Please try again."
-    - 4b2. The star returns to its previous colour.
-- 6a. The user has no favorites.
-    - 6a1. The app shows "No favorites yet!" under "Your favorites:".
-- 8a. The Excavator server cannot be reached.
-    - 8a1. The app shows the message "Could not update your favorites. Please try again."
-    - 8a2. The card stays on the screen.
+- 3a. The gem no longer exists.
+    - 3a1. The app shows "This gem is no longer available".
+- 3b. The User's login has expired.
+    - 3b1. The app returns to the sign-in screen; after signing in, the User can rate again.
+- 3c. The rating can't be saved (no connection, or a server error).
+    - 3c1. The app shows "Couldn't save your rating, try again".
+    - 3c2. The gem keeps its previous Gem Score and the User's previous rating.
+
+#### Use Case 4: View new Gems nearby
+**Description**: A User with the Dashboard open sees the newest gems, and gems that are added or re-scored near them appear without refreshing.
+
+**Primary actor(s)**: User
+
+**Main success scenario**:
+1. The User opens the Dashboard.
+2. The app shows the most recently added gems.
+3. The app starts receiving live updates for the area around the User, asking for location permission if it hasn't been granted.
+4. When another User adds a gem near the User, it appears at the top of the list.
+5. When a gem near the User is rated, its Gem Score is updated in place.
+
+**Failure scenario(s)**:
+- 2a. The gems can't be loaded (no connection, or a server error).
+    - 2a1. The app shows "Couldn't load gems, try again" and a retry option.
+- 3a. The User denies location permission.
+    - 3a1. The app explains that the location is needed for live updates.
+    - 3a2. The list still shows the newest gems, without live updates.
+- 4a. The live-update connection is lost.
+    - 4a1. The app shows "Live updates paused, reconnecting…" above the list.
+    - 4a2. The list keeps the gems it already shows, and the app tries to reconnect.
+    - 4a3. Once reconnected, the message disappears and new gems appear again.
+
+#### Use Case 5: Make comments
+**Description**: A User writes a comment on a gem. The comment appears, with their name, in the gem's comments for every user who opens the gem.
+
+**Primary actor(s)**: User
+
+**Main success scenario**:
+1. The User opens a gem (Use Case 2) and opens its comments.
+2. The app shows the gem's comments, oldest first.
+3. The User types a comment and taps "Post".
+4. The app adds the comment at the bottom of the list, with the User's name.
+
+**Failure scenario(s)**:
+- 2a. The comments can't be loaded (no connection, or a server error).
+    - 2a1. The app shows "Couldn't load comments" and a retry option.
+- 2b. The gem has no comments yet.
+    - 2b1. The app shows "No comments yet, be the first".
+- 3a. The comment is empty or only spaces.
+    - 3a1. The "Post" button stays disabled.
+- 3b. The comment is longer than 1000 characters.
+    - 3b1. The app shows "Comments can be at most 1000 characters" and keeps the text so the User can shorten it.
+- 4a. The gem no longer exists.
+    - 4a1. The app shows "This gem is no longer available". The comment is not posted.
+- 4b. The User's login has expired.
+    - 4b1. The app returns to the sign-in screen; after signing in, the User can post again.
+- 4c. The comment can't be saved (no connection, or a server error).
+    - 4c1. The app shows "Couldn't post your comment, try again" and keeps the text in the box.
 
 ### **3.6. Screen Mock-ups**
 ![Frontend Screens Diagram](images/frontend_screens_diagram.jpg)
 
 ### **3.7. Non-Functional Requirements**
-<a name="nfr1"></a>
 
 1. **Live updates arrive within 1 second**
     - **Description**: When a gem is added, or its Gem Score changes because someone rated it, every user whose map is open within range of it receives the update within 1 second of the request that caused it, even with 250 users connected at once. Users out of range receive nothing.
@@ -219,34 +229,36 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 ## 4. Designs Specification
 ### **4.1. Main Components**
 1. **Gems**
-    - **Purpose**: Adds, validates, scores and lists gems, and holds their comments and ratings. A gem is a Google Places place, identified by its Google name `places/<place ID>`. A place can only be added by a signed-in user, if it exists on Google Places and is within 200 m of them. Each gem has a Gem Score from 0 to 100 that rewards places that are both well rated and little known. The Google ratings and Excavator users' ratings are pulled together toward 3.0 when there are few of them: R_adj = (v·rating + u·r_app + 15·3.0) / (v + u + 15), where v is the Google review count and rating its average, and u is the number of Excavator ratings and r_app their average. Quality is Q = (R_adj − 1) / 4, nicheness is N = 1 / (1 + v / 200), and the score is 100 · Q^0.6 · N^0.4. Excavator ratings change quality only, since nicheness measures how well known a place is in general. A Google rating that is missing counts as no rated reviews, but its review count still sets N. Users rate a gem 1–5 stars, once each (rating again replaces their rating); after every rating the gem's rating totals are recounted from all its ratings, its score is recomputed, and the updated gem is pushed to nearby users through the Live Feed.
+    - **Purpose**: Adds, validates, scores and lists gems, and holds their comments and ratings. A gem is a Google Places place, identified by its Google name `places/<place ID>`. A place can only be added by a signed-in user, if it exists on Google Places and is within 200 m of them. Each gem has a Gem Score from 0 to 100 that rewards places that are both well rated and little known. The Google ratings and Excavator users' ratings are pulled together toward 3.0 when there are few of them: R_adj = (v·rating + u·r_app + 15·3.0) / (v + u + 15), where v is the Google review count and rating its average, and u is the number of Excavator ratings and r_app their average. Quality is Q = (R_adj − 1) / 4, nicheness is N = 1 / (1 + v / 200), and the score is 100 · Q^0.6 · N^0.4. Excavator ratings change quality only, since nicheness measures how well known a place is in general. A Google rating that is missing counts as no rated reviews, but its review count still sets N. Users rate a gem 1–5 stars, once each (rating again replaces their rating); after every rating the gem's rating totals are recounted from all its ratings, its score is recomputed, and the updated gem is pushed to nearby users through the Live Feed. When users rate the same gem at once, each rating takes a sequence number on the gem after it is stored and before the recount, and only the totals of the latest one are saved, so an older recount can't overwrite a newer one that counted both ratings.
     - **Interfaces**:
         1. `GET /gem?name=places/<place ID>` → the gem
-            - **Purpose**: Gets one gem, for its info sheet.
+            - **Purpose**: Gets one gem, for its info sheet. Returns 400 if `name` is missing or not `places/<place ID>` (the database is not queried), and 404 if no gem has that name.
         2. `POST /gem { name, latitude, longitude }` → 201 with the new gem (requires login)
             - **Purpose**: Adds a place as a gem, recording the signed-in user as `addedBy`. `latitude` / `longitude` are the user's location; the place must be within 200 m. The new gem is scored and pushed to nearby users through the Live Feed. Returns 400 if `name` or the location is malformed, 401 if not signed in, 409 if the gem already exists, 422 if the place doesn't exist or is too far away, and 502 if Google Places is unavailable.
         3. `GET /gem/nearby?lat&lng[&radius][&limit]` → gems, nearest first
-            - **Purpose**: Gems around the user, for the dashboard and discovery screen.
+            - **Purpose**: Gems around the user, for the dashboard and discovery screen. `radius` is in metres, 5000 by default and at most 50000; `limit` is 20 by default and at most 50. Returns 400 if the location is missing or out of range, or if `radius` or `limit` is not a whole number in range.
         4. `GET /gem/within?south&west&north&east[&limit]` → gems, highest Gem Score first
-            - **Purpose**: Gems inside the visible map area, for the discovery screen.
-        5. `GET /gem/newest[?limit]` → gems, newest first
-            - **Purpose**: The latest gems, for the dashboard.
-        6. `GET /gem/:pk/comments` → `[{ id, body, author, authorName }]`, oldest first; `POST /gem/:pk/comments { body }` → 201 `{ id, body, author, authorName }` (posting requires login)
-            - **Purpose**: Reads and adds the comments of the gem whose place ID is `pk`. A new comment records the signed-in user and their display name.
-        7. `PUT /gem/:pk/rating { stars }` → `{ stars, gem }`; `GET /gem/:pk/rating` → `{ stars }` (both require login)
-            - **Purpose**: Sets the signed-in user's 1–5 star rating of the gem, returning the gem with its new rating totals and Gem Score; or reads their rating (404 if they haven't rated it).
-        8. `GET /place/nearby?lat&lng[&type]` → up to 20 places within 200 m, nearest first, each with `isGem`
-            - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem; the app then sends its `name` to `POST /gem`.
-        9. `boolean hasGem(String name)`
+            - **Purpose**: Gems inside the visible map area, for the discovery screen. `limit` is 20 by default and at most 50. The area must not cross the antimeridian. Returns 400 if a bound is missing or out of range, south ≥ north, west ≥ east, or `limit` is invalid.
+        5. `GET /gem/newest[?lat&lng[&radius]][&limit]` → gems, newest first
+            - **Purpose**: The latest gems, for the dashboard. With `lat` / `lng`, only the gems within `radius` metres of the user (default 5000, max 50000); without them, gems anywhere. `limit` is 20 by default and at most 50; 400 if it is invalid.
+        6. `GET /gem/:pk/photo[?maxWidth]` → 302 redirect to a photo of the place
+            - **Purpose**: Shows a photo of the gem whose place ID is `pk`, on the dashboard and its info sheet. Every gem's JSON has a `photoUrl` pointing here, which the app uses as the image source. The photo comes from Google Places through the server, so the Google API key never reaches the app; the server stores the name of the place's first photo and asks Google for a short-lived image URL on each request. Gems whose place ID Google doesn't know (e.g. demo data) get the photo of the best text-search match for their name near their location. Returns 404 if the gem doesn't exist or Google has no photo of it, and 502 if Google Places is unavailable.
+        7. `GET /gem/:pk/comments` → `[{ id, body, author, authorName }]`, oldest first; `POST /gem/:pk/comments { body }` → 201 `{ id, body, author, authorName }` (posting requires login)
+            - **Purpose**: Reads and adds the comments of the gem whose place ID is `pk`. A new comment records the signed-in user and their name. The body is trimmed and must then be 1–1000 characters with no control characters. Both return 400 if `pk` is not a valid place ID and 404 if no gem has it; posting also returns 400 for an invalid body and 401 if not signed in.
+        8. `PUT /gem/:pk/rating { stars }` → `{ stars, gem }`; `GET /gem/:pk/rating` → `{ stars }` (both require login)
+            - **Purpose**: Sets the signed-in user's 1–5 star rating of the gem, returning the gem with its new rating totals and Gem Score; or reads their rating. Both return 400 if `pk` is not a valid place ID, 401 if not signed in, and 404 if no gem has that place ID. `PUT` also returns 400 if `stars` is not a whole number from 1 to 5; `GET` returns 404 if the user hasn't rated the gem.
+        9. `GET /place/nearby?lat&lng[&type=cafe,park]` → up to 20 places within 200 m that are not gems yet, nearest first
+            - **Purpose**: Lets the user pick a place that isn't labelled on the map when adding a gem. Places that are already gems are left out, since they can't be added again; the app then sends its `name` to `POST /gem`. `type` optionally limits the list to one or more Google Places types, comma-separated (`type=cafe,park`) or repeated (`type=cafe&type=park`), so the app can send all the filters the user selected; a place matching any of them is listed. Returns 400 if the location is invalid, or a type is empty, malformed or unknown to Google, or there are more than 50, and 502 if Google Places is unavailable.
+        10. `boolean hasGem(String name)`
             - **Purpose**: Used by Favorites and by comments and ratings to check a gem exists before acting on it.
-        10. `List<Gem> getGems(List<String> names)`
+        11. `List<Gem> getGems(List<String> names)`
             - **Purpose**: Used by Favorites to load a user's favorite gems in one query, in the order given; names with no gem are left out.
-    - Any other method on these paths gets 405 with an `Allow` header.
+    - Any other method on these paths gets 405 with an `Allow` header. The rating routes check login first, so another method on `/gem/:pk/rating` without a valid token gets 401 instead.
 2. **Live Feed**
     - **Purpose**: Pushes newly added gems, and gems whose Gem Score changed after a rating, to the users near them as they happen, so other users' actions appear on the map without refreshing. It runs as a WebSocket on the same server as the REST API. Each connected app tells the server where it is, and when a gem is added or changes, the server sends it to every app whose area contains it. A WebSocket was chosen over polling because new gems should show up immediately and an idle connection costs almost nothing, while polling would mean many empty requests.
     - **Interfaces**:
         1. WebSocket `/feed`, client → server: `{ type: "subscribe", latitude, longitude, radius? }`; server → client: `{ type: "subscribed", latitude, longitude, radius }`
-            - **Purpose**: Starts listening for new gems within `radius` metres of the user (default 5000, max 50000). Sending it again moves the area, at most once a second. Invalid messages get `{ type: "error", message }` and the connection stays open.
+            - **Purpose**: Starts listening for new gems within `radius` metres of the user (default 5000, max 50000). Sending it again moves the area, at most once a second. An invalid message (not JSON, a binary message, an unknown `type`, a location or radius out of range, or a second subscribe within a second) gets `{ type: "error", message }` and the connection stays open. A message over 1024 bytes closes the connection instead (WebSocket close code 1009).
         2. WebSocket `/feed`, server → client: `{ type: "gem.added", gem }`
             - **Purpose**: A gem was just added within the client's area; `gem` is the same gem JSON that `POST /gem` returns.
         3. WebSocket `/feed`, server → client: `{ type: "gem.updated", gem }`
@@ -254,12 +266,12 @@ Excavator is an app designed to let you find niche, high quality locations in yo
         4. `int publishGemAdded(Gem gem)` and `int publishGemUpdated(Gem gem)`
             - **Purpose**: Called by Gems after a gem is stored or rescored; sends it to every subscribed client in range and returns how many it was sent to. A failure here never fails adding or rating the gem.
 3. **Users**
-    - **Purpose**: Signs users in with Google and keeps their profile (Google name and display name). After verifying the Google ID token, the server issues its own JSON Web Token (JWT), valid for 7 days, which the app sends as `Authorization: Bearer <token>`. A JWT was chosen over server-side sessions because it survives server restarts and needs no session store; the server still checks the user exists on every request.
+    - **Purpose**: Signs users in with Google and keeps their profile (their name from Google). After verifying the Google ID token, the server issues its own JSON Web Token (JWT), valid for 7 days, which the app sends as `Authorization: Bearer <token>`. A JWT was chosen over server-side sessions because it survives server restarts and needs no session store; the server still checks the user exists on every request.
     - **Interfaces**:
         1. `POST /user/auth/google { idToken }` → `{ sessionId }`
-            - **Purpose**: Signs in with a Google ID token, creating the user on their first sign-in. `sessionId` holds the JWT.
-        2. `GET /user/me` → `{ id, name, displayName }`; `PATCH /user/me { displayName }` → the updated profile (both require login)
-            - **Purpose**: Reads the signed-in user's profile, and sets the display name other users see on their comments (1–50 characters). Signing out is done on the app by discarding the token.
+            - **Purpose**: Signs in with a Google ID token, creating the user on their first sign-in. `sessionId` holds the JWT. Returns 400 if there is no JSON body or `idToken` is missing or not a string, and 401 if Google rejects the token.
+        2. `GET /user/me` → `{ id, name: { full, given?, family? }, displayName }` (requires login)
+            - **Purpose**: Reads the signed-in user's profile. `name` is the user's name from Google; `given` and `family` are left out when Google doesn't have them. `displayName` is the name shown to other users on their comments. Returns 401 if not signed in. Signing out is done on the app by discarding the token.
         3. `void reqJwt(Request req, Response res, NextFunction next)`
             - **Purpose**: Express middleware for routes that need a signed-in user: checks the Bearer JWT, loads the user into `req.user`, and answers 401 otherwise. Used by Gems, Favorites and Users.
         4. `User currentUser(Request req)`
@@ -269,22 +281,25 @@ Excavator is an app designed to let you find niche, high quality locations in yo
     - **Interfaces**:
         1. `GET /user/favorites` → the favorite gems, most recently added first (requires login)
             - **Purpose**: Loads the favorites screen.
-        2. `POST /user/favorites { gem }` → 201 `{ gem }`, or 200 if it already was a favorite (requires login)
-            - **Purpose**: Adds a gem to the user's favorites. Returns 404 if the gem doesn't exist and 409 at the 500-favorite limit.
+        2. `POST /user/favorites { gem }` → 201 with the gem (the same JSON as `GET /gem`), or 200 with it if it already was a favorite (requires login)
+            - **Purpose**: Adds a gem to the user's favorites. Returns 400 if `gem` is missing or not `places/<place ID>`, 404 if the gem doesn't exist, and 409 at the 500-favorite limit.
         3. `DELETE /user/favorites/:placeId` → 204 (requires login)
-            - **Purpose**: Removes a gem from the user's favorites; 404 if it wasn't one.
+            - **Purpose**: Removes a gem from the user's favorites. Returns 400 if `placeId` is not a valid place ID, and 404 if the gem wasn't a favorite.
+    - All three return 401 if not signed in. Login is checked first, so another method on these paths without a valid token gets 401; with a valid token it gets 405 with an `Allow` header.
 
 
 ### **4.2. Databases**
-1. **Gems DB (MongoDB, `gems` collection)**
-    - **Purpose**: Stores every gem in Excavator. Each gem holds its Google Places place (place ID, display name and location), its type and description, the user who added it, and its Gem Score together with the inputs the score is computed from (the Google rating and review count, the nicheness derived from the review count, and the number and average of Excavator users' ratings) and the time the score was last computed. The location is indexed for geospatial queries, so the discovery screen can load the gems around the user and the dashboard can show nearby gems. Gems are also indexed by type for filtering and by Gem Score for recommendations.
-2. **Users DB (MongoDB, `users` collection)**
-    - **Purpose**: Stores every Excavator user, keyed by their Google account ID. Each user holds their name from Google and the display name shown to other users. A user is created the first time they sign in with Google, and the same ID is what each gem stores as the user who added it.
-3. **Comments DB (MongoDB, `comments` collection)**
-    - **Purpose**: Stores the comments users leave on gems. Comments are a weak entity of gems (many comments to one gem): each comment belongs to exactly one gem and is identified by that gem together with its own comment ID, and holds the comment body, the user who wrote it, and their display name at the time (so listing comments needs no user lookups). Comments are indexed by gem, so a gem's comments can be listed oldest first.
-4. **Ratings DB (MongoDB, `ratings` collection)**
-    - **Purpose**: Stores users' 1–5 star ratings of gems. Ratings are a weak entity of gems, identified by their gem together with the user who gave them, so a user has at most one rating per gem and rating again replaces it. After each rating, MongoDB recounts the gem's ratings and their average, which are stored on the gem for its Gem Score.
-5. **Favorites DB (MongoDB, `favorites` collection)**
+Excavator has one database, a MongoDB database, with the five collections below. Each collection belongs to one component of 4.1: `gems`, `comments` and `ratings` to Gems, `users` to Users, and `favorites` to Favorites.
+
+1. **`gems` collection**
+    - **Purpose**: Stores every gem in Excavator. Each gem holds its Google Places place (place ID, display name, location and the name of its first Google photo), its type and description, the user who added it, and its Gem Score together with the inputs the score is computed from (the Google rating and review count, the nicheness derived from the review count, and the number and average of Excavator users' ratings) and the time the score was last computed. The location is indexed for geospatial queries, so the discovery screen can load the gems around the user and the dashboard can show nearby gems. Gems are also indexed by type for filtering and by Gem Score for recommendations.
+2. **`users` collection**
+    - **Purpose**: Stores every Excavator user, keyed by their Google account ID. Each user holds their name from Google and the name shown to other users. A user is created the first time they sign in with Google, and the same ID is what each gem stores as the user who added it.
+3. **`comments` collection**
+    - **Purpose**: Stores the comments users leave on gems. Comments are a weak entity of gems (many comments to one gem): each comment belongs to exactly one gem and is identified by that gem together with its own comment ID, and holds the comment body, the user who wrote it, and their name at the time (so listing comments needs no user lookups). Comments are indexed by gem, so a gem's comments can be listed oldest first.
+4. **`ratings` collection**
+    - **Purpose**: Stores users' 1–5 star ratings of gems. Ratings are a weak entity of gems, identified by their gem together with the user who gave them, so a user has at most one rating per gem and rating again replaces it. After each rating, MongoDB recounts the gem's ratings and their average, which are stored on the gem for its Gem Score. The gem also stores a rating sequence number and the number of the rating whose totals it holds, so concurrent ratings never leave older totals in place.
+5. **`favorites` collection**
     - **Purpose**: Stores which gems each user marked as favorites. Users and gems are many-to-many through favorites, so each favorite is its own document identified by the user and the gem together, rather than a list on the user: this keeps them in the order they were added, makes adding the same favorite twice harmless, and keeps user documents small. Favorites are indexed by user and date, so a user's favorites are listed newest first.
 
 
@@ -326,16 +341,35 @@ Excavator is an app designed to let you find niche, high quality locations in yo
 
 
 ### **4.5. Dependencies Diagram**
+![Dependencies diagram](images/dependencies.png)
 
+A high-level view: boxes are the components of 4.1 and the external services of 4.3, and an arrow A → B means A uses B (the interfaces are listed in 4.1). The Frontend and the Live Feed use each other (A ↔ B): the Frontend subscribes over a WebSocket, and the Live Feed pushes live gem updates back. The four back-end components run in one server and share one MongoDB database, each using its own collections (4.2). The Frontend never talks to the database, and only the back end calls Google Places, so the API key stays on the server. Source: `documentation/diagrams/dependencies.mmd` (Mermaid).
 
 ### **4.6. Use Case Sequence Diagram (5 Most Major Use Cases)**
-1. [**[WRITE_NAME_HERE]**](#uc1)\
-[SEQUENCE_DIAGRAM_HERE]
-2. ...
+The lifelines are the actors of 3.3 and the components of the dependencies diagram (4.5); the user only talks to the Frontend. Messages are the REST interfaces of 4.1; database and internal calls are described in words, at the level of what is read or written. Notation:
+- A **solid arrow with a filled head** is a synchronous call. Its one result comes back on the **dashed arrow** after it, labelled with everything it can return (HTTP status and body for REST calls).
+- Branches come after a result: the caller gets the result, then an `alt` box branches on it, with what the user sees in each case. An `opt` box is a step that only happens for one result (e.g. the gem is only stored if the place is close enough).
+- A **solid arrow with an open head** is an asynchronous message with no reply: WebSocket messages between the Frontend and the Live Feed, and updates the Frontend shows without the user asking.
+- A failure that applies to every request, the server not being reachable, is written once per diagram as a note. Requests the app never sends (e.g. a malformed place name) are rejected with 400; see 4.1.
+- Values flow from earlier messages: e.g. the place picked from the nearby places is the place that is then added.
 
+Sources: `documentation/diagrams/` (Mermaid).
+
+1. [**Add a Gem**](#use-case-1-add-a-gem), in two parts: first choosing the place from the nearby places, then adding it.\
+![Add a Gem: choosing the place](images/uc1a_choose_a_place.png)
+![Add a Gem: adding the place](images/uc1b_add_a_gem.png)
+2. [**View a Gem**](#use-case-2-view-a-gem)\
+![View a Gem](images/uc2_view_a_gem.png)
+3. [**Contribute to GemScore**](#use-case-3-contribute-to-gemscore)\
+![Contribute to GemScore](images/uc3_contribute_to_gemscore.png)
+4. [**View new Gems nearby**](#use-case-4-view-new-gems-nearby)\
+![View new Gems nearby](images/uc4_view_new_gems_nearby.png)
+5. [**Make comments**](#use-case-5-make-comments)\
+![Make comments](images/uc5_make_comments.png)
 
 ### **4.7. Design of Non-Functional Requirements**
-1. [**Live updates arrive within 1 second**](#nfr1)
+1. [**Live updates arrive within 1 second**](#37-non-functional-requirements)
     - **Implementation**: Updates are pushed over an open WebSocket rather than polled, so an update leaves the server as soon as the gem is stored. The feed keeps every connection's location in memory, and publishing is a single pass that checks each connection's distance to the gem and sends to those in range; it never touches the database. Publishing happens right after the write and never makes the request wait for or fail on it. Dead connections are dropped by a heartbeat so they don't slow publishing down. Verified by `backend/tests/nfr/feedLatency.test.ts` with 200 users in range and 50 out of range.
 2. [**The map stays fast with many gems**](#37-non-functional-requirements)
     - **Implementation**: Gem locations are stored as GeoJSON points with a 2dsphere index, so MongoDB answers "gems near this point" (`$nearSphere`) and "gems inside this map area" (`$geoWithin`) from the index instead of scanning every gem; gems are also indexed by Gem Score for the "best first" order. Every map query has a result limit (at most 50), so responses stay small however many gems match. Verified by `backend/tests/nfr/mapQueryTime.test.ts` with 10,000 gems.
+

@@ -25,7 +25,19 @@ jest.mock('@googlemaps/places', () => ({
 const mockedFavoriteModel = FavoriteModel as unknown as {
   find: jest.Mock; exists: jest.Mock; countDocuments: jest.Mock; create: jest.Mock; deleteOne: jest.Mock;
 };
-const mockedGemModel = GemModel as unknown as { find: jest.Mock; exists: jest.Mock };
+const mockedGemModel = GemModel as unknown as { find: jest.Mock; findOne: jest.Mock; exists: jest.Mock };
+
+/** Makes `GemModel.findOne(...).lean()` find `doc` (or nothing, with `null`). */
+function mockGem(doc: object | null): void {
+  mockedGemModel.findOne.mockReturnValue({ lean: () => Promise.resolve(doc) });
+}
+
+/** The JSON of `gemDoc('abc')`, as `GET /gem` returns it. */
+const ABC_JSON = {
+  name: 'places/abc',
+  place: { name: 'places/abc', displayName: 'abc', latitude: 49.26, longitude: -123.25 },
+  photoUrl: '/gem/abc/photo',
+};
 
 /** A stored Gem document named `places/<id>`. */
 function gemDoc(id: string): object {
@@ -111,9 +123,9 @@ describe('Mocked: POST /user/favorites', () => {
   // Input: POST { gem: "places/abc" } signed in
   // Expected status code: 201
   // Expected behavior: one favorite stored for the signed-in user
-  // Expected output: { gem: "places/abc" }
+  // Expected output: the Gem, as GET /gem returns it
   test('New favorite', async () => {
-    mockedGemModel.exists.mockResolvedValue({ _id: 'gem' });
+    mockGem(gemDoc('abc'));
     mockedFavoriteModel.exists.mockResolvedValue(null);
     mockedFavoriteModel.countDocuments.mockResolvedValue(0);
     mockedFavoriteModel.create.mockResolvedValue({});
@@ -121,7 +133,7 @@ describe('Mocked: POST /user/favorites', () => {
     const response = await request(createApp()).post('/user/favorites').set('Authorization', bearer()).send({ gem: 'places/abc' });
 
     expect(response.status).toBe(201);
-    expect(response.body).toEqual({ gem: 'places/abc' });
+    expect(response.body).toEqual(ABC_JSON);
     expect(mockedFavoriteModel.create).toHaveBeenCalledWith({ user: TEST_USER_ID, gem: 'places/abc' });
   });
 
@@ -129,15 +141,15 @@ describe('Mocked: POST /user/favorites', () => {
   // Input: POST { gem: "places/abc" } signed in
   // Expected status code: 200
   // Expected behavior: nothing is stored
-  // Expected output: { gem: "places/abc" }
+  // Expected output: the Gem, as GET /gem returns it
   test('Already a favorite', async () => {
-    mockedGemModel.exists.mockResolvedValue({ _id: 'gem' });
+    mockGem(gemDoc('abc'));
     mockedFavoriteModel.exists.mockResolvedValue({ _id: 'fav' });
 
     const response = await request(createApp()).post('/user/favorites').set('Authorization', bearer()).send({ gem: 'places/abc' });
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ gem: 'places/abc' });
+    expect(response.body).toEqual(ABC_JSON);
     expect(mockedFavoriteModel.create).not.toHaveBeenCalled();
   });
 
@@ -152,7 +164,7 @@ describe('Mocked: POST /user/favorites', () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ message: 'Invalid Gem name.' });
-    expect(mockedGemModel.exists).not.toHaveBeenCalled();
+    expect(mockedGemModel.findOne).not.toHaveBeenCalled();
   });
 
   // Mocked behavior: the Gem does not exist
@@ -161,7 +173,7 @@ describe('Mocked: POST /user/favorites', () => {
   // Expected behavior: nothing is stored
   // Expected output: { message: "No such Gem." }
   test('No such Gem', async () => {
-    mockedGemModel.exists.mockResolvedValue(null);
+    mockGem(null);
 
     const response = await request(createApp()).post('/user/favorites').set('Authorization', bearer()).send({ gem: 'places/unknown' });
 
@@ -176,7 +188,7 @@ describe('Mocked: POST /user/favorites', () => {
   // Expected behavior: nothing is stored
   // Expected output: { message: "Too many favorites." }
   test('Too many favorites', async () => {
-    mockedGemModel.exists.mockResolvedValue({ _id: 'gem' });
+    mockGem(gemDoc('abc'));
     mockedFavoriteModel.exists.mockResolvedValue(null);
     mockedFavoriteModel.countDocuments.mockResolvedValue(500);
 
@@ -192,7 +204,7 @@ describe('Mocked: POST /user/favorites', () => {
   // Expected status code: 500
   // Expected output: { message: "Add favorite failed." }
   test('Database error', async () => {
-    mockedGemModel.exists.mockResolvedValue({ _id: 'gem' });
+    mockGem(gemDoc('abc'));
     mockedFavoriteModel.exists.mockRejectedValue(new Error('connection refused'));
 
     const response = await request(createApp()).post('/user/favorites').set('Authorization', bearer()).send({ gem: 'places/abc' });

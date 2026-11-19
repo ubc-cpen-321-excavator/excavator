@@ -16,7 +16,8 @@ export const placeRouter = express.Router();
  * with its `name`. `lat` / `lng` are the user's current location. `type` optionally limits the
  * search to one or more Google Places types (e.g. `cafe`, `park`), comma-separated
  * (`type=cafe,park`) or repeated (`type=cafe&type=park`); a place matching any of them is listed.
- * - 200 `[{ name, displayName, type?, address?, latitude, longitude, distance, isGem }, ...]`
+ * Places that are already Gems are left out, since they can't be added again.
+ * - 200 `[{ name, displayName, type?, address?, latitude, longitude, distance }, ...]`
  *   (up to 20; `distance` in metres; `[]` if there are none).
  * - 400 `{ message: 'Invalid location.' }`: `lat` / `lng` missing or out of range.
  * - 400 `{ message: 'Invalid place type.' }`: a type is empty, malformed or unknown to Google, or there are more than 50.

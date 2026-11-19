@@ -1,0 +1,38 @@
+---
+config:
+  layout: elk
+  flowchart:
+    curve: linear
+---
+flowchart TB
+  App["Frontend<br/>(Android app)"]
+  SignIn["Google Sign-In"]
+
+  subgraph Backend["Back end (one server)"]
+    direction LR
+    Users["Users"]
+    Favs["Favorites"]
+    Gems["Gems<br/>(incl. comments and ratings)"]
+    Feed["Live Feed"]
+  end
+
+  Places["Google Places API"]
+  DB[("Database<br/>(MongoDB)")]
+
+  App --> SignIn
+  App --> Users
+  App --> Favs
+  App --> Gems
+  App <--> Feed
+
+  Favs --> Users
+  Gems --> Users
+  Favs --> Gems
+  Gems --> Feed
+
+  Users --> SignIn
+  Gems --> Places
+
+  Users --> DB
+  Favs --> DB
+  Gems --> DB

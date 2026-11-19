@@ -1,5 +1,6 @@
 package com.example.cpen321application.di
 
+import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.dto.GemDTO
 import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.data.remote.GemAPIService
@@ -21,8 +22,16 @@ object GemModule {
     @Singleton
     fun provideGemRepository(
         gemAPIService: GemAPIService,
-        @InjectGemMapper gemMapper: Mapper<Gem,GemDTO>): GemRepository {
-        return GemRepositoryImpl(gemAPIService, gemMapper)
+        @InjectGemMapper gemMapper: Mapper<Gem,GemDTO>,
+        @InjectGemListMapper gemListMapper: Mapper<List<Gem>,List<GemDTO>>,
+        @InjectGemCandidatesMapper gemCandidatesMapper: Mapper<List<GemCandidate>, List<GemCandidate>>
+    ): GemRepository {
+        return GemRepositoryImpl(
+            service = gemAPIService,
+            mapper = gemMapper,
+            listMapper = gemListMapper,
+            candidatesMapper = gemCandidatesMapper
+        )
     }
 
 }

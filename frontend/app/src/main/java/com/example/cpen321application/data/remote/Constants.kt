@@ -14,7 +14,7 @@ class Constants {
         const val GEM_DETAIL_ENDPOINT = "$GEM_BASE_ENDPOINT/{pk}"
 
         // Places endpoints
-        const val PLACES_BASE_ENDPOINT = "/places"
+        const val PLACES_BASE_ENDPOINT = "/place"
         const val NEARBY_PLACES_ENDPOINT = "$PLACES_BASE_ENDPOINT/nearby"
 
         // Comments endpoints

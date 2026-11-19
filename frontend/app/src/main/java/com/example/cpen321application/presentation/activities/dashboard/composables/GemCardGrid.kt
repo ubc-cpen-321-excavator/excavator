@@ -14,10 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.domain.models.Gem
+import com.example.cpen321application.presentation.viewmodels.UiState
 
 @Composable
 fun GemCardGrid(
-    gems: List<Gem>,
+    gemState: UiState<Gem>,
     context: Context,
     modifier: Modifier = Modifier,
     title: String? = null,
@@ -28,18 +29,23 @@ fun GemCardGrid(
         if (title != null) {
             Text(text = title, style = MaterialTheme.typography.titleLarge)
         }
-        Box(modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline)) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier.heightIn(max = 400.dp)
-            ) {
-                items(gems) { gem ->
-                    GemCard(
-                        gem = gem,
-                        context = context,
-                        isFavorite = isFavorite,
-                        onLongClick = { onGemLongClick(gem) }
-                    )
+
+        if (gemState.errorMessage != null) {
+            Text("Error fetching gems\n${gemState.errorMessage}")
+        } else {
+            Box(modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline)) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.heightIn(max = 400.dp)
+                ) {
+                    items(gemState.data) { gem ->
+                        GemCard(
+                            gem = gem,
+                            context = context,
+                            isFavorite = isFavorite,
+                            onLongClick = { onGemLongClick(gem) }
+                        )
+                    }
                 }
             }
         }

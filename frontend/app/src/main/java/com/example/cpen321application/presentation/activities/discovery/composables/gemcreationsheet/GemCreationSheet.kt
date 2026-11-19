@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.nearbygemcandidates.NearbyGemsOptionsList
 import com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.newgemfilters.NewGemFiltersForm
+import com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.newgemfilters.convertToApiFilters
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,12 +33,21 @@ fun GemCreationSheet(onShowChange: (Boolean)-> Unit, showBottomSheet: Boolean) {
         ModalBottomSheet(
             modifier = Modifier.fillMaxHeight(),
             sheetState = sheetState,
-            onDismissRequest = { onShowChange(false) }
+            onDismissRequest = {
+                showNearbyGems = false
+                onShowChange(false)
+            }
         ) {
             if (!showNearbyGems) {
                 NewGemFiltersForm(filterList) { showNearbyGems = it }
             } else {
-                NearbyGemsOptionsList() {
+                NearbyGemsOptionsList(
+                    filters = convertToApiFilters(filterList).joinToString(",").let {
+                        it.ifEmpty {
+                            null
+                        }
+                    }
+                ) {
                     showNearbyGems = it
                     onShowChange(it)
                 }
@@ -45,13 +55,4 @@ fun GemCreationSheet(onShowChange: (Boolean)-> Unit, showBottomSheet: Boolean) {
 
         }
     }
-}
-
-@Preview
-@Composable
-fun GemCreationSheetPreview(){
-
-    var showSheet by remember { mutableStateOf(true) }
-
-    GemCreationSheet({showSheet = it}, showSheet)
 }

@@ -17,7 +17,7 @@ fun GemFilterChoices(showFilters: Boolean, currentFilters: MutableObjectList<Str
                     modifier=Modifier.fillMaxWidth(),
                     label="Recreation",
                     filters = listOf(
-                        "Gym","Sports", "Garden",
+                        "Gym", "Garden",
                     ),
                     currentFilters
                 )
@@ -29,7 +29,7 @@ fun GemFilterChoices(showFilters: Boolean, currentFilters: MutableObjectList<Str
                     label="Entertainment",
                     filters = listOf(
                         "Night club", "Comedy club", "Internet cafe",
-                        "Karaoke", "Live music venue", "Skate park",
+                        "Karaoke", "Live music venue", "Skateboard park",
                         "Video arcade"
                     ),
                     currentFilters

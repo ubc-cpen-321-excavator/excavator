@@ -13,10 +13,17 @@ jest.mock('../../src/models/ratingModel', () => ({
 
 const mockedRatingModel = RatingModel as unknown as { updateOne: jest.Mock; findOne: jest.Mock; aggregate: jest.Mock };
 
-/** A RatingService whose Gem service is a stub: `hasGem` answers `exists`; `applyAppRatings` returns a Gem with the totals. */
-function serviceWithGem(exists: boolean): { service: RatingService; gemService: { hasGem: jest.Mock; applyAppRatings: jest.Mock } } {
+/**
+ * A RatingService whose Gem service is a stub: `hasGem` answers `exists`; `nextRatingSeq` gives 7;
+ * `applyAppRatings` returns a Gem with the totals.
+ */
+function serviceWithGem(exists: boolean): {
+  service: RatingService;
+  gemService: { hasGem: jest.Mock; nextRatingSeq: jest.Mock; applyAppRatings: jest.Mock };
+} {
   const gemService = {
     hasGem: jest.fn().mockResolvedValue(exists),
+    nextRatingSeq: jest.fn().mockResolvedValue(7),
     applyAppRatings: jest.fn((name: string, count: number, average: number | undefined) => {
       const gem = new Gem(name, new Place(name, 0, 0));
       gem.setAppRatings(count, average);
@@ -63,7 +70,11 @@ describe('Mocked: RatingService.rate', () => {
       { gem: 'places/abc', user: 'u1' }, { $set: { stars: 5 } }, { upsert: true },
     );
     expect(mockedRatingModel.aggregate.mock.calls[0][0][0]).toEqual({ $match: { gem: 'places/abc' } });
-    expect(gemService.applyAppRatings).toHaveBeenCalledWith('places/abc', 3, 4);
+    // The sequence number is taken after the rating is stored and before the recount.
+    const firstCall = (mock: jest.Mock): number => mock.mock.invocationCallOrder[0] ?? Number.NaN;
+    expect(firstCall(mockedRatingModel.updateOne)).toBeLessThan(firstCall(gemService.nextRatingSeq));
+    expect(firstCall(gemService.nextRatingSeq)).toBeLessThan(firstCall(mockedRatingModel.aggregate));
+    expect(gemService.applyAppRatings).toHaveBeenCalledWith('places/abc', 3, 4, 7);
     expect(gem.getRatingCount()).toBe(3);
     expect(gem.getRatingAverage()).toBe(4);
   });
@@ -78,7 +89,7 @@ describe('Mocked: RatingService.rate', () => {
 
     await service.rate('u1', 'places/abc', 4);
 
-    expect(gemService.applyAppRatings).toHaveBeenCalledWith('places/abc', 0, undefined);
+    expect(gemService.applyAppRatings).toHaveBeenCalledWith('places/abc', 0, undefined, 7);
   });
 
   // Mocked behavior: none

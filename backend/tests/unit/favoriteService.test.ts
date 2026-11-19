@@ -20,10 +20,13 @@ const mockedFavoriteModel = FavoriteModel as unknown as {
   deleteOne: jest.Mock;
 };
 
-/** A FavoriteService whose Gem service is a stub: `hasGem` answers `exists`, `getGems` returns Gems for the names. */
-function serviceWithGem(exists: boolean): { service: FavoriteService; gemService: { hasGem: jest.Mock; getGems: jest.Mock } } {
+/**
+ * A FavoriteService whose Gem service is a stub: `getGem` returns a Gem if `exists`, else `undefined`;
+ * `getGems` returns Gems for the names.
+ */
+function serviceWithGem(exists: boolean): { service: FavoriteService; gemService: { getGem: jest.Mock; getGems: jest.Mock } } {
   const gemService = {
-    hasGem: jest.fn().mockResolvedValue(exists),
+    getGem: jest.fn((name: string) => Promise.resolve(exists ? new Gem(name, new Place(name, 0, 0)) : undefined)),
     getGems: jest.fn((names: string[]) => Promise.resolve(names.map(n => new Gem(n, new Place(n, 0, 0))))),
   };
   return { service: new FavoriteService(gemService as unknown as GemService), gemService };
@@ -67,14 +70,15 @@ describe('Mocked: FavoriteService.addFavorite', () => {
   // Mocked behavior: the Gem exists; not yet a favorite; the user has 3 favorites; FavoriteModel.create succeeds
   // Input: a user's ID and a Gem name
   // Expected behavior: one favorite is stored for that user and Gem
-  // Expected output: true
+  // Expected output: added true, with the Gem
   test('New favorite', async () => {
     const { service } = serviceWithGem(true);
     mockedFavoriteModel.exists.mockResolvedValue(null);
     mockedFavoriteModel.countDocuments.mockResolvedValue(3);
     mockedFavoriteModel.create.mockResolvedValue({});
 
-    await expect(service.addFavorite('u1', 'places/abc')).resolves.toBe(true);
+    await expect(service.addFavorite('u1', 'places/abc'))
+      .resolves.toEqual({ added: true, gem: expect.objectContaining({ name: 'places/abc' }) });
 
     expect(mockedFavoriteModel.create).toHaveBeenCalledWith({ user: 'u1', gem: 'places/abc' });
   });
@@ -82,26 +86,27 @@ describe('Mocked: FavoriteService.addFavorite', () => {
   // Mocked behavior: the Gem exists and is already a favorite
   // Input: the same user and Gem
   // Expected behavior: nothing is stored
-  // Expected output: false
+  // Expected output: added false, with the Gem
   test('Already a favorite', async () => {
     const { service } = serviceWithGem(true);
     mockedFavoriteModel.exists.mockResolvedValue({ _id: 'f' });
 
-    await expect(service.addFavorite('u1', 'places/abc')).resolves.toBe(false);
+    await expect(service.addFavorite('u1', 'places/abc'))
+      .resolves.toEqual({ added: false, gem: expect.objectContaining({ name: 'places/abc' }) });
 
     expect(mockedFavoriteModel.create).not.toHaveBeenCalled();
   });
 
   // Mocked behavior: the Gem exists; not yet a favorite; FavoriteModel.create rejects with a duplicate-key error (11000)
   // Input: a favorite added twice at the same moment
-  // Expected output: false, not an error
+  // Expected output: added false, with the Gem; not an error
   test('Added twice at once', async () => {
     const { service } = serviceWithGem(true);
     mockedFavoriteModel.exists.mockResolvedValue(null);
     mockedFavoriteModel.countDocuments.mockResolvedValue(0);
     mockedFavoriteModel.create.mockRejectedValue(Object.assign(new Error('E11000'), { code: 11000 }));
 
-    await expect(service.addFavorite('u1', 'places/abc')).resolves.toBe(false);
+    await expect(service.addFavorite('u1', 'places/abc')).resolves.toMatchObject({ added: false });
   });
 
   // Mocked behavior: the Gem exists; FavoriteModel.create rejects (e.g. DB unreachable)

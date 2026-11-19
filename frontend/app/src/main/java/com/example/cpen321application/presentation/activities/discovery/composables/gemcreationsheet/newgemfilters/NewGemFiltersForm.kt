@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.example.cpen321application.presentation.TestTags
 import java.util.Locale
 
-private fun convertToApiFilters(filterList: MutableObjectList<String>): List<String> {
+fun convertToApiFilters(filterList: MutableObjectList<String>): List<String> {
 
     return filterList.asList().map { filter ->
         filter.lowercase(Locale.getDefault()).replace(" ", "_")
@@ -55,7 +55,7 @@ fun NewGemFiltersForm(
 
         Button(
             onClick = {
-            convertToApiFilters(filterList).toString()
+
             onSubmit(true)
                       },
             modifier = Modifier.align(Alignment.CenterHorizontally).testTag(TestTags.SUBMIT_BUTTON)) {

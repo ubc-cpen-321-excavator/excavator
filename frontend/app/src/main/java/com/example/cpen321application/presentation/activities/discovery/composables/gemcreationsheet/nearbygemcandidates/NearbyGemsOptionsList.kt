@@ -6,12 +6,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.cpen321application.presentation.TestTags
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
 import com.google.android.gms.maps.model.LatLng
 
@@ -19,23 +18,30 @@ import com.google.android.gms.maps.model.LatLng
 fun NearbyGemsOptionsList (
     modifier: Modifier = Modifier,
     viewModel: GemViewModel = hiltViewModel(),
+    filters: String?,
     onOptionsClosed: (Boolean) -> Unit
 ) {
 
-    val uiState by viewModel.gemCandidate.collectAsState()
+    val gemCandidateState by viewModel.gemCandidate.collectAsStateWithLifecycle()
 
-    // TODO: make viewmodel call GetGemCandidiates and see if that will cause new gems to appear
+    LaunchedEffect(Unit) {
+        viewModel.getGemCandidates(filters)
+    }
 
-    if (uiState.isNotEmpty()) {
+    if (gemCandidateState.errorMessage != null) {
+        NoGemCandidateDisplay(
+            message = gemCandidateState.errorMessage!!
+        ) { onOptionsClosed(it)}
+    } else if (gemCandidateState.data.isNotEmpty()) {
         LazyColumn(
-            modifier = modifier.fillMaxWidth().testTag(TestTags.CANDIDATE_LIST)
+            modifier = modifier.fillMaxWidth()
         ) {
 
-            uiState.forEach { gemCandidate ->
+            gemCandidateState.data.forEach { gemCandidate ->
                 item {
                     NearbyGemOptionCard(gemCandidate) {
                         viewModel.addGem(
-                            it.name, LatLng(it.latitiude, it.longitude)
+                            it.name, LatLng(it.latitude, it.longitude)
                         )
                         onOptionsClosed(false)
                     }
@@ -44,15 +50,27 @@ fun NearbyGemsOptionsList (
         }
     } else {
         Column {
-            Text("No gem candididates found! Check back later")
-            Button(
-                onClick = {onOptionsClosed(false)}
-            ) {
-                Text("Ok")
-            }
+
+            NoGemCandidateDisplay(
+                message = "No gem candididates found! Check back later"
+            ) { onOptionsClosed(it) }
         }
-
     }
+}
 
+@Composable
+fun NoGemCandidateDisplay(
+    modifier: Modifier = Modifier,
+    message: String,
+    onDismiss: (Boolean) -> Unit
+){
+    Column {
+        Text(message)
+        Button(
+            onClick = {onDismiss(false)}
+        ) {
+            Text("Ok")
+        }
+    }
 }
 

@@ -11,29 +11,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.R
-import com.example.cpen321application.presentation.TestTags
 
 @Composable
 fun FavoriteButton(
-    onFavoritesClicked: () -> Unit
+    isFavorites: Boolean,
+    onFavoritesClicked: (Boolean) -> Unit
 ) {
 
-    var checked by remember {mutableStateOf(false)}
+    var checked by remember {mutableStateOf(isFavorites)}
 
     IconButton(
         onClick = {
+            onFavoritesClicked(checked)
             checked = !checked
-            onFavoritesClicked()
-        },
-        // `selected` exposes the gold/grey state to tests, which cannot read the icon's tint.
-        modifier = Modifier.testTag(TestTags.FAVORITE_BUTTON).semantics { selected = checked }
+        }
     ) {
         Icon(
             painter = painterResource(R.drawable.baseline_star_24),

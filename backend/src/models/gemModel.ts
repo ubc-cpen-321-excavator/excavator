@@ -11,6 +11,9 @@ const placeSchema = new Schema({
   name: { type: String, required: true }, // Google Places resource name, e.g. "places/ChIJ..."
   displayName: { type: String },
   location: { type: pointSchema, required: true },
+  // Google Places resource name of the place's first photo, e.g. "places/ChIJ.../photos/AXCi...".
+  // Not sent to clients: they load the image through GET /gem/:pk/photo, which needs our API key.
+  photoName: { type: String },
 }, { _id: false });
 
 /**
@@ -31,6 +34,10 @@ const gemSchema = new Schema({
   reviewCount: { type: Number }, // Google Places review count (userRatingCount)
   ratingCount: { type: Number }, // Number of Excavator users' ratings (see ratingModel.ts)
   ratingAverage: { type: Number }, // Average of the Excavator users' ratings, 1–5
+  // Concurrent ratings: each rating takes the next ratingSeq after it is stored, and its totals are only
+  // saved if no later rating's totals already were (ratingSeqApplied), so an older recount can't overwrite a newer one.
+  ratingSeq: { type: Number }, // Ratings stored so far, counting changed ones
+  ratingSeqApplied: { type: Number }, // ratingSeq of the rating whose totals are stored
 
   addedBy: { type: String }, // User id (Google sub) of the user who added the gem
 }, { timestamps: true });
@@ -43,7 +50,7 @@ gemSchema.index({ type: 1 });
 gemSchema.index({ score: -1 });
 
 // Comments are in their own collection (commentModel.ts), keyed by gem name.
-// TODO Ratings, photos and notes go in their own collections too, keyed by gem name.
+// TODO User photos and notes go in their own collections too, keyed by gem name.
 
 /** A stored Gem document, as read back from Mongo. */
 export type GemDoc = InferSchemaType<typeof gemSchema>;
