@@ -21,6 +21,7 @@ import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.CommentCardList
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.NewCommentInput
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
+import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.gemscore.GemScoreBar
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.localrating.LocalRating
 import java.util.Locale.getDefault
 import androidx.compose.ui.platform.LocalLocale
@@ -50,6 +51,15 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                     Spacer(modifier=Modifier.weight(1f))
                     FavoriteButton { onFavoritesClicked(gem.placesName) }
                 }
+
+                // TODO: replace dummy values with the gem's real score once the data is available
+                GemScoreBar(
+                    score = 7,
+                    maxScore = 10,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
 
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Text(text = "Personal rating", fontSize = 14.sp)
