@@ -202,7 +202,7 @@ The script runs each test in its own instrumentation process, prints a pass/fail
     | 6. The app shows the new gem, with its Gem Score, on the map. | Tap "Dashboard" in the navigation bar.<br>Check that "Latest Gems:" is displayed.<br>Check that the first gem card (`GEM_CARD`) under "Latest Gems:" has the name of the picked place. |
 
   - **Test Logs:**
-  - <img width="561" height="508" alt="image" src="https://github.com/user-attachments/assets/61d2c1be-e933-4f49-bc93-4593854d1880" />
+  - ![Add gem test logs](images/addGemE2ETest.png)
 
 
 - **Use Case: Make comments (Use Case 5)**
@@ -218,7 +218,7 @@ The script runs each test in its own instrumentation process, prints a pass/fail
     | 4. The app adds the comment at the bottom of the list, with the User's name. | Check that the comment field is cleared.<br>Scroll the comment list to a comment body (`COMMENT_BODY`) with the typed text.<br>Check that the comment is displayed. |
 
   - **Test Logs:**
-  - <img width="481" height="528" alt="image" src="https://github.com/user-attachments/assets/442266e6-2c12-43d3-b56f-0fc1967e5da7" />
+  - ![Add a comment to a gem test logs](images/addCommentE2ETest.png)
 
 
 - **Use Case: Mark a Gem as favorite**
@@ -233,7 +233,7 @@ The script runs each test in its own instrumentation process, prints a pass/fail
     | 3. The gem is in the User's favorites. | Close the info sheet with the Back button.<br>Tap "Favorites" in the navigation bar.<br>Check that "Your favorites:" is displayed.<br>Check that the gem's card, with the ★ badge, is displayed.<br>After the test, remove the gem from the user's favorites through the backend. |
 
   - **Test Logs:**
-  - <img width="431" height="460" alt="image" src="https://github.com/user-attachments/assets/32dc81f4-1ab7-4a41-ad47-4b1cbccbcb7d" />
+  - ![Add gem as favorite test logs](images/addFavoriteE2ETest.png)
 
 
 - **Use Case: Remove a favorite**
@@ -249,5 +249,5 @@ The script runs each test in its own instrumentation process, prints a pass/fail
     | 4. The gem is no longer in the User's favorites. | Close the info sheet with the Back button.<br>Tap "Favorites" in the navigation bar.<br>Check that "Your favorites:" is displayed.<br>Check that the gem's card is no longer displayed.<br>After the test, remove the gem from the user's favorites through the backend (does nothing if it is not one). |
 
   - **Test Logs:**
-  - <img width="478" height="536" alt="image" src="https://github.com/user-attachments/assets/de889ea4-7f4b-4989-8625-f048232af391" />
+  - ![remove favorite gems test logs](images/removeFavoriteE2ETest.png)
 
