@@ -13,9 +13,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cpen321application.presentation.TestTags
 import java.util.Locale
 
 fun convertToApiFilters(filterList: MutableObjectList<String>): List<String> {
@@ -46,7 +48,7 @@ fun NewGemFiltersForm(
 
         Button(
             onClick = { showFilters = !showFilters },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().testTag(TestTags.FILTERS_BUTTON)
         ) { Text(if (!showFilters) "Filters (Tap to expand)" else "Filters") }
 
         GemFilterChoices(showFilters, currentFilters = filterList)
@@ -56,7 +58,7 @@ fun NewGemFiltersForm(
 
             onSubmit(true)
                       },
-            modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            modifier = Modifier.align(Alignment.CenterHorizontally).testTag(TestTags.SUBMIT_BUTTON)) {
             Text("Submit")
         }
 

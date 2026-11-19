@@ -15,7 +15,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.example.cpen321application.presentation.TestTags
 import kotlin.math.ceil
 
 @OptIn(ExperimentalGridApi::class)
@@ -30,7 +32,7 @@ fun GemAttributeFilterCategory(modifier: Modifier = Modifier, label: String,
 
     HorizontalDivider(modifier=Modifier.fillMaxWidth())
 
-    Button(onClick = {isShown = !isShown}, modifier=Modifier.padding(8.dp)) {
+    Button(onClick = {isShown = !isShown}, modifier=Modifier.padding(8.dp).testTag(TestTags.filterCategory(label))) {
         Text(label)
     }
 

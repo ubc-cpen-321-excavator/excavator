@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug builds only; release builds never include this file.
+  Lets the end-to-end tests (app/src/androidTest/e2e) make the device report a test location to the
+  app: Android only accepts an app as the mock-location app if it declares ACCESS_MOCK_LOCATION.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
+
+</manifest>
