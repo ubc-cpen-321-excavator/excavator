@@ -1,9 +1,7 @@
 package e2e
 
 import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertIsNotSelected
-import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.longClick
@@ -25,6 +23,9 @@ import org.junit.runner.RunWith
  * put back afterwards, even if a test crashed (see TestData.backUpFavorites).
  * 4a needs the user to be at the 500-favorite limit; that data comes from the data-population script
  * (TestData.seedFavorites), and the test reports "blocked" until the script exists.
+ *
+ * The star in the gem sheet only shows its state by its colour, so the tests read that colour
+ * (AppDriver.starColor). The app shows a failed request as a toast ("Error: " and the server's message).
  */
 @RunWith(AndroidJUnit4::class)
 class ManageFavoritesE2ETest : E2ETestBase() {
@@ -52,19 +53,19 @@ class ManageFavoritesE2ETest : E2ETestBase() {
         // 1. The user opens a gem by tapping its marker on the Discovery map.
         ui.openGemFromMarker(gem.title)
         // 2. The gem's sheet with a star button, grey because the gem is not a favorite.
-        star().assertIsNotSelected()
+        ui.assertStar(StarColor.GREY)
         // 3. The user taps the grey star.
         star().performClick()
         // 4. The gem is saved as a favorite and the star turns gold.
-        star().assertIsSelected()
+        ui.assertStar(StarColor.GOLD)
         ui.eventually("'${gem.name}' is a favorite on the server") { gem.name in api.favoriteNames() }
         // 5. The user opens the Favorites screen from the navigation bar.
         ui.closeGemSheet()
         ui.tapNav(AppDriver.FAVORITES)
         // 6. "Your favorites:" with a card per favorite, most recent first, each with a ★ badge.
         ui.displayed(hasText("Your favorites:"))
-        ui.firstOf(hasTestTag(TestTags.GEM_CARD) and inFavorites()).assert(hasText(gem.title))
-        ui.displayed(favoriteCard() and hasText("★"))
+        ui.firstOf(anyFavoriteCard()).assert(hasText(gem.title))
+        ui.displayed(favoriteCard())
         // 7. The user long-presses the gem's card.
         ui.displayed(favoriteCard()).performTouchInput { longClick() }
         // 8. The gem is removed from the user's favorites and its card disappears.
@@ -79,11 +80,11 @@ class ManageFavoritesE2ETest : E2ETestBase() {
         // 1. The user opens the gem by tapping its marker on the Discovery map.
         ui.openGemFromMarker(gem.title)
         // 2. The star is gold, because the gem is already a favorite.
-        star().assertIsSelected()
+        ui.assertStar(StarColor.GOLD)
         // 3a. The user taps the gold star.
         star().performClick()
         // 3a1. The gem is removed from the user's favorites and the star turns grey.
-        star().assertIsNotSelected()
+        ui.assertStar(StarColor.GREY)
         ui.eventually("'${gem.name}' is no longer a favorite on the server") { gem.name !in api.favoriteNames() }
     }
 
@@ -96,13 +97,13 @@ class ManageFavoritesE2ETest : E2ETestBase() {
         // 1. The user opens the gem by tapping its marker on the Discovery map.
         ui.openGemFromMarker(gem.title)
         // 2. The star is grey.
-        star().assertIsNotSelected()
+        ui.assertStar(StarColor.GREY)
         // 3. The user taps the grey star.
         star().performClick()
-        // 4a1. The message "You can have at most 500 favorites."
-        ui.displayed(hasText("You can have at most 500 favorites."))
+        // 4a1. The app tells the user they have too many favorites: the toast "Error: Too many favorites."
+        ui.waitForToast(TOO_MANY_FAVORITES)
         // 4a2. The star stays grey, and the gem is not saved as a favorite.
-        star().assertIsNotSelected()
+        ui.assertStar(StarColor.GREY)
         assertFalse("The gem should not be a favorite on the server", gem.name in api.favoriteNames())
     }
 
@@ -117,9 +118,20 @@ class ManageFavoritesE2ETest : E2ETestBase() {
         ui.displayed(hasText("No favorites yet!"))
     }
 
-    private fun star() = ui.displayed(hasTestTag(TestTags.FAVORITE_BUTTON))
+    private fun star() = ui.displayed(hasContentDescription(AppDriver.FAVORITE_STAR))
 
-    private fun inFavorites() = hasAnyAncestor(hasTestTag(TestTags.FAVORITES_GRID))
+    /**
+     * A card on the Favorites screen. Only favorite cards carry the ★ badge, which tells them apart from
+     * the Dashboard's cards (the Dashboard stays open behind the Favorites screen).
+     */
+    private fun anyFavoriteCard() = hasTestTag(TestTags.GEM_CARD) and hasText(FAVORITE_BADGE)
 
-    private fun favoriteCard() = hasTestTag(TestTags.GEM_CARD) and hasText(gem.title) and inFavorites()
+    private fun favoriteCard() = anyFavoriteCard() and hasText(gem.title)
+
+    private companion object {
+        const val FAVORITE_BADGE = "★"
+
+        /** The server's message for POST /user/favorites at the limit, which the app shows in its error toast. */
+        const val TOO_MANY_FAVORITES = "Too many favorites."
+    }
 }

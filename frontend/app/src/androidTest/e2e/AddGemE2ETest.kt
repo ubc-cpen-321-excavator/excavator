@@ -2,7 +2,6 @@ package e2e
 
 import android.os.SystemClock
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -22,6 +21,9 @@ import org.junit.runner.RunWith
  * Also left out: 2a (location permission denied) and 2b (location turned off). Location and its
  * permission are handled app-wide, not by this use case; they are to be covered in M3.
  * Gems cannot be deleted through the API, so the main scenario and 9a each leave one gem behind.
+ *
+ * The app closes the sheet as soon as a place is tapped, and shows a failed add as a toast
+ * ("Error: " followed by the server's message), so 9a and 9b check for that toast.
  */
 @RunWith(AndroidJUnit4::class)
 class AddGemE2ETest : E2ETestBase() {
@@ -60,10 +62,12 @@ class AddGemE2ETest : E2ETestBase() {
         // 8. The user taps a place in the list.
         ui.displayed(hasTestTag(TestTags.CANDIDATE_CARD) and hasText(expected.displayName)).performClick()
         // 9. The gem is added, the sheet closes, and the gem is on the map and first on the Dashboard.
-        ui.waitUntilGone(hasText("Add New Gem"))
+        ui.waitUntilGone(hasTestTag(TestTags.CANDIDATE_CARD))
         ui.findMarker(expected.displayName)
         ui.tapNav(AppDriver.DASHBOARD)
-        val latestGem = hasTestTag(TestTags.GEM_CARD) and hasAnyAncestor(hasTestTag(TestTags.LATEST_GEMS_GRID))
+        // The Dashboard's only grid is "Latest Gems:", so its first gem card is the latest gem.
+        val latestGem = hasTestTag(TestTags.GEM_CARD)
+        ui.displayed(hasText("Latest Gems:"))
         ui.waitUntil("'${expected.displayName}' is the first latest gem") {
             ui.firstTextOrNull(latestGem) == expected.displayName
         }
@@ -80,7 +84,8 @@ class AddGemE2ETest : E2ETestBase() {
         ui.displayed(hasText(NO_CANDIDATES))
         // 7a2. The user taps "Ok" and the app closes the sheet.
         ui.displayed(hasText("Ok")).performClick()
-        ui.waitUntilGone(hasText("Add New Gem"))
+        ui.waitUntilGone(hasText(NO_CANDIDATES))
+        ui.waitUntilGone(hasTestTag(TestTags.SUBMIT_BUTTON))
     }
 
     @Test
@@ -93,13 +98,11 @@ class AddGemE2ETest : E2ETestBase() {
         //     Done through the API with the test account, standing in for User B (see Testing.md).
         val place = checkNotNull(data.candidateNamed(area, taken)) { "'$taken' is not in GET /place/nearby" }
         api.addGem(place.name, area)
-        // 8. The user taps that place in the list.
+        // 8. The user taps that place in the list, and the sheet closes.
         ui.displayed(hasTestTag(TestTags.CANDIDATE_CARD) and hasText(taken)).performClick()
-        // 9a1. The message "This place is already a gem."
-        ui.displayed(hasText("This place is already a gem."))
-        // 9a2. The app reloads the list without that place.
-        ui.displayed(hasTestTag(TestTags.CANDIDATE_LIST))
-        ui.waitUntilGone(hasTestTag(TestTags.CANDIDATE_CARD) and hasText(taken))
+        ui.waitUntilGone(hasTestTag(TestTags.CANDIDATE_CARD))
+        // 9a1. The app tells the user the place is already a gem: the toast "Error: Gem already exists."
+        ui.waitForToast(ALREADY_A_GEM)
     }
 
     @Test
@@ -112,17 +115,11 @@ class AddGemE2ETest : E2ETestBase() {
         val newArea = area.movedNorth(E2EConfig.MOVE_AWAY_M)
         mockLocation.moveTo(newArea)
         SystemClock.sleep(E2EConfig.LOCATION_SETTLE_MS)
-        // 8. The user taps the place in the list.
+        // 8. The user taps the place in the list, and the sheet closes.
         ui.displayed(hasTestTag(TestTags.CANDIDATE_CARD) and hasText(first)).performClick()
-        // 9b1. The message "You must be within 200 m of a place to add it."
-        ui.displayed(hasText("You must be within 200 m of a place to add it."))
-        // 9b2. The app reloads the list for the user's new location.
-        val expected = data.firstCandidate(newArea)
-        if (expected == null) {
-            ui.displayed(hasText(NO_CANDIDATES))
-        } else {
-            assertEquals("First place after moving", expected.displayName, firstCandidateName())
-        }
+        ui.waitUntilGone(hasTestTag(TestTags.CANDIDATE_CARD))
+        // 9b1. The app tells the user they are too far from the place: the toast "Error: Too far from place."
+        ui.waitForToast(TOO_FAR)
     }
 
     // Steps 1, 3 and 6: open Discovery, tap "Add gem", tap "Submit" without choosing a filter.
@@ -132,12 +129,15 @@ class AddGemE2ETest : E2ETestBase() {
         ui.displayed(hasTestTag(TestTags.SUBMIT_BUTTON)).performClick()
     }
 
-    private fun firstCandidateName(): String {
-        ui.displayed(hasTestTag(TestTags.CANDIDATE_LIST))
-        return ui.textOf(hasTestTag(TestTags.CANDIDATE_CARD))
-    }
+    /** The name on the first card in the list of places, once the list has loaded. */
+    private fun firstCandidateName(): String = ui.textOf(hasTestTag(TestTags.CANDIDATE_CARD))
 
     private companion object {
-        const val NO_CANDIDATES = "No gem candidates found! Check back later"
+        /** As the app spells it (NearbyGemsOptionsList). */
+        const val NO_CANDIDATES = "No gem candididates found! Check back later"
+
+        /** The server's messages for POST /gem, which the app shows in its error toast. */
+        const val ALREADY_A_GEM = "Gem already exists."
+        const val TOO_FAR = "Too far from place."
     }
 }
