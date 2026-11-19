@@ -764,6 +764,40 @@ describe('Mocked: GET /gem/:pk/photo', () => {
     expect(response.body).toEqual({ message: 'Google Places unavailable.' });
   });
 
+  // Mocked behavior: no stored photo name; looking the place up on Google fails (e.g. quota)
+  // Input: GET /gem/abc/photo
+  // Expected status code: 502
+  // Expected behavior: no text search is made; nothing is stored
+  // Expected output: { message: "Google Places unavailable." }
+  test('Google Places unavailable while looking up the photo', async () => {
+    mockGemAndPhoto();
+    mockGetPlace.mockRejectedValue(placesError(8));
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({ message: 'Google Places unavailable.' });
+    expect(mockSearchText).not.toHaveBeenCalled();
+    expect(mockedGemModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: Google does not know the Gem's place ID, and the text search for it fails (e.g. quota)
+  // Input: GET /gem/abc/photo
+  // Expected status code: 502
+  // Expected behavior: nothing is stored
+  // Expected output: { message: "Google Places unavailable." }
+  test('Google Places unavailable while searching for the photo', async () => {
+    mockGemAndPhoto();
+    mockGetPlace.mockRejectedValue(placesError(3));
+    mockSearchText.mockRejectedValue(placesError(8));
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({ message: 'Google Places unavailable.' });
+    expect(mockedGemModel.updateOne).not.toHaveBeenCalled();
+  });
+
   // Mocked behavior: Google returns an image URL that is not https on a Google photo host
   // Input: GET /gem/abc/photo
   // Expected status code: 502
