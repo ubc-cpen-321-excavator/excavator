@@ -1,16 +1,19 @@
-import express from "express";
+import express, { type Request, type Response } from "express";
 import GemService, {
   GEM_LIST_DEFAULT,
   GEM_LIST_MAX,
   GEM_NEARBY_RADIUS_DEFAULT_M,
   GEM_NEARBY_RADIUS_MAX_M,
+  GEM_PHOTO_WIDTH_DEFAULT_PX,
+  GEM_PHOTO_WIDTH_MAX_PX,
   GemExistsError,
   InvalidPlaceError,
   PlacesUnavailableError,
   TooFarError,
+  gemNameFromPlaceId,
   isValidGemName,
 } from "../services/gemService";
-import { toBounds, toIntInRange, toLatLng } from "../utils/geo";
+import { toBounds, toIntInRange, toLatLng, type LatLng } from "../utils/geo";
 import { asyncHandler, methodNotAllowed } from "../utils/http";
 import { currentUser } from "../services/authService";
 import { logError } from "../utils/log";
@@ -197,15 +200,34 @@ gemRouter.get('/within', asyncHandler(async (req, res) => {
 }));
 
 /**
- * GET /gem/newest[?limit=n]
+ * GET /gem/newest[?lat=…&lng=…[&radius=metres]][&limit=n]
  *
  * Gets the most recently added Gems, newest first. For the dashboard.
- * `limit` defaults to 20 (max 50).
+ * With `lat` / `lng`, only the Gems within `radius` of that point; without them, Gems anywhere.
+ * `radius` defaults to 5000 (max 50000) and is ignored without `lat` / `lng`; `limit` defaults to 20 (max 50).
  * - 200 `[Gem, ...]`
- * - 400 `{ message: 'Invalid limit.' }`: not a whole number in range.
+ * - 400 `{ message: 'Invalid location.' }`: only one of `lat` / `lng` given, or either out of range.
+ * - 400 `{ message: 'Invalid radius.' }` / `{ message: 'Invalid limit.' }`: not a whole number in range.
  * - 500 `{ message: 'Get Gems failed.' }`: database error.
  */
 gemRouter.get('/newest', asyncHandler(async (req, res) => {
+  const { lat, lng } = req.query;
+  let near: { center: LatLng; radius: number } | undefined;
+  if (lat !== undefined || lng !== undefined) {
+    const center = toLatLng(lat, lng);
+    if (!center) {
+      res.status(400).json({ message: 'Invalid location.' });
+      return;
+    }
+
+    const radius = toIntInRange(req.query.radius, GEM_NEARBY_RADIUS_DEFAULT_M, 1, GEM_NEARBY_RADIUS_MAX_M);
+    if (radius === undefined) {
+      res.status(400).json({ message: 'Invalid radius.' });
+      return;
+    }
+    near = { center, radius };
+  }
+
   const limit = toIntInRange(req.query.limit, GEM_LIST_DEFAULT, 1, GEM_LIST_MAX);
   if (limit === undefined) {
     res.status(400).json({ message: 'Invalid limit.' });
@@ -213,10 +235,90 @@ gemRouter.get('/newest', asyncHandler(async (req, res) => {
   }
 
   try {
-    res.json(await gemService.getNewestGems(limit));
+    res.json(await gemService.getNewestGems(limit, near));
   } catch (err) {
     logError('Get newest Gems failed', err);
     res.status(500).json({ message: 'Get Gems failed.' });
+  }
+}));
+
+/** Hosts Google Places serves photos from, e.g. `lh3.googleusercontent.com`. */
+const GOOGLE_PHOTO_HOST_SUFFIX = '.googleusercontent.com';
+
+/**
+ * @param uri an image URL from Google Places.
+ * @returns the parsed URL if it is `https` on a Google photo host, else `undefined`.
+ */
+export function toGooglePhotoUrl(uri: string): URL | undefined {
+  let url: URL;
+  try {
+    url = new URL(uri);
+  } catch {
+    return undefined;
+  }
+
+  return url.protocol === 'https:' && url.hostname.endsWith(GOOGLE_PHOTO_HOST_SUFFIX) ? url : undefined;
+}
+
+/**
+ * GET /gem/:pk/photo[?maxWidth=px]
+ *
+ * Redirects to a photo of the Gem whose place ID is `pk`, from Google Places. For image views:
+ * use the Gem's `photoUrl` as the image source. `maxWidth` defaults to 800 (max 4800).
+ * The image URL Google gives is short-lived, so request this path again rather than storing it.
+ * - 302 to the image.
+ * - 400 `{ message: 'Invalid Gem ID.' }`: `pk` is not a place ID; the DB is not queried.
+ * - 400 `{ message: 'Invalid width.' }`: `maxWidth` is not a whole number in range.
+ * - 404 `{ message: 'No such Gem.' }`: no Gem has that place ID.
+ * - 404 `{ message: 'No photo.' }`: Google has no photo of the place.
+ * - 500 `{ message: 'Get photo failed.' }`: database error.
+ * - 502 `{ message: 'Google Places unavailable.' }`: Google Places failed, or gave a URL not on a Google photo host.
+ */
+gemRouter.get('/:pk/photo', asyncHandler(async (req: Request<{ pk: string }>, res: Response) => {
+  const name = gemNameFromPlaceId(req.params.pk);
+  if (!name) {
+    res.status(400).json({ message: 'Invalid Gem ID.' });
+    return;
+  }
+
+  const maxWidth = toIntInRange(req.query.maxWidth, GEM_PHOTO_WIDTH_DEFAULT_PX, 1, GEM_PHOTO_WIDTH_MAX_PX);
+  if (maxWidth === undefined) {
+    res.status(400).json({ message: 'Invalid width.' });
+    return;
+  }
+
+  try {
+    const gem = await gemService.getGem(name);
+    if (!gem) {
+      res.status(404).json({ message: 'No such Gem.' });
+      return;
+    }
+
+    const uri = await gemService.getPhotoUri(gem, maxWidth);
+    if (uri === undefined) {
+      res.status(404).json({ message: 'No photo.' });
+      return;
+    }
+
+    // Only redirect to Google's own image host, never to an arbitrary URL.
+    const photoUrl = toGooglePhotoUrl(uri);
+    if (!photoUrl) {
+      logError('Get Gem photo failed, unexpected photo URL from Google Places', uri);
+      res.status(502).json({ message: 'Google Places unavailable.' });
+      return;
+    }
+
+    // The target is Google's photo URL, not user input, and toGooglePhotoUrl only allows https *.googleusercontent.com.
+    res.redirect(302, photoUrl.href); // nosemgrep
+  } catch (err) {
+    if (err instanceof PlacesUnavailableError) {
+      logError('Get Gem photo failed, Google Places', err.cause);
+      res.status(502).json({ message: 'Google Places unavailable.' });
+      return;
+    }
+
+    logError('Get Gem photo failed', err);
+    res.status(500).json({ message: 'Get photo failed.' });
   }
 }));
 
@@ -225,3 +327,4 @@ gemRouter.all('/', methodNotAllowed(['GET', 'POST']));
 gemRouter.all('/nearby', methodNotAllowed(['GET']));
 gemRouter.all('/within', methodNotAllowed(['GET']));
 gemRouter.all('/newest', methodNotAllowed(['GET']));
+gemRouter.all('/:pk/photo', methodNotAllowed(['GET']));

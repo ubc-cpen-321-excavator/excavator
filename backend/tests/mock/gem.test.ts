@@ -17,15 +17,20 @@ jest.mock('../../src/models/gemModel', () => ({
     find: jest.fn(),
     exists: jest.fn(),
     replaceOne: jest.fn(),
+    updateOne: jest.fn(),
     create: jest.fn(),
   },
 }));
 
 // Called lazily, so it is initialized by the time GemService builds its PlacesClient.
 const mockGetPlace = jest.fn();
+const mockSearchText = jest.fn();
+const mockGetPhotoMedia = jest.fn();
 jest.mock('@googlemaps/places', () => ({
   PlacesClient: jest.fn().mockImplementation(() => ({
     getPlace: (...args: unknown[]): unknown => mockGetPlace(...args),
+    searchText: (...args: unknown[]): unknown => mockSearchText(...args),
+    getPhotoMedia: (...args: unknown[]): unknown => mockGetPhotoMedia(...args),
   })),
 }));
 
@@ -35,6 +40,7 @@ const mockedGemModel = GemModel as unknown as {
   create: jest.Mock;
   exists: jest.Mock;
   replaceOne: jest.Mock;
+  updateOne: jest.Mock;
 };
 
 /** The user's location, at the place the POST tests add. */
@@ -134,6 +140,7 @@ describe('Mocked: GET /gem', () => {
         description: 'Quiet cafe behind the library.',
       },
       addedBy: 'google-sub-123',
+      photoUrl: '/gem/abc/photo',
       score: 87,
       scoreTime: 1761000000000,
       nicheness: 0.9,
@@ -165,6 +172,7 @@ describe('Mocked: GET /gem', () => {
         latitude: 20,
         longitude: 10,
       },
+      photoUrl: '/gem/bare/photo',
     });
   });
 
@@ -385,6 +393,7 @@ const STORED_DOC = {
 const STORED_JSON = {
   name: 'places/abc',
   place: { name: 'places/abc', displayName: 'Mitakihara Cafe', latitude: 49.26, longitude: -123.25 },
+  photoUrl: '/gem/abc/photo',
   score: 82.2,
   scoreTime: expect.any(Number),
 };
@@ -537,8 +546,45 @@ describe('Mocked: GET /gem/newest', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual([STORED_JSON]);
+    expect(mockedGemModel.find).toHaveBeenCalledWith({});
     expect(sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
     expect(limit).toHaveBeenCalledWith(3);
+  });
+
+  // Mocked behavior: GemModel.find returns one gem
+  // Input: GET request with lat, lng, radius 1000
+  // Expected status code: 200
+  // Expected behavior: only gems within 1000 m of [lng, lat] ($centerSphere, radius in radians), newest first
+  // Expected output: [Gem]
+  test('Gems near a point', async () => {
+    const { sort } = mockFindChain(Promise.resolve([STORED_DOC]));
+
+    const response = await request(createApp()).get('/gem/newest')
+      .query({ lat: '49.26', lng: '-123.25', radius: '1000' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([STORED_JSON]);
+    const [center, radians] = mockedGemModel.find.mock.calls[0][0]['place.location'].$geoWithin.$centerSphere as [number[], number];
+    expect(center).toEqual([-123.25, 49.26]);
+    expect(radians).toBeCloseTo(1000 / 6_378_100);
+    expect(sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
+  });
+
+  // Mocked behavior: none
+  // Input: GET request with only lat, an out-of-range lat, or an invalid radius
+  // Expected status code: 400
+  // Expected behavior: request is rejected; DB is not queried
+  // Expected output: { message }
+  test.each([
+    [{ lat: '49.26' }, 'Invalid location.'],
+    [{ lat: '91', lng: '0' }, 'Invalid location.'],
+    [{ lat: '49.26', lng: '-123.25', radius: '0' }, 'Invalid radius.'],
+  ])('Invalid query %o', async (query, message) => {
+    const response = await request(createApp()).get('/gem/newest').query(query);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ message });
+    expect(mockedGemModel.find).not.toHaveBeenCalled();
   });
 
   // Mocked behavior: none
@@ -567,6 +613,226 @@ describe('Mocked: GET /gem/newest', () => {
   });
 });
 
+// Interface GET /gem/:pk/photo
+describe('Mocked: GET /gem/:pk/photo', () => {
+  const PHOTO = 'places/abc/photos/p1';
+  const IMAGE = 'https://lh3.googleusercontent.com/image';
+
+  /** GemModel.findOne: first the Gem, then its stored photo name. */
+  function mockGemAndPhoto(photoName?: string): void {
+    mockedGemModel.findOne
+      .mockReturnValueOnce({ lean: () => Promise.resolve(STORED_DOC) })
+      .mockReturnValueOnce({ lean: () => Promise.resolve({ place: photoName ? { photoName } : {} }) });
+  }
+
+  // Mocked behavior: the Gem has a stored photo name; Google returns its image URL
+  // Input: GET /gem/abc/photo?maxWidth=400
+  // Expected status code: 302
+  // Expected behavior: Google is asked for the stored photo at width 400; nothing else is looked up or stored
+  // Expected output: redirect to the image
+  test('Stored photo', async () => {
+    mockGemAndPhoto(PHOTO);
+    mockGetPhotoMedia.mockResolvedValue([{ photoUri: IMAGE }]);
+
+    const response = await request(createApp()).get('/gem/abc/photo').query({ maxWidth: '400' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe(IMAGE);
+    expect(mockGetPhotoMedia).toHaveBeenCalledWith({ name: `${PHOTO}/media`, maxWidthPx: 400, skipHttpRedirect: true });
+    expect(mockGetPlace).not.toHaveBeenCalled();
+    expect(mockedGemModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: no stored photo name; Google Places has a photo of the place
+  // Input: GET /gem/abc/photo
+  // Expected status code: 302
+  // Expected behavior: the photo name is looked up on Google, stored, and fetched at the default width 800
+  // Expected output: redirect to the image
+  test('Photo looked up and stored', async () => {
+    mockGemAndPhoto();
+    mockGetPlace.mockResolvedValue([{ photos: [{ name: PHOTO }] }]);
+    mockGetPhotoMedia.mockResolvedValue([{ photoUri: IMAGE }]);
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe(IMAGE);
+    expect(mockGetPlace.mock.calls[0][0]).toEqual({ name: 'places/abc' });
+    expect(mockedGemModel.updateOne).toHaveBeenCalledWith({ name: 'places/abc' }, { $set: { 'place.photoName': PHOTO } });
+    expect(mockGetPhotoMedia).toHaveBeenCalledWith({ name: `${PHOTO}/media`, maxWidthPx: 800, skipHttpRedirect: true });
+  });
+
+  // Mocked behavior: the stored photo name has expired (Google: NOT_FOUND); the place has a new photo
+  // Input: GET /gem/abc/photo
+  // Expected status code: 302
+  // Expected behavior: the new photo name is looked up and stored
+  // Expected output: redirect to the new image
+  test('Expired photo name', async () => {
+    mockGemAndPhoto('places/abc/photos/old');
+    mockGetPhotoMedia.mockRejectedValueOnce(placesError(5)).mockResolvedValueOnce([{ photoUri: IMAGE }]);
+    mockGetPlace.mockResolvedValue([{ photos: [{ name: PHOTO }] }]);
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe(IMAGE);
+    expect(mockedGemModel.updateOne).toHaveBeenCalledWith({ name: 'places/abc' }, { $set: { 'place.photoName': PHOTO } });
+  });
+
+  // Mocked behavior: Google does not know the Gem's place ID (e.g. a seeded demo Gem); a text search finds the place
+  // Input: GET /gem/abc/photo
+  // Expected status code: 302
+  // Expected behavior: searches for the display name around the Gem's location; stores the photo name found
+  // Expected output: redirect to the image
+  test('Place found by text search', async () => {
+    mockGemAndPhoto();
+    mockGetPlace.mockRejectedValue(placesError(3));
+    mockSearchText.mockResolvedValue([{ places: [{ photos: [{ name: PHOTO }] }] }]);
+    mockGetPhotoMedia.mockResolvedValue([{ photoUri: IMAGE }]);
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(302);
+    expect(mockSearchText.mock.calls[0][0]).toEqual({
+      textQuery: 'Mitakihara Cafe',
+      locationBias: { circle: { center: { latitude: 49.26, longitude: -123.25 }, radius: 500 } },
+      maxResultCount: 1,
+    });
+    expect(mockedGemModel.updateOne).toHaveBeenCalledWith({ name: 'places/abc' }, { $set: { 'place.photoName': PHOTO } });
+  });
+
+  // Mocked behavior: Google Places has no photo of the place
+  // Input: GET /gem/abc/photo
+  // Expected status code: 404
+  // Expected behavior: nothing is stored
+  // Expected output: { message: "No photo." }
+  test('No photo', async () => {
+    mockGemAndPhoto();
+    mockGetPlace.mockResolvedValue([{}]);
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ message: 'No photo.' });
+    expect(mockedGemModel.updateOne).not.toHaveBeenCalled();
+    expect(mockGetPhotoMedia).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: GemModel.findOne finds no Gem
+  // Input: GET /gem/abc/photo
+  // Expected status code: 404
+  // Expected behavior: Google is not called
+  // Expected output: { message: "No such Gem." }
+  test('No such Gem', async () => {
+    mockFindOne(Promise.resolve(null));
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ message: 'No such Gem.' });
+    expect(mockGetPlace).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: none
+  // Input: a malformed place ID, or an invalid maxWidth
+  // Expected status code: 400
+  // Expected behavior: DB is not queried
+  // Expected output: { message }
+  test.each([
+    ['/gem/a%20b/photo', 'Invalid Gem ID.'],
+    ['/gem/abc/photo?maxWidth=0', 'Invalid width.'],
+    ['/gem/abc/photo?maxWidth=5000', 'Invalid width.'],
+  ])('Invalid request %s', async (path, message) => {
+    const response = await request(createApp()).get(path);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ message });
+    expect(mockedGemModel.findOne).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: Google Places fails (e.g. quota)
+  // Input: GET /gem/abc/photo
+  // Expected status code: 502
+  // Expected output: { message: "Google Places unavailable." }
+  test('Google Places unavailable', async () => {
+    mockGemAndPhoto(PHOTO);
+    mockGetPhotoMedia.mockRejectedValue(placesError(8));
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({ message: 'Google Places unavailable.' });
+  });
+
+  // Mocked behavior: no stored photo name; looking the place up on Google fails (e.g. quota)
+  // Input: GET /gem/abc/photo
+  // Expected status code: 502
+  // Expected behavior: no text search is made; nothing is stored
+  // Expected output: { message: "Google Places unavailable." }
+  test('Google Places unavailable while looking up the photo', async () => {
+    mockGemAndPhoto();
+    mockGetPlace.mockRejectedValue(placesError(8));
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({ message: 'Google Places unavailable.' });
+    expect(mockSearchText).not.toHaveBeenCalled();
+    expect(mockedGemModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: Google does not know the Gem's place ID, and the text search for it fails (e.g. quota)
+  // Input: GET /gem/abc/photo
+  // Expected status code: 502
+  // Expected behavior: nothing is stored
+  // Expected output: { message: "Google Places unavailable." }
+  test('Google Places unavailable while searching for the photo', async () => {
+    mockGemAndPhoto();
+    mockGetPlace.mockRejectedValue(placesError(3));
+    mockSearchText.mockRejectedValue(placesError(8));
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({ message: 'Google Places unavailable.' });
+    expect(mockedGemModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  // Mocked behavior: Google returns an image URL that is not https on a Google photo host
+  // Input: GET /gem/abc/photo
+  // Expected status code: 502
+  // Expected behavior: no redirect is sent
+  // Expected output: { message: "Google Places unavailable." }
+  test.each([
+    'https://evil.example.com/image',
+    'http://lh3.googleusercontent.com/image',
+    'https://googleusercontent.com.evil.example/image',
+    'not a url',
+  ])('Unexpected photo URL %s', async (photoUri) => {
+    mockGemAndPhoto(PHOTO);
+    mockGetPhotoMedia.mockResolvedValue([{ photoUri }]);
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(502);
+    expect(response.headers.location).toBeUndefined();
+    expect(response.body).toEqual({ message: 'Google Places unavailable.' });
+  });
+
+  // Mocked behavior: GemModel.findOne rejects
+  // Input: GET /gem/abc/photo
+  // Expected status code: 500
+  // Expected output: { message: "Get photo failed." }
+  test('Database error', async () => {
+    mockFindOne(Promise.reject(new Error('connection refused')));
+
+    const response = await request(createApp()).get('/gem/abc/photo');
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ message: 'Get photo failed.' });
+  });
+});
+
 // Interface: unsupported methods
 describe('Mocked: unsupported methods on gem paths', () => {
   // Mocked behavior: none
@@ -580,6 +846,7 @@ describe('Mocked: unsupported methods on gem paths', () => {
     ['post', '/gem/nearby', 'GET'],
     ['delete', '/gem/within', 'GET'],
     ['patch', '/gem/newest', 'GET'],
+    ['post', '/gem/abc/photo', 'GET'],
     ['delete', '/gem/abc/comments', 'GET, POST'],
   ] as const)('%s %s', async (method, path, allow) => {
     const response = await requestWith(createApp(), method, path);

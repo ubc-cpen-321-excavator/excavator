@@ -9,7 +9,7 @@ import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.dashboard.DashboardActivity
 import com.example.cpen321application.presentation.activities.discovery.DiscoveryActivity
 import com.example.cpen321application.presentation.activities.favorites.FavoritesActivity
-import com.example.cpen321application.presentation.activities.signin.SigninActivity
+import com.example.cpen321application.presentation.activities.signin.SignInActivity
 
 // Keys shared by the sender (here) and whichever activity reads the data
 object GemExtras {
@@ -17,6 +17,7 @@ object GemExtras {
     const val LATITUDE = "gem_coords_latitude"
     const val LONGITUDE = "gem_coords_longitude"
     const val PLACES_NAME = "gem_places_name"
+    const val SCORE = "gem_score"
 }
 
 fun navigateTo(
@@ -48,6 +49,7 @@ fun navigateToDiscovery(context: Context, gem: Gem? = null) {
             putDouble(GemExtras.LATITUDE, it.coords.latitude)
             putDouble(GemExtras.LONGITUDE, it.coords.longitude)
             putString(GemExtras.PLACES_NAME, it.placesName)
+            putDouble(GemExtras.SCORE, it.score)
         }
     }
     navigateTo(context, NavDestination.DISCOVERY, extras)
@@ -55,7 +57,7 @@ fun navigateToDiscovery(context: Context, gem: Gem? = null) {
 
 fun navigateToSignin(context: Context) {
     context.startActivity(
-        Intent(context, SigninActivity::class.java)
+        Intent(context, SignInActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
     )
 }

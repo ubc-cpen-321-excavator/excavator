@@ -1,5 +1,6 @@
 package com.example.cpen321application.presentation.activities.discovery.composables
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -12,7 +13,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cpen321application.presentation.activities.discovery.GemRequest
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.BUILDING_LEVEL_ZOOM
@@ -42,8 +45,9 @@ fun DiscoveryMap(
     viewModel: GemViewModel = hiltViewModel()
 ) {
 
-    val gems by viewModel.uiState.collectAsState()
+    val nearestGemsState by viewModel.uiState.collectAsStateWithLifecycle()
     val coordinates by viewModel.coordinates.collectAsStateWithLifecycle()
+    val favoriteGemState by viewModel.favoriteGems.collectAsStateWithLifecycle()
 
     var showGemInfoSheet by remember {mutableStateOf(false)}
     var showNewGemSheet by remember {mutableStateOf(false)}
@@ -53,13 +57,6 @@ fun DiscoveryMap(
     // Starts true when we were opened for a specific gem, so the user's fix never
     // overrides it. rememberSaveable so rotation doesn't re-center the map.
     var hasCenteredCamera by rememberSaveable { mutableStateOf(gemRequest.gem != null) }
-
-    // null until the first real fix arrives (or while permission/location is unavailable).
-    val userLatLng: LatLng? = coordinates?.let { LatLng(it.latitude, it.longitude) }
-
-    // Only used as the camera's starting position, before we have a fix.
-    val coord: LatLng = userLatLng ?: PLACEHOLDER_COORDINATES
-
 
     val mapProperties = remember {
         MapProperties(
@@ -74,6 +71,11 @@ fun DiscoveryMap(
         )
     }
 
+    // null until the first real fix arrives (or while permission/location is unavailable).
+    val userLatLng: LatLng? = coordinates?.let { LatLng(it.latitude, it.longitude) }
+
+    // Only used as the camera's starting position, before we have a fix.
+    val coord: LatLng = userLatLng ?: PLACEHOLDER_COORDINATES
 
     Box(modifier = Modifier.fillMaxSize()){
 
@@ -81,13 +83,23 @@ fun DiscoveryMap(
             position = CameraPosition.fromLatLngZoom(coord, CAMERA_INIT_ZOOM_FACTOR)
         }
 
+        LifecycleStartEffect(Unit) {
+            viewModel.getFavoriteGems()
+            onStopOrDispose {  }
+        }
+
         GemInfoSheetContent(
             gem = selectedGem,
             {showGemInfoSheet = it},
-            showGemInfoSheet
-        ) {
-            viewModel.addFavoriteGem(it)
-        }
+            showGemInfoSheet,
+            isFavorite = selectedGem in favoriteGemState.data,
+            onFavoritesAdded = {viewModel.addFavoriteGem(it)},
+            onFavoritesRemoved = {
+                viewModel.deleteFavoriteGem(it.removePrefix("places"))
+                // TODO: Change this for M3 since the server will send the deleted gem in the gem response by then
+                viewModel.getFavoriteGems()
+            }
+        )
 
         GemCreationSheet(
             {showNewGemSheet = it},
@@ -118,10 +130,7 @@ fun DiscoveryMap(
                 }
             }
 
-            // Reacts to the user's location. Keyed on userLatLng so it runs again when the
-            // first real fix arrives, which is after the effect above has already run.
-            // (Previously the centering lived in the gemRequest effect, which only ran once,
-            // at first composition, while `coord` was still the placeholder.)
+            // Reacts to the user's location.
             LaunchedEffect(userLatLng) {
                 val target = userLatLng ?: return@LaunchedEffect
 
@@ -134,7 +143,6 @@ fun DiscoveryMap(
                 }
             }
 
-
             userLatLng?.let { position ->
                 Marker(
                     state = rememberUpdatedMarkerState(position),
@@ -142,24 +150,43 @@ fun DiscoveryMap(
                 )
             }
 
-            gems.forEach { gem ->
-                GemMarker(
-                    gem,
-                    onSelectedGemChange = {selectedGem = gem},
-                    onGemSheetVisibilityChange = {showGemInfoSheet = true},
-                    onCameraReposition = {
-                        cameraPositionState.animate(
-                            update=CameraUpdateFactory.newLatLng(gem.coords),
-                            durationMs= CAMERA_PAN_DURATION_MS
-                        )
-                    }
-                )
+            // TODO: Refactor this duplicated logic
+            // NOTE: This logic implies that if either one of nearby gems or favorite gems fails
+            // then nothing gets displayed until the error is resolved
+            if (nearestGemsState.errorMessage != null) {
+                Toast.makeText(LocalContext.current,
+                    "Error: ${nearestGemsState.errorMessage}",
+                    Toast.LENGTH_SHORT
+                    ).show()
+            } else if (favoriteGemState.errorMessage != null) {
+                Toast.makeText(LocalContext.current,
+                    "Error: ${favoriteGemState.errorMessage}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            else {
+                nearestGemsState.data.union(
+                    favoriteGemState.data
+                ).forEach { gem ->
+                    GemMarker(
+                        gem,
+                        onSelectedGemChange = {selectedGem = gem},
+                        onGemSheetVisibilityChange = {showGemInfoSheet = true},
+                        onCameraReposition = {
+                            cameraPositionState.animate(
+                                update=CameraUpdateFactory.newLatLng(gem.coords),
+                                durationMs= CAMERA_PAN_DURATION_MS
+                            )
+                        }
+                    )
+                }
             }
         }
 
-        NewGemButton(Modifier.align(Alignment.BottomStart), onClick = viewModel::onEvent){
+        NewGemButton(Modifier.align(Alignment.BottomStart)){
             showNewGemSheet=true
         }
+
     }
 
 

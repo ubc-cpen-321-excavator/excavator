@@ -43,8 +43,9 @@ class RatingService {
   /**
    * Gives a Gem a rating, or changes the user's earlier one, then rescores the Gem.
    *
-   * The Gem's totals are recounted from all its ratings rather than adjusted, so they stay right
-   * even when two users rate at once (the later recount sees both).
+   * The Gem's totals are recounted from all its ratings rather than adjusted. When two users rate at
+   * once, each rating takes a sequence number after it is stored and before the recount, and only the
+   * totals of the latest one are kept: its recount is the only one sure to include both ratings.
    *
    * @param userId the user's ID (Google `sub`).
    * @param gem Gem name, `places/<place ID>`.
@@ -63,9 +64,11 @@ class RatingService {
     }
 
     await this.repo.set(gem, userId, stars);
+    // Must come after the rating is stored and before the recount; see GemService.applyAppRatings.
+    const ratingSeq = await this.gemService.nextRatingSeq(gem);
     const { count, average } = await this.repo.totals(gem);
 
-    return this.gemService.applyAppRatings(gem, count, average);
+    return this.gemService.applyAppRatings(gem, count, average, ratingSeq);
   }
 
   /**

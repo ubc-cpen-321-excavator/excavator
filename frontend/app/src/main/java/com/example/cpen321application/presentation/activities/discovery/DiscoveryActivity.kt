@@ -33,7 +33,6 @@ class DiscoveryActivity : AuthenticatedActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-
         if (savedInstanceState == null) {
             gemRequest = GemRequest(parseGem(intent))
         }
@@ -77,6 +76,7 @@ private fun parseGem(intent: Intent?): Gem? {
     val extras = intent?.extras ?: return null
     val title = extras.getString(GemExtras.TITLE) ?: return null
     val placesName = extras.getString(GemExtras.PLACES_NAME) ?: return null
+    val score = extras.getDouble(GemExtras.SCORE)
     if (!extras.containsKey(GemExtras.LATITUDE) || !extras.containsKey(GemExtras.LONGITUDE)) return null
 
     return Gem(
@@ -85,7 +85,8 @@ private fun parseGem(intent: Intent?): Gem? {
             extras.getDouble(GemExtras.LATITUDE),
             extras.getDouble(GemExtras.LONGITUDE)
         ),
-        placesName = placesName
+        placesName = placesName,
+        score = score
     )
 }
 

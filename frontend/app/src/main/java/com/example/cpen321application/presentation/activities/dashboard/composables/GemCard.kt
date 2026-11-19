@@ -21,10 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.domain.models.Gem
+import com.example.cpen321application.presentation.TestTags
 import com.example.cpen321application.presentation.activities.navigateToDiscovery
 import com.google.android.gms.maps.model.LatLng
 
@@ -42,6 +44,7 @@ fun GemCard(
     Card(
         modifier = modifier
             .padding(8.dp)
+            .testTag(TestTags.GEM_CARD)
             .clip(MaterialTheme.shapes.medium)
             .combinedClickable(
                 onClick = { navigateToDiscovery(context, gem) },
@@ -76,18 +79,9 @@ fun GemCard(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(4.dp)
+                        .testTag(TestTags.FAVORITE_BADGE)
                 )
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GemCardPreview() {
-    val gem = Gem("Nitobe Memorial Garden", LatLng(49.2663, -123.2599), "places/seed-nitobe-garden")
-    Row {
-        GemCard(gem = gem, context = LocalContext.current)
-        GemCard(gem = gem, context = LocalContext.current, isFavorite = true)
     }
 }

@@ -1,6 +1,5 @@
-package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet
+package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.newgemfilters
 
-import android.util.Log
 import androidx.collection.MutableObjectList
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,12 +13,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cpen321application.presentation.TestTags
 import java.util.Locale
 
-private fun convertToApiFilters(filterList: MutableObjectList<String>): List<String> {
+fun convertToApiFilters(filterList: MutableObjectList<String>): List<String> {
 
     return filterList.asList().map { filter ->
         filter.lowercase(Locale.getDefault()).replace(" ", "_")
@@ -47,17 +48,17 @@ fun NewGemFiltersForm(
 
         Button(
             onClick = { showFilters = !showFilters },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().testTag(TestTags.FILTERS_BUTTON)
         ) { Text(if (!showFilters) "Filters (Tap to expand)" else "Filters") }
 
         GemFilterChoices(showFilters, currentFilters = filterList)
 
         Button(
             onClick = {
-            convertToApiFilters(filterList).toString()
+
             onSubmit(true)
                       },
-            modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            modifier = Modifier.align(Alignment.CenterHorizontally).testTag(TestTags.SUBMIT_BUTTON)) {
             Text("Submit")
         }
 

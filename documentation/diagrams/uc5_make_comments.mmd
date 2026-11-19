@@ -1,0 +1,57 @@
+sequenceDiagram
+  actor U as User
+  participant F as :Frontend
+  participant G as :Gems
+  participant US as :Users
+  participant DB as :Database
+
+  U->>F: open the comments of gem places/{pk}
+  F->>+G: GET /gem/{pk}/comments
+  G->>+DB: does gem places/{pk} exist
+  DB-->>-G: yes, no, or an error
+  opt gem exists
+    G->>+DB: find the gem's comments, oldest first
+    DB-->>-G: comments, or an error
+  end
+  G-->>-F: 200 [comments], 404 "No such Gem.", or 500 "Get comments failed."
+  alt 200 with comments
+    F-->>U: the comments, oldest first
+  else 200 with no comments
+    F-->>U: "No comments yet, be the first"
+  else 404 gem deleted
+    F-->>U: "This gem is no longer available"
+  else 500 database error
+    F-->>U: "Couldn't load comments", with a retry option
+  end
+
+  U->>F: type comment C
+  F->>F: check C
+  alt C is empty or only spaces
+    F-->>U: the "Post" button stays disabled
+  else C is longer than 1000 characters
+    F-->>U: "Comments can be at most 1000 characters", text kept
+  else C is valid
+    U->>F: tap "Post"
+    F->>+G: POST /gem/{pk}/comments { body: C } + login token
+    G->>+US: check the login token
+    US-->>-G: the user, or invalid
+    opt token valid
+      G->>+DB: does gem places/{pk} exist
+      DB-->>-G: yes, no, or an error
+      opt gem exists
+        G->>+DB: store the comment C, with the user and their name
+        DB-->>-G: stored comment, or an error
+      end
+    end
+    G-->>-F: 201 comment, 401 (login invalid or expired), 404 "No such Gem.", or 500 "Add comment failed."
+    alt 201 comment
+      F-->>U: the comment at the bottom of the list, with the user's name
+    else 401 login expired
+      F-->>U: back to the sign-in screen
+    else 404 gem deleted
+      F-->>U: "This gem is no longer available", the comment is not posted
+    else 500 database error
+      F-->>U: "Couldn't post your comment, try again", text kept
+    end
+  end
+  Note over U,DB: If the server can't be reached, the Frontend shows "No connection, try again"

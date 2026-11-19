@@ -39,8 +39,8 @@ favoriteRouter.get('/', asyncHandler(async (req, res) => {
  * POST /user/favorites with JSON body `{ gem: 'places/<place ID>' }`
  *
  * Adds a Gem to the signed-in user's favorites.
- * - 201 `{ gem }`: added.
- * - 200 `{ gem }`: it already was a favorite; nothing changed.
+ * - 201 the Gem (same JSON as `GET /gem`): added.
+ * - 200 the Gem: it already was a favorite; nothing changed.
  * - 400 `{ message: 'Invalid Gem name.' }`: `gem` is missing or not `places/<place ID>`.
  * - 401 `{ message }`: not signed in.
  * - 404 `{ message: 'No such Gem.' }`: no Gem has that name.
@@ -55,8 +55,8 @@ favoriteRouter.post('/', asyncHandler(async (req, res) => {
   }
 
   try {
-    const added = await favoriteService.addFavorite(currentUser(req).id, gem);
-    res.status(added ? 201 : 200).json({ gem });
+    const result = await favoriteService.addFavorite(currentUser(req).id, gem);
+    res.status(result.added ? 201 : 200).json(result.gem);
   } catch (err) {
     if (err instanceof NoSuchGemError) {
       res.status(404).json({ message: 'No such Gem.' });

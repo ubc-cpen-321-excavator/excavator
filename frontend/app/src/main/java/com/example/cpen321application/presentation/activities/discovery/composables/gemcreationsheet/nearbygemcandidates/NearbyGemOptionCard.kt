@@ -1,4 +1,4 @@
-package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet
+package com.example.cpen321application.presentation.activities.discovery.composables.gemcreationsheet.nearbygemcandidates
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -6,10 +6,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.remote.NewGemRequestBody
-import com.example.cpen321application.domain.models.Gem
+import com.example.cpen321application.presentation.TestTags
 
 @Composable
 fun NearbyGemOptionCard(
@@ -18,7 +19,7 @@ fun NearbyGemOptionCard(
 ) {
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(8.dp).testTag(TestTags.CANDIDATE_CARD),
         onClick = {
             onOptionSelect(
                 NewGemRequestBody(gemCandidate.name,

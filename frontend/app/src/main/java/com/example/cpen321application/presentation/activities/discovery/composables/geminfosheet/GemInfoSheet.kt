@@ -21,19 +21,14 @@ import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.CommentCardList
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.comments.NewCommentInput
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
-import java.util.Locale.getDefault
+import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.gemscore.GemScoreBar
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.localrating.LocalRating
-
-private fun removePrefix(s: String, prefix: String): String {
-    return if (s.startsWith(prefix)) {
-        s.substring(prefix.length)
-    } else s
-}
+import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean,
-                        onFavoritesClicked: (String)->Unit) {
+fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean, isFavorite:Boolean = false,
+                        onFavoritesAdded: (String)->Unit, onFavoritesRemoved: (String)->Unit) {
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false,
@@ -48,13 +43,28 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
             Column() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        gem.title.replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() },
+                        gem.title.replaceFirstChar { if (it.isLowerCase()) it.titlecase(LocalLocale.current.platformLocale) else it.toString() },
                         modifier = Modifier.padding(16.dp),
                         fontSize = 20.sp
                     )
                     Spacer(modifier=Modifier.weight(1f))
-                    FavoriteButton { onFavoritesClicked(gem.placesName) }
+                    FavoriteButton (isFavorite) {
+                        if (it) onFavoritesRemoved(
+                            gem.placesName.removePrefix("places/")
+                        ) else onFavoritesAdded(
+                            gem.placesName
+                        )
+                    }
                 }
+
+                // TODO: replace dummy values with the gem's real score once the data is available
+                GemScoreBar(
+                    score = gem.score,
+                    maxScore = 100.0,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
 
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Text(text = "Personal rating", fontSize = 14.sp)
@@ -64,13 +74,13 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                     )
                 }
 
-                CommentCardList(modifier = Modifier.weight(1f), gemID = removePrefix(gem.placesName,"places/"))
+                CommentCardList(modifier = Modifier.weight(1f), gemID = gem.placesName.removePrefix("places/"))
                 NewCommentInput(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
                         .imePadding(),
-                    gemID = removePrefix(gem.placesName,"places/")
+                    gemID = gem.placesName.removePrefix("places/")
                 )
 
             }

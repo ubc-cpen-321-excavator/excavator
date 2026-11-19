@@ -1,13 +1,13 @@
-package com.example.cpen321application.data.mappers
+package com.example.cpen321application.data.mappers.gems
 
-import android.R.attr.name
 import com.example.cpen321application.data.dto.GemDTO
 import com.example.cpen321application.data.dto.Place
+import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.domain.models.Gem
 import com.google.android.gms.maps.model.LatLng
 
 
-class GemMapper : Mapper<Gem, GemDTO>{
+class GemMapper : Mapper<Gem, GemDTO> {
 
     override fun toDTO(domainObject: Gem): GemDTO {
         return GemDTO(
@@ -27,7 +27,8 @@ class GemMapper : Mapper<Gem, GemDTO>{
                 dtoObject.place.latitude,
                 dtoObject.place.longitude
             ),
-            placesName = dtoObject.place.name
+            placesName = dtoObject.place.name,
+            score = dtoObject.score ?: 0.0
         )
     }
 

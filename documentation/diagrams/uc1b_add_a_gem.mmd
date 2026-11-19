@@ -1,0 +1,48 @@
+sequenceDiagram
+  actor U as User
+  participant F as :Frontend
+  participant G as :Gems
+  participant US as :Users
+  participant P as :Google Places API
+  participant DB as :Database
+  participant LF as :Live Feed
+  participant OF as :Frontend (other users)
+
+  Note over U,F: Starts with the place places/{id} picked in the first diagram
+  U->>F: confirm adding places/{id}
+  F->>+G: POST /gem { name: places/{id}, user's location } + login token
+  G->>+US: check the login token
+  US-->>-G: the user, or invalid
+  opt token valid
+    G->>+DB: is places/{id} already a gem
+    DB-->>-G: yes or no
+    opt not a gem yet
+      G->>+P: place details of places/{id}
+      P-->>-G: place (location, type, rating, review count), not found, or error
+      opt place found and within 200 m of the user
+        G->>G: compute the Gem Score
+        G->>+DB: insert the gem, added by the user
+        DB-->>-G: inserted, duplicate, or an error
+        opt inserted
+          G->>+LF: publish the new gem
+          LF-)OF: gem.added (to each app whose area contains it)
+          LF-->>-G: done
+        end
+      end
+    end
+  end
+  G-->>-F: 201 gem, 401 (login invalid or expired), 409 "Gem already exists.", 422 "Too far from place.", 422 "Place does not exist.", 502 "Google Places unavailable.", or 500 "Add Gem failed."
+  alt 201 gem
+    F-->>U: the new gem, with its Gem Score, on the map
+  else 401 login expired
+    F-->>U: back to the sign-in screen
+  else 409 already a gem (or added by someone else at the same moment)
+    F-->>U: "This place is already a gem", map updated
+  else 422 too far
+    F-->>U: "Move closer to the place to add it"
+  else 422 no such place
+    F-->>U: "This place can't be added"
+  else 502 or 500
+    F-->>U: "Couldn't add the gem, try again"
+  end
+  Note over U,OF: If the server can't be reached, the Frontend shows "No connection, try again"

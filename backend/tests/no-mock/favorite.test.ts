@@ -26,14 +26,17 @@ describe('Unmocked: POST /user/favorites', () => {
   // Input: POST { gem: "places/cafe" } signed in, twice
   // Expected status code: 201, then 200
   // Expected behavior: one favorite stored for the signed-in user (the second add changes nothing)
-  // Expected output: { gem: "places/cafe" } both times
+  // Expected output: the Gem both times, as GET /gem returns it
   test('Add, then add again', async () => {
     const first = await request(createApp()).post('/user/favorites').set('Authorization', bearer()).send({ gem: 'places/cafe' });
     const second = await request(createApp()).post('/user/favorites').set('Authorization', bearer()).send({ gem: 'places/cafe' });
 
     expect(first.status).toBe(201);
     expect(second.status).toBe(200);
-    expect(second.body).toEqual({ gem: 'places/cafe' });
+    const gem = await request(createApp()).get('/gem').query({ name: 'places/cafe' });
+    expect(first.body).toEqual(gem.body);
+    expect(second.body).toEqual(gem.body);
+    expect(first.body).toMatchObject({ name: 'places/cafe', place: { name: 'places/cafe' }, photoUrl: '/gem/cafe/photo' });
     expect(await FavoriteModel.countDocuments({ user: TEST_USER_ID, gem: 'places/cafe' })).toBe(1);
   });
 

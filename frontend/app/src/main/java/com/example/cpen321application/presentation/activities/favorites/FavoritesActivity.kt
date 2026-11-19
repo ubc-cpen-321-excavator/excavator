@@ -15,7 +15,7 @@ class FavoritesActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CPEN321ApplicationTheme {
-                FavoritesScreenContent()
+                FavoritesScreen()
             }
         }
     }

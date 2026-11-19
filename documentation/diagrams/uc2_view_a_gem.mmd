@@ -1,0 +1,49 @@
+sequenceDiagram
+  actor U as User
+  participant F as :Frontend
+  participant G as :Gems
+  participant P as :Google Places API
+  participant DB as :Database
+
+  U->>F: open the discovery map
+  F->>+G: GET /gem/within (visible map area)
+  opt map area valid
+    G->>+DB: find the gems in the area, highest Gem Score first
+    DB-->>-G: gems, or an error
+  end
+  G-->>-F: 200 [gems], 400 "Invalid bounds.", or 500 "Get Gems failed."
+  alt 200 gems
+    F-->>U: a marker per gem
+  else 400 area too large (e.g. crosses the date line)
+    F-->>U: "Zoom in to see gems"
+  else 500 database error
+    F-->>U: "Couldn't load gems, try again"
+  end
+
+  U->>F: tap the marker of gem places/{pk}
+  F->>+G: GET /gem?name=places/{pk}
+  G->>+DB: find the gem
+  DB-->>-G: gem, none, or an error
+  G-->>-F: 200 gem, 404 "No such Gem.", or 500 "Get Gem failed."
+  alt 200 gem
+    F-->>U: half-height panel with name, type and Gem Score
+    U->>F: pull the panel up to full screen
+    F->>+G: GET /gem/{pk}/photo
+    G->>+DB: find the gem's photo
+    DB-->>-G: photo name, or none
+    opt the gem has a photo
+      G->>+P: image URL for the photo
+      P-->>-G: short-lived image URL, or error
+    end
+    G-->>-F: 302 redirect to the image, 404 "No photo.", 502 "Google Places unavailable.", or 500 "Get photo failed."
+    alt 302 image
+      F-->>U: photo, type, description, Gem Score and number of ratings
+    else 404, 502 or 500
+      F-->>U: placeholder image, with the other details
+    end
+  else 404 gem deleted since the map loaded
+    F-->>U: "This gem is no longer available", marker removed
+  else 500 database error
+    F-->>U: "Couldn't load this gem, try again"
+  end
+  Note over U,DB: If the server can't be reached, the Frontend shows "No connection, try again"
