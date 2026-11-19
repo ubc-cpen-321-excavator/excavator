@@ -186,20 +186,35 @@ abstract class E2ETestBase {
      * opens half expanded; once it is fully expanded its handle offers "collapse" instead of "expand".
      */
     protected fun expandGemInfoSheet() {
-        val handleOfHalfOpenSheet = SemanticsMatcher.keyIsDefined(SemanticsActions.Expand)
         val distance = device.displayHeight.toFloat()
-        displayed(handleOfHalfOpenSheet).performTouchInput {
+        displayed(handleOfHalfOpenSheet()).performTouchInput {
             swipe(start = center, end = Offset(center.x, center.y - distance), durationMillis = SWIPE_MS)
         }
-        waitUntilGone(handleOfHalfOpenSheet)
-        displayed(SemanticsMatcher.keyIsDefined(SemanticsActions.Collapse))
+        waitUntilGone(handleOfHalfOpenSheet())
+        displayed(handleOfFullyOpenSheet())
     }
 
-    /** Closes the gem info sheet with the Back button. */
+    /**
+     * Closes the gem info sheet with the Back button. Back only takes the sheet down one state at a
+     * time: a fully expanded sheet drops to partially expanded, and only a partially expanded sheet
+     * closes. So Back is pressed once from partially expanded, and twice from fully expanded.
+     */
     protected fun closeGemInfoSheet() {
+        displayed(star())
+        if (firstDisplayed(handleOfFullyOpenSheet()) != null) {
+            device.pressBack()
+            // Wait for the sheet to settle half open (its handle then offers "expand" again).
+            displayed(handleOfHalfOpenSheet())
+        }
         device.pressBack()
         waitUntilGone(star())
     }
+
+    /** The handle of a partially expanded sheet, which offers to expand it. */
+    private fun handleOfHalfOpenSheet(): SemanticsMatcher = SemanticsMatcher.keyIsDefined(SemanticsActions.Expand)
+
+    /** The handle of a fully expanded sheet, which offers to collapse it to partially expanded. */
+    private fun handleOfFullyOpenSheet(): SemanticsMatcher = SemanticsMatcher.keyIsDefined(SemanticsActions.Collapse)
 
     /** The favorite star on the gem info sheet. */
     protected fun star(): SemanticsMatcher = hasContentDescription(appContext.getString(R.string.favorites_description))
