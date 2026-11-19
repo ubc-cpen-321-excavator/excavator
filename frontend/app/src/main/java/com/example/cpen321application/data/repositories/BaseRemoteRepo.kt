@@ -3,6 +3,7 @@ package com.example.cpen321application.data.repositories
 import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.data.remote.error.APIErrorResponse
 import com.google.gson.Gson
+import com.google.gson.JsonParseException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,7 +13,7 @@ import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
 
-abstract class BaseRemoteRepo() {
+abstract class BaseRemoteRepo {
 
     // we'll use this function in all
     // repos to handle api errors.
@@ -32,7 +33,11 @@ abstract class BaseRemoteRepo() {
             errorBody?.charStream()?.use { reader ->
                 Gson().fromJson(reader, APIErrorResponse::class.java)
             }
-        } catch (exception: Exception) {
+        } catch (exception: JsonParseException) {
+            // The error body is not the JSON we expect (Gson's JsonSyntaxException / JsonIOException)
+            null
+        } catch (exception: IOException) {
+            // The error body could not be read
             null
         }
     }

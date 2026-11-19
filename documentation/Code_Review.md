@@ -7,6 +7,7 @@
 | 2026-11-04 | 2.1, 2.2, 2.3, 2.4 | Recorded the commit Codacy analysed and justified each issue it reports. |
 | 2026-11-18 | 2.4 | Moved two "unsafe use of `any`" issues in `findNearbyPlaces` to their new lines after it started leaving out existing gems (commit `20b398c`); same false positive, same justification. |
 | 2026-11-18 | 3.1, 3.2, 3.3 | Added the peer review we performed of TradeOff, the review we received from them, and the changes we made in response (including the fix for the concurrent-ratings fault they found). |
+| 2026-11-18 | 2.1, 2.2, 2.3, 2.4 | Codacy now runs only detekt, ESLint and Trivy, as the course requires. Fixed two detekt issues (an empty default constructor and a catch that was more general than needed) and rewrote the justification of every remaining issue with sources. |
 
 ---
 
@@ -14,7 +15,7 @@
 
 ### 2.1. Commit Hash Where Codacy Ran
 
-`7e2dd810ac358ab7b6e5164353eae6746b4630cb` (the head of `main`, after merging pull request #108 from `develop`, which Codacy analysed; the code Codacy checked is unchanged on `main`)
+`[MAIN COMMIT SHA AFTER THE FINAL MERGE]`
 
 ### 2.2. Unfixed Issues per Codacy Category
 
@@ -26,178 +27,113 @@
 
 ### 2.4. Justifications for Unfixed Issues
 
-The 29 issues Codacy reports are listed below by code pattern. Most are false positives: Codacy runs ESLint without installing our dependencies, so it cannot see their types, and some security patterns match test code whose inputs are constants. The few that are real issues were not fixed because of time constraints, as noted.
+Codacy runs only the three tools the course requires, **detekt** (Kotlin), **ESLint** (TypeScript) and **Trivy**, with the repository's unchanged `detekt.yml` and `.eslintrc.json` (Project Description, section 7). Trivy reports no issues. Every other issue was fixed; the ones left are listed below by code pattern.
 
-- **Code Pattern: Unsafe use of `any` (no-unsafe-argument, no-unsafe-return, no-redundant-type-constituents)**
+- **Code Pattern: Disallow Unsafe Argument Usage (`@typescript-eslint/no-unsafe-argument`), Disallow Unsafe Return of Any Type (`@typescript-eslint/no-unsafe-return`) and `@typescript-eslint/no-redundant-type-constituents`**
+
+  These eight issues are false positives caused by how Codacy runs ESLint, not by our code. All three rules use TypeScript's type information, and they report a value only when its type is `any`. Codacy runs ESLint on the repository without installing our dependencies, so the type declarations of four libraries we use (`@googlemaps/places`, `google-auth-library`, `mongodb-memory-server` and `supertest`) are missing, and TypeScript gives every value that comes from them the type `any`. typescript-eslint documents exactly this behaviour: *"if a type is declared in another file but that file is not included, the type will become `any`, and cause our `no-unsafe-*` rules to report"* ([typescript-eslint, "Typed Linting" troubleshooting](https://typescript-eslint.io/troubleshooting/typed-linting/)). The rules themselves only report values of type `any` ([no-unsafe-argument](https://typescript-eslint.io/rules/no-unsafe-argument), [no-unsafe-return](https://typescript-eslint.io/rules/no-unsafe-return)).
+
+  We verified this two ways. First, our TypeScript type check (`npm run typecheck`, with `"strict": true` in `backend/tsconfig.json`, run by GitHub Actions on every push to `main`) passes, and in strict mode TypeScript rejects any implicit `any`. Second, we ran the same three ESLint rules, with type information, on the same code: with our dependencies installed they report **0** issues; with only the four libraries' type declarations removed, they report exactly these 8 issues on the same lines. With the declarations available, each value has the type given below.
 
   1. **Issue**
 
-     - **Location in Git:** [`backend/src/services/gemService.ts#L658`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/src/services/gemService.ts#L658)
-     - **Justification:** Codacy runs ESLint without installing our dependencies, so the types of `@googlemaps/places` cannot be resolved and everything derived from them becomes `any`. With the dependencies installed, `candidates` is typed `PlaceCandidate[]` (each built by `candidateFromGoogle`, which checks every field Google returns), and `namesIn` takes `string[]`. Our strict `tsc` type check (`npm run typecheck`, run in CI) passes with no `any`.
+     - **Location in Git:** [`backend/src/services/authService.ts#L195`](../backend/src/services/authService.ts#L195) (unsafe argument)
+     - **Justification:** `payload.sub` is declared as `sub: string` in `google-auth-library`'s `TokenPayload`, and line 184 already rejects a payload without it, so a non-empty string is always passed to `new User(...)`. It only looks like `any` because Codacy cannot load `google-auth-library`'s types.
 
   2. **Issue**
 
-     - **Location in Git:** [`backend/src/services/gemService.ts#L658`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/src/services/gemService.ts#L658)
-     - **Justification:** The same line, reported a second time as an unsafe return of the mapped names. Same reason: the type is only `any` because Codacy cannot load `@googlemaps/places`; with it, the value is `string[]`.
+     - **Location in Git:** [`backend/src/services/gemService.ts#L309`](../backend/src/services/gemService.ts#L309) (unsafe argument, and unsafe return)
+     - **Justification:** `candidates` is the list of `PlaceCandidate` objects built by `candidateFromGoogle` from the `@googlemaps/places` search response, so `candidates.map(c => c.name)` is a `string[]`, which is what `namesIn(names: string[])` takes. Both reports on this line come from the response type of `@googlemaps/places`, which Codacy cannot load.
 
   3. **Issue**
 
-     - **Location in Git:** [`backend/src/services/gemService.ts#L283`](https://github.com/ubc-cpen-321-excavator/excavator/blob/20b398c/backend/src/services/gemService.ts#L283)
-     - **Justification:** Same cause, reported as an unsafe argument: `c.name` is a `string` once `@googlemaps/places` is resolved, so `namesIn(candidates.map(c => c.name))` gets the `string[]` it takes. This replaces the issue Codacy reported at the old line 660, which moved when `GET /place/nearby` started leaving out existing gems (pull request #124).
+     - **Location in Git:** [`backend/src/services/gemService.ts#L311`](../backend/src/services/gemService.ts#L311) (unsafe argument, and unsafe return of an "error typed" value)
+     - **Justification:** Same cause: `candidates.filter(c => !gems.has(c.name))` returns a `PlaceCandidate[]`, and `c.name` is a `string`; `gems` is a `Set<string>`. typescript-eslint calls a type it could not resolve an "error typed" value, which is reported the same way as `any` ([typescript-eslint, "Typed Linting" troubleshooting](https://typescript-eslint.io/troubleshooting/typed-linting/)).
 
   4. **Issue**
 
-     - **Location in Git:** [`backend/src/services/gemService.ts#L285`](https://github.com/ubc-cpen-321-excavator/excavator/blob/20b398c/backend/src/services/gemService.ts#L285)
-     - **Justification:** Same cause, reported as an "error typed" return: `candidates.filter(...)` is `PlaceCandidate[]` when the dependency types load, matching the method's declared return type, and `tsc` checks it. This replaces the issue Codacy reported at the old line 660 (pull request #124).
+     - **Location in Git:** [`backend/tests/helpers/db.ts#L21`](../backend/tests/helpers/db.ts#L21) (redundant type constituent)
+     - **Justification:** Test helper. `MongoMemoryServer | undefined` is a real union (`undefined` before `startDb` and after `stopDb`); the rule reports it only because `MongoMemoryServer`, from `mongodb-memory-server`, becomes `any` without its type declarations, and `any` absorbs the rest of a union.
 
   5. **Issue**
 
-     - **Location in Git:** [`backend/src/services/authService.ts#L195`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/src/services/authService.ts#L195)
-     - **Justification:** Codacy cannot load the `google-auth-library` types, so `payload.sub` looks like `any`. It is typed `string` in the library, and line 185 already rejects a payload without `sub`, so a non-empty string is always passed. The Google name fields, which really are untyped, are read as `unknown` and checked with `nonEmpty`.
+     - **Location in Git:** [`backend/tests/helpers/db.ts#L29`](../backend/tests/helpers/db.ts#L29) (unsafe argument)
+     - **Justification:** Test helper. `MongoMemoryServer.getUri()` is declared to return a `string` in `mongodb-memory-server`, which is what `mongoose.connect` takes.
 
   6. **Issue**
 
-     - **Location in Git:** [`backend/tests/helpers/db.ts#L21`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/helpers/db.ts#L21)
-     - **Justification:** Test helper. `MongoMemoryServer` is only seen as `any` because Codacy does not install `mongodb-memory-server`; with it installed the union `MongoMemoryServer | undefined` is meaningful (undefined before `startDb` and after `stopDb`) and `tsc` accepts it.
+     - **Location in Git:** [`backend/tests/no-mock/rating.test.ts#L66`](../backend/tests/no-mock/rating.test.ts#L66) (unsafe return)
+     - **Justification:** Test code. `.then(response => response)` returns `supertest`'s `Response` object unchanged; it is written this way so the first request is sent right away, while the second one is sent during the test's pause. It only looks like `any` because Codacy cannot load `supertest`'s types.
 
-  7. **Issue**
+- **Code Pattern: Avoid Comments for Private Functions (detekt `CommentOverPrivateFunction`) and Avoid Comments Over Private Properties by Using Self-Explanatory Names (detekt `CommentOverPrivateProperty`)**
 
-     - **Location in Git:** [`backend/tests/helpers/db.ts#L29`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/helpers/db.ts#L29)
-     - **Justification:** Test helper, same cause: `getUri()` returns `string` in `mongodb-memory-server`, which Codacy does not load.
-
-
-- **Code Pattern: NoSQL injection: untrusted input in `findOne()`**
+  detekt's documentation explains that these rules report a comment on a private function or property because *"it probably explains the functionality"*, which could mean the name is not self-explanatory, and lists both rules as **not active by default** ([detekt, Comments rule set](https://detekt.dev/docs/rules/comments), `DocumentationOverPrivateFunction` and `DocumentationOverPrivateProperty`). The comments below do not explain *what* the function or property does: each one's name already says that. They record *why* it exists or a constraint a name cannot carry, such as thread safety, a library's behaviour or a lifecycle rule, which is information no name could hold.
 
   1. **Issue**
 
-     - **Location in Git:** [`backend/tests/no-mock/profile.test.ts#L45`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/no-mock/profile.test.ts#L45)
-     - **Justification:** False positive in a test. The query value is the constant `TEST_USER_ID` from `tests/helpers/auth.ts`, not user input, and the query runs against a throwaway in-memory MongoDB.
+     - **Location in Git:** [`DashboardLiveUpdatesClient.kt#L118`](../frontend/app/src/main/java/com/example/cpen321application/data/remote/websocket/DashboardLiveUpdatesClient.kt#L118) (`isComplete`)
+     - **Justification:** The comment explains why the check is needed at all: Gson ignores Kotlin's nullability, so fields declared non-null can still be null at runtime.
 
   2. **Issue**
 
-     - **Location in Git:** [`backend/tests/no-mock/profile.test.ts#L51`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/no-mock/profile.test.ts#L51)
-     - **Justification:** Same as above: the constant `TEST_USER_ID` in a test.
+     - **Location in Git:** [`DashboardLiveUpdatesClient.kt#L148`](../frontend/app/src/main/java/com/example/cpen321application/data/remote/websocket/DashboardLiveUpdatesClient.kt#L148) (`clearIfCurrent`)
+     - **Justification:** The comment records a thread-safety rule: callbacks from an old socket must not clear the current one.
 
   3. **Issue**
 
-     - **Location in Git:** [`backend/tests/no-mock/profile.test.ts#L64`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/no-mock/profile.test.ts#L64)
-     - **Justification:** Same as above: the constant `TEST_USER_ID` in a test.
+     - **Location in Git:** [`GemViewModel.kt#L278`](../frontend/app/src/main/java/com/example/cpen321application/presentation/viewmodels/GemViewModel.kt#L278) (`observeLiveUpdates`)
+     - **Justification:** The comment explains a design choice: the live feed only runs while a screen observes it, with a grace period so a configuration change does not reconnect it.
 
   4. **Issue**
 
-     - **Location in Git:** [`backend/tests/no-mock/comment.test.ts#L23`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/no-mock/comment.test.ts#L23)
-     - **Justification:** False positive in a test. This line only sends the test's own request; Codacy marks it as the "source" for the query on line 27.
+     - **Location in Git:** [`GemViewModel.kt#L290`](../frontend/app/src/main/java/com/example/cpen321application/presentation/viewmodels/GemViewModel.kt#L290) (`runLiveUpdates`)
+     - **Justification:** The comment explains the function's lifecycle: it suspends while the feed is live, and cancelling it closes the socket.
 
   5. **Issue**
 
-     - **Location in Git:** [`backend/tests/no-mock/comment.test.ts#L27`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/no-mock/comment.test.ts#L27)
-     - **Justification:** False positive in a test. `response.body.id` is the comment ID our own server returned to the test a line earlier, used to check that the comment was stored; no outside input reaches the query. In the production code, every value used in a query is validated first (for example, place IDs must match `places/<id>`).
-
-
-- **Code Pattern: "This looks like a JavaScript template string" (no-template-curly-in-string)**
-
-  1. **Issue**
-
-     - **Location in Git:** [`backend/tests/helpers/auth.ts#L18`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/helpers/auth.ts#L18)
-     - **Justification:** False positive. This rule is for `${...}` written inside ordinary quotes by mistake; here it is a real template literal (backticks) that builds the `Authorization: Bearer <token>` header for tests, and it produces the intended value.
-
-  2. **Issue**
-
-     - **Location in Git:** [`backend/tests/no-mock/auth.test.ts#L67`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/no-mock/auth.test.ts#L67)
-     - **Justification:** Same false positive: a real template literal that builds a test's `Authorization` header.
-
-  3. **Issue**
-
-     - **Location in Git:** [`backend/tests/no-mock/auth.test.ts#L78`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/tests/no-mock/auth.test.ts#L78)
-     - **Justification:** Same false positive: a real template literal that builds a test's `Authorization` header.
-
-
-- **Code Pattern: Open redirect: untrusted input in `redirect()`**
-
-  1. **Issue**
-
-     - **Location in Git:** [`backend/src/controllers/gemController.ts#L104`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/backend/src/controllers/gemController.ts#L104)
-     - **Justification:** False positive. This is not a redirect: it sets the `Location` header of a `201 Created` response to the new Gem's own path on our API, as HTTP recommends, and clients do not follow it. The value is built by the server: the path is fixed and `gem.name` is a validated Google place ID (`places/<id>`), additionally passed through `encodeURIComponent`, so it cannot point to another site.
-
-
-- **Code Pattern: Comment on a private property or function instead of a self-explanatory name**
-
-  1. **Issue**
-
-     - **Location in Git:** [`utils/location/LocationSettingsPrompt.kt#L163`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/utils/location/LocationSettingsPrompt.kt#L163)
-     - **Justification:** The name already says what it is (the location-settings request). The comment explains *why* balanced priority is used instead of high accuracy, which a name cannot carry, so we kept it.
-
-  2. **Issue**
-
-     - **Location in Git:** [`presentation/viewmodels/GemViewModel.kt#L74`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/presentation/viewmodels/GemViewModel.kt#L74)
-     - **Justification:** The name says what it is; the comment adds that live updates wait for this flag, which explains how the class works, not what the property is.
-
-  3. **Issue**
-
-     - **Location in Git:** [`presentation/viewmodels/GemViewModel.kt#L196`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/presentation/viewmodels/GemViewModel.kt#L196)
-     - **Justification:** The name describes the function; the comment explains the design choice (the feed runs only while the screen observes it, with a grace period across configuration changes).
-
-  4. **Issue**
-
-     - **Location in Git:** [`presentation/viewmodels/GemViewModel.kt#L208`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/presentation/viewmodels/GemViewModel.kt#L208)
-     - **Justification:** The name describes the function; the comment explains its lifecycle (it suspends while live, and cancelling it closes the socket), which a name cannot express.
-
-  5. **Issue**
-
-     - **Location in Git:** [`presentation/viewmodels/GemViewModel.kt#L253`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/presentation/viewmodels/GemViewModel.kt#L253)
-     - **Justification:** The name says what it checks; the comment explains why comparing `placesName` is enough (it is the Gem's primary key).
+     - **Location in Git:** [`GemViewModel.kt#L337`](../frontend/app/src/main/java/com/example/cpen321application/presentation/viewmodels/GemViewModel.kt#L337) (`sameGemAs`)
+     - **Justification:** The comment explains why comparing `placesName` is enough: it is the gem's primary key.
 
   6. **Issue**
 
-     - **Location in Git:** [`data/remote/websocket/DashboardLiveUpdatesClient.kt#L46`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/data/remote/websocket/DashboardLiveUpdatesClient.kt#L46)
-     - **Justification:** The name says what it stores; the comment explains why it is kept (the server forgets the subscription when the socket closes, so it is re-sent on reconnect).
+     - **Location in Git:** [`DashboardLiveUpdatesClient.kt#L45`](../frontend/app/src/main/java/com/example/cpen321application/data/remote/websocket/DashboardLiveUpdatesClient.kt#L45) (`subscription`)
+     - **Justification:** The comment explains why the subscription is kept: the server forgets it when the socket closes, so it is sent again on every reconnect.
 
   7. **Issue**
 
-     - **Location in Git:** [`data/remote/websocket/DashboardLiveUpdatesClient.kt#L119`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/data/remote/websocket/DashboardLiveUpdatesClient.kt#L119)
-     - **Justification:** The name says what it checks; the comment explains why the check is needed at all (Gson ignores Kotlin nullability, so "non-null" fields can be null at runtime).
+     - **Location in Git:** [`GemViewModel.kt#L77`](../frontend/app/src/main/java/com/example/cpen321application/presentation/viewmodels/GemViewModel.kt#L77) (`_newestLoaded`)
+     - **Justification:** The comment records an ordering rule: live updates wait until the first full load of the newest gems has arrived.
 
   8. **Issue**
 
-     - **Location in Git:** [`data/remote/websocket/DashboardLiveUpdatesClient.kt#L149`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/data/remote/websocket/DashboardLiveUpdatesClient.kt#L149)
-     - **Justification:** The name says what it does; the comment explains the thread-safety reason (callbacks from an old socket must be ignored).
+     - **Location in Git:** [`LocationSettingsPrompt.kt#L163`](../frontend/app/src/main/java/com/example/cpen321application/utils/location/LocationSettingsPrompt.kt#L163) (`SETTINGS_REQUEST`)
+     - **Justification:** The comment explains why balanced priority is used rather than high accuracy: high accuracy would also prompt the user about GPS modes the app does not need.
 
-
-- **Code Pattern: Caught exception is too generic**
-
-  1. **Issue**
-
-     - **Location in Git:** [`data/remote/websocket/DashboardLiveUpdatesClient.kt#L112`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/data/remote/websocket/DashboardLiveUpdatesClient.kt#L112)
-     - **Justification:** Deliberate. This parses messages from the network, and a malformed message can throw several unrelated exceptions (`JsonSyntaxException`, `IllegalStateException`, `UnsupportedOperationException`, `ClassCastException`, `NullPointerException`). Any of them means the same thing: drop the message, log it, and keep the live feed running, instead of crashing the socket listener.
-
-
-- **Code Pattern: Thrown exception is too generic**
+- **Code Pattern: Avoid Catching Too Generic Exceptions (detekt `TooGenericExceptionCaught`)**
 
   1. **Issue**
 
-     - **Location in Git:** [`data/repositories/CommentRepositoryImpl.kt#L27`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/data/repositories/CommentRepositoryImpl.kt#L27)
-     - **Justification:** Not fixed because of time constraints. The code already has a TODO to replace it with a specific error type that carries the HTTP status.
+     - **Location in Git:** [`DashboardLiveUpdatesClient.kt#L111`](../frontend/app/src/main/java/com/example/cpen321application/data/remote/websocket/DashboardLiveUpdatesClient.kt#L111) (`parseEvent`)
+     - **Justification:** This parses messages that arrive from the network, and a malformed message can fail in several unrelated ways: Gson's `JsonParser.parseString` throws `JsonParseException` or `JsonSyntaxException` for invalid JSON ([Gson Javadoc, `JsonParser`](https://javadoc.io/static/com.google.code.gson/gson/2.10.1/com.google.gson/com/google/gson/JsonParser.html)), and reading a field of the wrong type or a missing field throws other runtime exceptions. All of them mean the same thing, a message we cannot use, and the code handles them the same way: it logs the message and drops it, so one bad message cannot stop the live feed. Listing each exception separately would repeat the same handling.
 
   2. **Issue**
 
-     - **Location in Git:** [`data/repositories/GemRepositoryImpl.kt#L44`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/data/repositories/GemRepositoryImpl.kt#L44)
-     - **Justification:** Not fixed because of time constraints. Same TODO as above.
+     - **Location in Git:** [`BaseRemoteRepo.kt#L57`](../frontend/app/src/main/java/com/example/cpen321application/data/repositories/BaseRemoteRepo.kt#L57) (`callAndCatch`)
+     - **Justification:** This is the last of three handlers around every request the app makes: network failures (`IOException`) and HTTP errors (`HttpException`) are caught specifically just above, and this one turns anything unexpected (for example a response the mapper cannot convert) into an error the screen shows, instead of crashing the app. It does not stop coroutine cancellation from propagating: the call runs inside `withContext(Dispatchers.IO)`, which has a *"prompt cancellation guarantee"*: if the caller was cancelled, it *"discards the result of withContext and throws a CancellationException"* ([kotlinx.coroutines, `withContext`](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-context.html)).
 
-
-- **Code Pattern: Function is too long**
-
-  1. **Issue**
-
-     - **Location in Git:** [`presentation/activities/dashboard/DashboardActivity.kt#L39`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/presentation/activities/dashboard/DashboardActivity.kt#L39)
-     - **Justification:** Not fixed because of time constraints. `onCreate` is 71 lines against a limit of 60; most of it is the location permission and location-off dialogs, which could be moved into their own composable.
-
-
-- **Code Pattern: Labeled expressions increase complexity**
+- **Code Pattern: Labeled expressions (detekt `LabeledExpression`)**
 
   1. **Issue**
 
-     - **Location in Git:** [`presentation/activities/discovery/composables/DiscoveryMap.kt#L126`](https://github.com/ubc-cpen-321-excavator/excavator/blob/7e2dd810ac358ab7b6e5164353eae6746b4630cb/frontend/app/src/main/java/com/example/cpen321application/presentation/activities/discovery/composables/DiscoveryMap.kt#L126)
-     - **Justification:** `return@LaunchedEffect` is the standard Kotlin way to leave a lambda early when there is no location yet. Removing the label means wrapping the rest of the effect in an `if` or `let`, which adds nesting instead of reducing it.
+     - **Location in Git:** [`DiscoveryMap.kt#L135`](../frontend/app/src/main/java/com/example/cpen321application/presentation/activities/discovery/composables/DiscoveryMap.kt#L135)
+     - **Justification:** `return@LaunchedEffect` leaves the effect early while the user's location is not known yet. Returning to the label of the lambda is the way Kotlin's documentation gives for returning from a lambda, *"label it and qualify the `return`"*, with implicit labels named after the function the lambda is passed to ([Kotlin, Returns and jumps](https://kotlinlang.org/docs/returns.html), "Return to labels"). Without the label, the rest of the effect would have to be nested inside an `if`, which is the extra complexity the rule is meant to prevent.
+
+- **Code Pattern: Long parameter list (detekt `LongParameterList`)**
+
+  1. **Issue**
+
+     - **Location in Git:** [`GemViewModel.kt#L52`](../frontend/app/src/main/java/com/example/cpen321application/presentation/viewmodels/GemViewModel.kt#L52) (`GemViewModel` constructor)
+     - **Justification:** The constructor is never called by our code: it is annotated `@Inject` and Hilt creates the view model, passing each parameter itself ([Android, Dependency injection with Hilt](https://developer.android.com/training/dependency-injection/hilt-android)). Its parameters are one use case per action of the screen (load nearby gems, load the newest gems, add a gem, list the places to add, and three for favorites), the live feed client and a mapper. Grouping them into a holder object would only hide the same dependencies behind another class.
 
 ---
 
