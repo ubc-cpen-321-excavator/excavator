@@ -27,6 +27,7 @@ import com.example.cpen321application.presentation.activities.discovery.composab
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.GemInfoSheetContent
 import com.example.cpen321application.presentation.activities.discovery.composables.gemmarker.GemMarker
 import com.example.cpen321application.presentation.activities.discovery.composables.newgembutton.NewGemButton
+import com.example.cpen321application.presentation.activities.discovery.composables.recenterbutton.RecenterButton
 import com.example.cpen321application.presentation.viewmodels.GemViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -185,6 +186,13 @@ fun DiscoveryMap(
 
         NewGemButton(Modifier.align(Alignment.BottomStart)){
             showNewGemSheet=true
+        }
+
+        RecenterButton(Modifier.align(Alignment.TopEnd)) {
+            cameraPositionState.animate(
+                update = CameraUpdateFactory.newLatLngZoom(coord, CAMERA_INIT_ZOOM_FACTOR),
+                durationMs = CAMERA_PAN_DURATION_MS
+            )
         }
 
     }
