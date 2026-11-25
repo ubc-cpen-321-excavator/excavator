@@ -3,7 +3,6 @@ package com.example.cpen321application.presentation.activities.dashboard.composa
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,17 +19,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.TestTags
 import com.example.cpen321application.presentation.activities.navigateToDiscovery
 import com.google.android.gms.maps.model.LatLng
 
 private val FavoriteGold = Color(0xFFFFC107)
+
+// Placeholder image shown on every gem card until the real per-gem image URL is wired up.
+private const val PLACEHOLDER_GEM_IMAGE_URL =
+    "https://www.xtrafondos.com/thumbs/vertical/webp/1_14654.webp"
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -57,11 +62,11 @@ fun GemCard(
                 modifier = Modifier.padding(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // TODO: replace with AsyncImage when Gem has an image field and Coil is added
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .background(Color.LightGray)
+                AsyncImage(
+                    model = PLACEHOLDER_GEM_IMAGE_URL,
+                    contentDescription = gem.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(96.dp)
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -84,4 +89,24 @@ fun GemCard(
             }
         }
     }
+}
+
+private val previewGem = Gem(
+    title = "Wreck Beach Sunset",
+    coords = LatLng(0.0, 0.0),
+    placesName = "Wreck Beach",
+    score = 4.5
+)
+
+// AsyncImage does not load network images in previews, so the image area renders empty.
+@Preview(showBackground = true)
+@Composable
+fun GemCardPreview() {
+    GemCard(gem = previewGem, context = LocalContext.current)
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GemCardFavoritePreview() {
+    GemCard(gem = previewGem, context = LocalContext.current, isFavorite = true)
 }
