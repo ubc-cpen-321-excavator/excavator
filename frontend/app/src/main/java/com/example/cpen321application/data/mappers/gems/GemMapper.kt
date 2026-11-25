@@ -28,7 +28,8 @@ class GemMapper : Mapper<Gem, GemDTO> {
                 dtoObject.place.longitude
             ),
             placesName = dtoObject.place.name,
-            score = dtoObject.score ?: 0.0
+            score = dtoObject.score ?: 0.0,
+            localRating = dtoObject.ratingAverage ?: 0.0
         )
     }
 

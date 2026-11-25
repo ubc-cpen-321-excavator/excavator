@@ -7,5 +7,6 @@ data class Gem (
     val title: String,
     val coords: LatLng,
     val placesName: String,
-    val score: Double
+    val score: Double,
+    val localRating: Double
 )

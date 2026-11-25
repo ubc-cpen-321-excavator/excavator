@@ -28,11 +28,14 @@ import androidx.compose.ui.platform.LocalLocale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean, isFavorite:Boolean = false,
-                        onFavoritesAdded: (String)->Unit, onFavoritesRemoved: (String)->Unit) {
+                        onFavoritesAdded: (String)->Unit, onFavoritesRemoved: (String)->Unit,
+                        onRatingSubmitted: ()->Unit) {
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false,
     )
+
+
 
     if (showBottomSheet) {
         ModalBottomSheet(
@@ -69,8 +72,8 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Text(text = "Personal rating", fontSize = 14.sp)
                     LocalRating(
-                        initialRating = null,
-                        onRatingSelected = { rating -> /* TODO: API call by Filip */ }
+                        initialRating = gem.localRating.toFloat(),
+                        onRatingSubmit = {},
                     )
                 }
 

@@ -3,12 +3,16 @@ package com.example.cpen321application.presentation.activities.discovery.composa
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -41,59 +45,72 @@ fun LocalRating(
     modifier: Modifier = Modifier,
     initialRating: Float? = null,
     starSize: Dp = 40.dp,
-    onRatingSelected: (Float) -> Unit = {} // called when the finger is released
+    onRatingSubmit: () -> Unit,
 ) {
     var rating by remember { mutableFloatStateOf(roundToHalfStar(initialRating)) }
+    var editingRating by remember {mutableStateOf(false)}
+
     LaunchedEffect(initialRating) { rating = roundToHalfStar(initialRating) }
 
-    val currentOnRatingSelected by rememberUpdatedState(onRatingSelected)
     val filledColor = Color(0xFFFFC107)
     val outlineColor = MaterialTheme.colorScheme.outline
 
-    Canvas(
-        modifier = modifier
-            .size(width = starSize * STAR_COUNT, height = starSize)
-            .semantics { contentDescription = "Rating: $rating out of 5 stars" }
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val starWidthPx = size.width / STAR_COUNT.toFloat()
+    Column (modifier = modifier){
+        Canvas(
+            modifier = modifier
+                .size(width = starSize * STAR_COUNT, height = starSize)
+                .semantics { contentDescription = "Rating: $rating out of 5 stars" }
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val starWidthPx = size.width / STAR_COUNT.toFloat()
 
-                    fun ratingAt(x: Float): Float =
-                        (ceil(x / starWidthPx * 2f) / 2f).coerceIn(0f, STAR_COUNT.toFloat())
+                        fun ratingAt(x: Float): Float =
+                            (ceil(x / starWidthPx * 2f) / 2f).coerceIn(0f, STAR_COUNT.toFloat())
 
-                    val down = awaitFirstDown()
-                    rating = ratingAt(down.position.x)
-                    down.consume()
+                        val down = awaitFirstDown()
+                        rating = ratingAt(down.position.x)
+                        down.consume()
 
-                    do {
-                        val event = awaitPointerEvent()
-                        event.changes.firstOrNull()?.let { change ->
-                            if (change.pressed) {
-                                rating = ratingAt(change.position.x)
-                                change.consume()
+                        do {
+                            val event = awaitPointerEvent()
+                            event.changes.firstOrNull()?.let { change ->
+                                if (change.pressed) {
+                                    rating = ratingAt(change.position.x)
+                                    change.consume()
+                                }
                             }
-                        }
-                    } while (event.changes.any { it.pressed })
+                        } while (event.changes.any { it.pressed })
 
-                    // Finger released
-                    currentOnRatingSelected(rating)
+                        // Finger released
+                        editingRating = true
+                    }
                 }
-            }
-    ) {
-        val starPx = size.width / STAR_COUNT
-        for (i in 0 until STAR_COUNT) {
-            val left = i * starPx
-            val path = starPath(cx = left + starPx / 2f, cy = size.height / 2f, outer = starPx * 0.45f)
-            val fillFraction = (rating - i).coerceIn(0f, 1f)
+        ) {
+            val starPx = size.width / STAR_COUNT
+            for (i in 0 until STAR_COUNT) {
+                val left = i * starPx
+                val path = starPath(cx = left + starPx / 2f, cy = size.height / 2f, outer = starPx * 0.45f)
+                val fillFraction = (rating - i).coerceIn(0f, 1f)
 
-            if (fillFraction > 0f) {
-                clipRect(left = left, top = 0f, right = left + starPx * fillFraction, bottom = size.height) {
-                    drawPath(path, filledColor)
+                if (fillFraction > 0f) {
+                    clipRect(left = left, top = 0f, right = left + starPx * fillFraction, bottom = size.height) {
+                        drawPath(path, filledColor)
+                    }
                 }
+                drawPath(path, outlineColor, style = Stroke(width = 3f))
             }
-            drawPath(path, outlineColor, style = Stroke(width = 3f))
         }
     }
+
+
+    if (editingRating) {
+        GemRatingOptions(
+            modifier = modifier,
+            onRatingSubmit = onRatingSubmit,
+            onRatingCancel = {editingRating = false}
+        )
+    }
+
 }
 
 private fun starPath(cx: Float, cy: Float, outer: Float): Path {
@@ -112,5 +129,5 @@ private fun starPath(cx: Float, cy: Float, outer: Float): Path {
 @Preview(showBackground = true)
 @Composable
 fun LocalRatingPreview() {
-    LocalRating(initialRating = 3.3f) // shows 3.5 stars
+    LocalRating(initialRating = 3.3f, onRatingSubmit = {})
 }

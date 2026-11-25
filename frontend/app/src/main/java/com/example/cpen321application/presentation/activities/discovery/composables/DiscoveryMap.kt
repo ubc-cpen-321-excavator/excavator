@@ -99,6 +99,9 @@ fun DiscoveryMap(
                 viewModel.deleteFavoriteGem(it.removePrefix("places"))
                 // TODO: Change this for M3 since the server will send the deleted gem in the gem response by then
                 viewModel.getFavoriteGems()
+            },
+            onRatingSubmitted = {
+
             }
         )
 
@@ -190,7 +193,7 @@ fun DiscoveryMap(
 
         RecenterButton(Modifier.align(Alignment.TopEnd)) {
             cameraPositionState.animate(
-                update = CameraUpdateFactory.newLatLngZoom(coord, CAMERA_INIT_ZOOM_FACTOR),
+                update = CameraUpdateFactory.newLatLngZoom(userLatLng ?: coord, CAMERA_INIT_ZOOM_FACTOR),
                 durationMs = CAMERA_PAN_DURATION_MS
             )
         }

@@ -17,7 +17,8 @@ class Constants {
             title = "Placeholder",
             coords = LatLng(1.0, 1.0),
             placesName = "Placeholder places name",
-            score = 50.0
+            score = 50.0,
+            localRating = 2.5
         )
 
     }
