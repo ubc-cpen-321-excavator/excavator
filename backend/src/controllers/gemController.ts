@@ -6,6 +6,7 @@ import GemService, {
   GEM_NEARBY_RADIUS_MAX_M,
   GEM_PHOTO_WIDTH_DEFAULT_PX,
   GEM_PHOTO_WIDTH_MAX_PX,
+  NoSuchGemError,
   GemExistsError,
   InvalidPlaceError,
   PlacesUnavailableError,
@@ -127,6 +128,40 @@ gemRouter.post('/', authService.reqJwt, asyncHandler(async (req, res) => {
 
     logError('Add Gem failed', err);
     res.status(500).json({ message: 'Add Gem failed.' });
+  }
+}));
+
+/**
+ * DELETE /gem { name: 'place/<place ID>' }
+ *
+ * Deletes the Gem if user created the Gem.
+ * - 204
+ */
+gemRouter.delete('/', authService.reqJwt, asyncHandler(async (req, res) => {
+  // name valid?
+  // gem exists?
+  // user created gem?
+  // delete
+  const { name } = req.body;
+  if (!isValidGemName(name)) {
+    res.status(400).json({ message: 'Invalid place name.' });
+    return;
+  }
+
+  try {
+    const gem = await gemService.getGem(name);
+    if (gem?.addedBy !== req.user?.id) {
+      res.status(403).json({ message: 'Not creator of the Gem.' });
+      return;
+    }
+    gemService.deleteGem(name);
+    res.status(204).send();
+  } catch (err) {
+    if (err instanceof NoSuchGemError) {
+      res.status(404).json({ message: 'No such Gem.' });
+      return;
+    }
+    res.status(500).json({ message: 'Unhandled error.' })
   }
 }));
 
@@ -323,7 +358,7 @@ gemRouter.get('/:pk/photo', asyncHandler(async (req: Request<{ pk: string }>, re
 }));
 
 // Other methods on these paths
-gemRouter.all('/', methodNotAllowed(['GET', 'POST']));
+gemRouter.all('/', methodNotAllowed(['GET', 'POST', 'DELETE']));
 gemRouter.all('/nearby', methodNotAllowed(['GET']));
 gemRouter.all('/within', methodNotAllowed(['GET']));
 gemRouter.all('/newest', methodNotAllowed(['GET']));

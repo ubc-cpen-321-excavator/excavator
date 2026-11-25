@@ -2,7 +2,7 @@ import { GemModel, type GemDoc, type GemInput } from "../models/gemModel";
 import { definedOnly, nonEmpty, orUndefined } from "../utils/defined";
 import { type Bounds, type LatLng } from "../utils/geo";
 import { Gem, Place } from "./gem";
-import { GemExistsError } from "./gemErrors";
+import { GemExistsError, NoSuchGemError } from "./gemErrors";
 
 /** Earth's radius in metres, as MongoDB uses to turn a `$centerSphere` radius into radians. */
 const EARTH_RADIUS_M = 6_378_100;
@@ -109,6 +109,16 @@ export class GemRepo {
       }
       throw err;
     }
+  }
+
+  /**
+   * Deletes a Gem matching the name.
+   *
+   * @param name
+   * @throws the database error
+   */
+  async delete(name: string): Promise<void> {
+    await GemModel.deleteOne({ name: { $eq: name } });
   }
 
   /**

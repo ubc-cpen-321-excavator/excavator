@@ -188,6 +188,26 @@ class GemService {
   }
 
   /**
+   * Deletes a Gem matching the name.
+   *
+   * @param name
+   * @throws InvalidPlaceError
+   * @throws NoSuchGemError
+   * @throws the database error
+   */
+  async deleteGem(name: string): Promise<void> {
+    if (!isValidGemName(name)) {
+      throw new InvalidPlaceError('Invalid place name.');
+    }
+
+    if (!await this.repo.has(name)) {
+      throw new NoSuchGemError('No such Gem.');
+    }
+
+    await this.repo.delete(name);
+  }
+
+  /**
    * Recomputes and stores a Gem's GemScore from its stored inputs.
    *
    * @param name Gem name, `places/<place ID>`.
