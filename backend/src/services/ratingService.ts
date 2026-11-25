@@ -8,7 +8,7 @@ import GemService, { NoSuchGemError, type Gem } from "./gemService";
  * @returns `true` if it is a whole number from 1 to 5.
  */
 export function isValidStars(stars: unknown): stars is number {
-  return typeof stars === 'number' && Number.isInteger(stars) && stars >= MIN_STARS && stars <= MAX_STARS;
+  return typeof stars === 'number' && (stars % 0.5 == 0) && stars >= MIN_STARS && stars <= MAX_STARS;
 }
 
 /** Thrown when `stars` fails `isValidStars`. The client's fault (400). */
