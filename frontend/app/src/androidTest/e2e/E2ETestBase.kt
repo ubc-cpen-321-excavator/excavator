@@ -81,6 +81,19 @@ abstract class E2ETestBase {
      */
     @After
     fun closeApp() {
+        finishAllActivities()
+    }
+
+    /**
+     * Closes the whole app, as [closeApp] does, then opens it again on the Dashboard. Every screen and
+     * its ViewModel is created again, so anything shown afterwards was loaded from the backend.
+     */
+    protected fun relaunchApp() {
+        finishAllActivities()
+        launchDashboard()
+    }
+
+    private fun finishAllActivities() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.runOnMainSync { liveActivities().forEach { it.finish() } }
         val deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS
