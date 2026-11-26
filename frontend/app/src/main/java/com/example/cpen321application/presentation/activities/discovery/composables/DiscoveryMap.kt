@@ -93,13 +93,10 @@ fun DiscoveryMap(
             gem = selectedGem,
             {showGemInfoSheet = it},
             showGemInfoSheet,
-            isFavorite = selectedGem in favoriteGemState.data,
+            // Match by place id: the score in the favorites list can differ from the map's copy
+            isFavorite = favoriteGemState.data.any { it.placesName == selectedGem.placesName },
             onFavoritesAdded = {viewModel.addFavoriteGem(it)},
-            onFavoritesRemoved = {
-                viewModel.deleteFavoriteGem(it.removePrefix("places"))
-                // TODO: Change this for M3 since the server will send the deleted gem in the gem response by then
-                viewModel.getFavoriteGems()
-            }
+            onFavoritesRemoved = {viewModel.deleteFavoriteGem(it)}
         )
 
         GemCreationSheet(

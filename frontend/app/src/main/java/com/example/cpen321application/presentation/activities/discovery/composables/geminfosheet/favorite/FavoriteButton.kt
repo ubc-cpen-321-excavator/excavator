@@ -22,7 +22,8 @@ fun FavoriteButton(
     onFavoritesClicked: (Boolean) -> Unit
 ) {
 
-    var checked by remember {mutableStateOf(isFavorites)}
+    // Keyed so the star follows the real favorite state when it changes
+    var checked by remember(isFavorites) {mutableStateOf(isFavorites)}
 
     IconButton(
         onClick = {
