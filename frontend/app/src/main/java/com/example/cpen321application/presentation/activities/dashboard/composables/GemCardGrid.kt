@@ -12,9 +12,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.domain.models.Gem
 import com.example.cpen321application.presentation.viewmodels.UiState
+import com.google.android.gms.maps.model.LatLng
 
 @Composable
 fun GemCardGrid(
@@ -50,4 +53,44 @@ fun GemCardGrid(
             }
         }
     }
+}
+
+private val previewGems = listOf(
+    "Wreck Beach Sunset",
+    "Rose Garden",
+    "Nitobe Memorial Garden",
+    "Museum of Anthropology",
+    "Pacific Spirit Park Trail"
+).map { title ->
+    Gem(title = title, coords = LatLng(0.0, 0.0), placesName = title, score = 4.0)
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GemCardGridPreview() {
+    GemCardGrid(
+        gemState = UiState(data = previewGems),
+        context = LocalContext.current,
+        title = "Latest Gems:"
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GemCardGridFavoritesPreview() {
+    GemCardGrid(
+        gemState = UiState(data = previewGems.take(2)),
+        context = LocalContext.current,
+        isFavorite = true
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GemCardGridErrorPreview() {
+    GemCardGrid(
+        gemState = UiState(errorMessage = "Network unavailable"),
+        context = LocalContext.current,
+        title = "Latest Gems:"
+    )
 }

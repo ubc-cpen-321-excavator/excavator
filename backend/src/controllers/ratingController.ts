@@ -68,7 +68,7 @@ export function createRatingRouter(gemService: GemService): express.Router {
    * earlier one. The Gem's GemScore is recomputed, and the updated Gem is pushed to live-feed
    * clients near it as `{ type: 'gem.updated', gem }`.
    * - 200 `{ stars, gem }`: `gem` with its new `ratingCount`, `ratingAverage` and `score`.
-   * - 400 `{ message: 'Invalid Gem ID.' }` or `{ message: 'Invalid stars.' }`: `stars` is not a whole number from 1 to 5.
+   * - 400 `{ message: 'Invalid Gem ID.' }` or `{ message: 'Invalid stars.' }`: `stars` is not a number divisible by 0.5 between 1 and 5.
    * - 401 `{ message }`: not signed in.
    * - 404 `{ message: 'No such Gem.' }`: nothing is stored.
    * - 500 `{ message: 'Rate Gem failed.' }`: database error.

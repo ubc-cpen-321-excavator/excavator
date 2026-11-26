@@ -420,7 +420,7 @@ paths:
                   stars: { $ref: '#/components/schemas/Stars' }
                   gem: { $ref: '#/components/schemas/Gem' }
         '400':
-          description: Invalid place ID, or `stars` is not a whole number from 1 to 5.
+          description: Invalid place ID, or `stars` is not a number divisible by 0.5 between 1 and 5.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
