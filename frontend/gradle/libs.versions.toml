@@ -44,6 +44,7 @@ appcompat = "1.6.1"
 material = "1.10.0"
 material3 = "1.4.0"
 playServicesLocation = "21.3.0"
+coil = "3.3.0"
 
 
 [libraries]
@@ -74,6 +75,8 @@ retrofit = { group = "com.squareup.retrofit2",name = "retrofit", version.ref = "
 retrofit-gson = {group = "com.squareup.retrofit2", name="converter-gson", version.ref = "retrofit"}
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 
 
 
