@@ -2,7 +2,6 @@ package com.example.cpen321application.presentation.activities.discovery.composa
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -44,10 +43,11 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         gem.title.replaceFirstChar { if (it.isLowerCase()) it.titlecase(LocalLocale.current.platformLocale) else it.toString() },
-                        modifier = Modifier.padding(16.dp),
+                        // Title takes only the space left over, so long names wrap
+                        // instead of squeezing the favorite button
+                        modifier = Modifier.weight(1f).padding(16.dp),
                         fontSize = 20.sp
                     )
-                    Spacer(modifier=Modifier.weight(1f))
                     FavoriteButton (isFavorite) {
                         if (it) onFavoritesRemoved(
                             gem.placesName.removePrefix("places/")
