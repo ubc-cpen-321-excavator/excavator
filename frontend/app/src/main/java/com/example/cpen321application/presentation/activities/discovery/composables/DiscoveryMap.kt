@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,7 +45,7 @@ fun DiscoveryMap(
     viewModel: GemViewModel = hiltViewModel()
 ) {
 
-    val nearestGemsState by viewModel.uiState.collectAsStateWithLifecycle()
+    val nearestGemsState by viewModel.uiStateCollection.collectAsStateWithLifecycle()
     val coordinates by viewModel.coordinates.collectAsStateWithLifecycle()
     val favoriteGemState by viewModel.favoriteGems.collectAsStateWithLifecycle()
 

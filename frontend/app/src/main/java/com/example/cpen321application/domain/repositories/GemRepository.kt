@@ -3,8 +3,10 @@ package com.example.cpen321application.domain.repositories
 
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.remote.NewGemRequestBody
+import com.example.cpen321application.data.remote.NewLocalRatingRequest
 import com.example.cpen321application.data.repositories.Resource
 import com.example.cpen321application.domain.models.Gem
+import com.example.cpen321application.domain.models.NewGemRating
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.flow.Flow
 
@@ -21,5 +23,7 @@ interface GemRepository {
     suspend fun addFavoriteGem(gemID: String): Resource<Flow<Gem>>
 
     suspend fun deleteFavoriteGem(placesID: String)
+
+    suspend fun updateRating(pk: String, newRating: NewLocalRatingRequest) : Resource<Flow<NewGemRating>>
 
 }

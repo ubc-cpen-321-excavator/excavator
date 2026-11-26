@@ -13,6 +13,7 @@ class Constants {
         const val NEARBY_GEMS_ENDPOINT = "$GEM_BASE_ENDPOINT/nearby"
         const val GEM_DETAIL_ENDPOINT = "$GEM_BASE_ENDPOINT/{pk}"
 
+
         // Places endpoints
         const val PLACES_BASE_ENDPOINT = "/place"
         const val NEARBY_PLACES_ENDPOINT = "$PLACES_BASE_ENDPOINT/nearby"
@@ -26,6 +27,9 @@ class Constants {
         const val USER_FAVORITE_GEMS_ENDPOINT = "$USERS_BASE_ENDPOINT/favorites"
 
         const val USER_FAVORITE_GEMS_DETAIL_ENDPOINT = "$USER_FAVORITE_GEMS_ENDPOINT/{placeId}"
+
+        // Rating endpoints
+        const val GEM_RATING_ENDPOINT = "${GEM_DETAIL_ENDPOINT}/rating"
 
     }
 

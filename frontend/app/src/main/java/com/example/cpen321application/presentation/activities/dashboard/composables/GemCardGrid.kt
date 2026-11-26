@@ -18,7 +18,7 @@ import com.example.cpen321application.presentation.viewmodels.UiState
 
 @Composable
 fun GemCardGrid(
-    gemState: UiState<Gem>,
+    gemState: UiState<List<Gem>>,
     context: Context,
     modifier: Modifier = Modifier,
     title: String? = null,

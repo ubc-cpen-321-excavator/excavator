@@ -17,7 +17,7 @@ class CommentViewModel @Inject constructor(
     private val addCommentUseCase: AddCommentUseCase
 ) : BaseViewModel() {
 
-    private val _commentState: MutableStateFlow<UiState<Comment>> = MutableStateFlow(UiState())
+    private val _commentState: MutableStateFlow<UiState<List<Comment>>> = MutableStateFlow(UiState(emptyList()))
     val commentState = _commentState.asStateFlow()
 
 
