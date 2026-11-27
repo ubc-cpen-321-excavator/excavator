@@ -12,6 +12,7 @@
 | 2026-11-18 | 2.1, 2.4 | Added a test of two users rating a gem at once (`PUT /gem/:pk/rating`, found in peer review); updated the rating test locations and the uncovered line in `ratingService.ts`. |
 | 2026-11-18 | 2.1.2, 2.3, 2.4, 2.5, 3.2 | Re-ran every backend test on the current code: new coverage screenshots and numbers, uncovered lines updated after `gemService.ts` was split into five files, two new mocked tests of `GET /gem/:pk/photo` for Google failing while it looks up or searches for the photo (those lines were not covered before), and new non-functional requirement logs. |
 | 2026-11-18 | 4.1, 4.2 | Replaced the template with the front-end end-to-end tests: where they are, how to run them, and the expected behaviours of Add a Gem, Make comments, Mark a Gem as favorite and Remove a favorite. |
+| 2026-11-27 | 4.1, 4.2 | Added three Make comments tests (Send disabled on an empty field, the empty-list message, the field's 256-character limit), the phone setup and how to rerun one test, the data each run creates, User B's manual step for Add a Gem, and the scenarios left out with their reasons. |
 
 ---
 
@@ -159,14 +160,22 @@ Run them with `./scripts/run-backend-nfr-tests.sh`, or `npm test -- tests/nfr/` 
 | **File** | **Contents** |
 | -------- | ------------ |
 | [`AddGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/AddGemE2ETest.kt) | Use Case 1: Add a Gem. |
-| [`CommentOnGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/CommentOnGemE2ETest.kt) | Use Case 5: Make comments. |
+| [`CommentOnGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/CommentOnGemE2ETest.kt) | Use Case 5: Make comments: posting a comment, Send disabled on an empty field (3a), the empty-list message (2b) and the field's 256-character limit. |
 | [`FavoriteGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/FavoriteGemE2ETest.kt) | Mark a Gem as favorite, and Remove a favorite. |
 | [`E2ETestBase.kt`](../frontend/app/src/androidTest/e2e/E2ETestBase.kt) | Setup shared by every test (location on, location permission granted, app opened on the Dashboard) and the UI helpers (waiting for elements, opening and expanding a gem's info sheet, reading the star's colour). |
-| [`BackendClient.kt`](../frontend/app/src/androidTest/e2e/BackendClient.kt) | Calls the backend as the signed-in user. Only used to set up and clean up the favorites tests, never to check a result. |
+| [`BackendClient.kt`](../frontend/app/src/androidTest/e2e/BackendClient.kt) | Calls the backend as the signed-in user. Only used to set up and clean up the favorites tests and to pick a gem with no comments for `showsNoCommentsMessage`, never to check a result. |
 
 `frontend/app/build.gradle.kts` adds `src/androidTest/e2e` to the `androidTest` source set. The tests use the Compose UI test framework with UI Automator, and find elements by the test tags in `TestTags`.
 
 The tests run the real app against the real backend, with no mocks, as the user who is signed in on the device. The tests never sign in themselves.
+
+**Before running, on the phone:**
+
+- USB debugging is on.
+- Developer options → **Stay awake** is on, and the phone stays plugged in, so the screen doesn't turn off during the run.
+- There is no screen lock, or the phone stays unlocked for the whole run.
+- WiFi and location are on.
+- Optional: in Developer options, set the window, transition and animator animation scales to off. The tests don't rely on it.
 
 **How to run the tests:**
 
@@ -179,11 +188,21 @@ The tests run the real app against the real backend, with no mocks, as the user 
 
 The script runs each test in its own instrumentation process, prints a pass/fail table, saves the full log in `frontend/app/build/e2e-logs/`, and exits non-zero unless every test passed. It never uninstalls the app or clears its data.
 
+**Rerunning one test:** after the script has installed the app and the test APK once, run a single test with:
+
+```
+adb shell am instrument -w -r -e class e2e.CommentOnGemE2ETest#sendDisabledWhenFieldEmpty com.example.cpen321application.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Replace `CommentOnGemE2ETest#sendDisabledWhenFieldEmpty` with any other class and test, e.g. `AddGemE2ETest#addNewGem`. After changing the code, reinstall both APKs without uninstalling, so the sign-in is kept: `cd frontend`, then `./gradlew installDebug installDebugAndroidTest` (`.\gradlew installDebug installDebugAndroidTest` on Windows).
+
 **Data the tests need on the device:**
 
 - *Add a Gem*: the device needs a location fix with at least one place within 200 m that is not a gem yet. Gems can't be deleted, so each run leaves one new gem behind.
-- *Make comments*: the Dashboard must list at least one gem. Comments can't be deleted, so each run leaves one comment starting with "UI test comment".
+- *Make comments*: the Dashboard must list at least one gem. Comments can't be deleted, so each run leaves one comment starting with "UI test comment" (from `addCommentToExistingGem`; the other comment tests post nothing). `showsNoCommentsMessage` also needs one of the Dashboard's newest gems to have no comments: if none has, it fails with a setup message, and it never creates a gem.
 - *Favorites*: the Dashboard must list at least one gem. The newest gem is removed from the user's favorites through the backend before and after each test, so its star starts grey and no favorite is left behind.
+
+Each full run of the Add a Gem and Make comments tests creates **one gem and one comment**, neither of which can be deleted.
 
 ### 4.2. Tests
 
@@ -200,9 +219,29 @@ The script runs each test in its own instrumentation process, prints a pass/fail
     | 4. The app lists the places within 200 m of the User that aren't gems yet, nearest first. | Check that at least one place card (`CANDIDATE_CARD`) is displayed within 30 s.<br>Read the name of the first place. |
     | 5. The User picks a place and confirms adding it. | Tap the first place card.<br>Check that the list of places closes. |
     | 6. The app shows the new gem, with its Gem Score, on the map. | Tap "Dashboard" in the navigation bar.<br>Check that "Latest Gems:" is displayed.<br>Check that the first gem card (`GEM_CARD`) under "Latest Gems:" has the name of the picked place. |
+    | 7. Other users with that area open see the new gem appear without refreshing. | Manual, as User B (steps below). |
+
+  - **Manual steps for User B (step 7):**
+    1. User B signs in on a second phone, within 5 km of User A's phone, and opens the Dashboard.
+    2. User A runs `AddGemE2ETest#addNewGem`.
+    3. User B checks, without refreshing, that the gem User A added appears first under "Latest Gems:".
 
   - **Test Logs:**
   - ![Add gem test logs](images/addGemE2ETest.png)
+
+  - **Scenarios left out:**
+
+    | **Scenario** | **Reason** |
+    | ------------ | ---------- |
+    | 2a. The User denies location permission. | Team decision: testing with location permission denied is deferred to M3. The tests run with location on and permission granted. |
+    | 4a. There are no places within 200 m. | Needs either a location with no places nearby, which would mean faking the phone's location, or a filter that leaves the list empty, which doesn't work today because the app loses the selected filters. |
+    | 4b. A selected filter is not a type Google Places knows. | Can't happen from the app: the filters are a fixed list of types. |
+    | 4c. Google Places is unavailable. | Needs a forced failure of Google Places (mocking). |
+    | 5a. The place is already a gem. | Would add a second gem per run (gems can't be deleted), and the app shows this error as a Toast, which is outside the Compose UI. |
+    | 5b. The User is more than 200 m from the place. | Can't happen from the app: it sends the place's own coordinates as the User's location. |
+    | 5c. The place no longer exists on Google Places. | Can't be produced on demand. |
+    | 5d. The User's login has expired. | Expiring the login would sign out the account the tests run as, so the remaining tests couldn't run. |
+    | 5e. The gem can't be added (no connection, a server error). | Needs a forced network or server failure. |
 
 
 - **Use Case: Make comments (Use Case 5)**
@@ -219,6 +258,59 @@ The script runs each test in its own instrumentation process, prints a pass/fail
 
   - **Test Logs:**
   - ![Add a comment to a gem test logs](images/addCommentE2ETest.png)
+
+  - **Test:** `CommentOnGemE2ETest.sendDisabledWhenFieldEmpty`
+  - **Expected Behaviors:**
+
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The User opens a gem (Use Case 2) and opens its comments. | Open the app on the Dashboard.<br>Check that "Latest Gems:" is displayed.<br>Tap the first gem card (`GEM_CARD`).<br>Check that the gem's info sheet opens, and drag its handle to the top of the screen.<br>Check that the sheet is fully expanded. |
+    | 3a. The comment is empty or only spaces. | Check that the comment field (`COMMENT_INPUT`) is empty. |
+    | 3a1. The "Post" button stays disabled. | Check that "Send Comment" (`SEND_COMMENT_BUTTON`) is not enabled. |
+
+  - **Test Logs:**
+  - *Placeholder: log of the next run on the test phone.*
+
+
+  - **Test:** `CommentOnGemE2ETest.showsNoCommentsMessage`
+  - **Expected Behaviors:**
+
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The User opens a gem (Use Case 2) and opens its comments. | Before the test, get the Dashboard's newest gems from the backend (`GET /gem/newest`) and pick the first one with no comments (`GET /gem/:pk/comments`). If none has zero comments, fail with a setup message.<br>Open the app on the Dashboard.<br>Scroll the "Latest Gems:" grid to that gem's card and tap it.<br>Check that the gem's info sheet opens, and fully expand it. |
+    | 2b. The gem has no comments yet. | The gem picked before the test has no comments. |
+    | 2b1. The app shows "No comments yet, be the first". | Check that "No comments yet!" is displayed (the app's wording; see the note below). |
+
+  - **Test Logs:**
+  - *Placeholder: log of the next run on the test phone.*
+
+
+  - **Test:** `CommentOnGemE2ETest.commentStopsAt256Characters`
+  - **Expected Behaviors:** This test checks the app's own limit on the comment field (256 characters), which the use case doesn't state; it maps to step 3.
+
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The User opens a gem (Use Case 2) and opens its comments. | Open the app on the Dashboard.<br>Tap the first gem card (`GEM_CARD`).<br>Check that the gem's info sheet opens, and fully expand it. |
+    | 3. The User types a comment and taps "Post". | Type "E2E test comment " followed by "a" up to 256 characters in the comment field (`COMMENT_INPUT`).<br>Check that the field holds all 256 characters.<br>Type one more character, "b".<br>Check that the field still holds the same 256 characters.<br>Don't tap "Send Comment", so nothing is posted. |
+
+  - **Test Logs:**
+  - *Placeholder: log of the next run on the test phone.*
+
+  - **Notes:**
+    - 2b1: the spec's text is "No comments yet, be the first", but the app shows "No comments yet!". The difference is only in wording, so `showsNoCommentsMessage` checks the app's text. The team will decide whether the spec or the app changes.
+    - The comment field stops at 256 characters, while 3b and the backend allow up to 1000. 3b itself is covered by the backend tests (see the note under the table below).
+
+  - **Scenarios left out:**
+
+    | **Scenario** | **Reason** |
+    | ------------ | ---------- |
+    | 2a. The comments can't be loaded. | Needs a forced network or server failure. |
+    | 3b. The comment is longer than 1000 characters. | Covered by the backend tests.¹ |
+    | 4a. The gem no longer exists. | Gems can't be deleted, from the app or through the backend's interface. |
+    | 4b. The User's login has expired. | Expiring the login would sign out the account the tests run as, so the remaining tests couldn't run. |
+    | 4c. The comment can't be saved. | Needs a forced network or server failure. |
+
+    ¹ The backend enforces the 1000-character limit: [`backend/tests/mock/comment.test.ts`](../backend/tests/mock/comment.test.ts) ("too long", a 1001-character comment) checks it is rejected with 400.
 
 
 - **Use Case: Mark a Gem as favorite**

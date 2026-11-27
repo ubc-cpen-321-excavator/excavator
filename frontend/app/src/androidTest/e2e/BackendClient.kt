@@ -11,7 +11,7 @@ data class ApiGem(val name: String, val title: String)
 
 /**
  * Calls the app's backend as the signed-in user. The tests only use it to set up and clean up data
- * around what they do through the UI, never to check results.
+ * around what they do through the UI, or to pick the data a test needs, never to check results.
  */
 class BackendClient(private val token: String) {
 
@@ -21,6 +21,12 @@ class BackendClient(private val token: String) {
     fun newestGems(): List<ApiGem> {
         val gems = JSONArray(request("GET", "/gem/newest", setOf(HttpURLConnection.HTTP_OK)))
         return (0 until gems.length()).map { toApiGem(gems.getJSONObject(it)) }
+    }
+
+    /** How many comments a gem has (GET /gem/:pk/comments). */
+    fun commentCount(gemName: String): Int {
+        val placeId = gemName.removePrefix("places/")
+        return JSONArray(request("GET", "/gem/$placeId/comments", setOf(HttpURLConnection.HTTP_OK))).length()
     }
 
     /** Removes a gem from the user's favorites; does nothing if it is not one. */
