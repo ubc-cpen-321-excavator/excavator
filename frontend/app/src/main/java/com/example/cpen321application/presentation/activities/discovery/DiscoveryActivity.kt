@@ -78,6 +78,7 @@ private fun parseGem(intent: Intent?): Gem? {
     val placesName = extras.getString(GemExtras.PLACES_NAME) ?: return null
     val score = extras.getDouble(GemExtras.SCORE)
     val rating = extras.getDouble(GemExtras.RATING)
+    val ratingCount = extras.getInt(GemExtras.RATING_COUNT)
     if (!extras.containsKey(GemExtras.LATITUDE) || !extras.containsKey(GemExtras.LONGITUDE)) return null
 
     return Gem(
@@ -88,7 +89,8 @@ private fun parseGem(intent: Intent?): Gem? {
         ),
         placesName = placesName,
         score = score,
-        localRating = rating
+        localRating = rating,
+        numRatings = ratingCount.toUInt()
 
     )
 }

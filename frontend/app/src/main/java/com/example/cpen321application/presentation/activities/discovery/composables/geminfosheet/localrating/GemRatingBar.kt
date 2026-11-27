@@ -41,6 +41,7 @@ fun roundToHalfStar(rating: Float?): Float =
 fun LocalRating(
     modifier: Modifier = Modifier,
     initialRating: Float,
+    numRatings: UInt,
     starSize: Dp = 40.dp,
     onRatingSubmit: (Float) -> Unit,
 ) {
@@ -105,6 +106,11 @@ fun LocalRating(
             modifier = modifier,
             onRatingSubmit = {
                 onRatingSubmit(it)
+                rating = if (numRatings > 1u) {
+                    updateMean(initialRating, rating, numRatings.toInt())
+                }  else {
+                    rating
+                }
                 editingRating = false
             },
             rating = rating,
@@ -130,8 +136,12 @@ private fun starPath(cx: Float, cy: Float, outer: Float): Path {
     }
 }
 
+private fun updateMean(oldMean: Float, newVal: Float, total: Int): Float {
+    return (oldMean + newVal) / (total + 1)
+}
+
 @Preview(showBackground = true)
 @Composable
 fun LocalRatingPreview() {
-    LocalRating(initialRating = 3.3f, onRatingSubmit = {})
+    LocalRating(initialRating = 3.3f, onRatingSubmit = {}, numRatings = 2u)
 }

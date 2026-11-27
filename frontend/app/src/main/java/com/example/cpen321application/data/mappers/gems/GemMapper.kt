@@ -29,7 +29,8 @@ class GemMapper : Mapper<Gem, GemDTO> {
             ),
             placesName = dtoObject.place.name,
             score = dtoObject.score ?: 0.0,
-            localRating = dtoObject.ratingAverage ?: 0.0
+            localRating = dtoObject.ratingAverage ?: 0.0,
+            numRatings = dtoObject.ratingCount?.toUInt() ?: 0u
         )
     }
 

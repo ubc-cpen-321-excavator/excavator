@@ -6,7 +6,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -96,7 +95,8 @@ private val previewGem = Gem(
     coords = LatLng(0.0, 0.0),
     placesName = "Wreck Beach",
     score = 4.5,
-    localRating = 0.0
+    localRating = 0.0,
+    numRatings = 1u
 )
 
 // AsyncImage does not load network images in previews, so the image area renders empty.

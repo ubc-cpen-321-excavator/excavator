@@ -71,6 +71,7 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                     LocalRating(
                         initialRating = gem.localRating.toFloat(),
                         onRatingSubmit = {onRatingSubmitted(it)},
+                        numRatings = gem.numRatings
                     )
                 }
 
