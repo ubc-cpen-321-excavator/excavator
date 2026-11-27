@@ -95,7 +95,8 @@ private val previewGem = Gem(
     title = "Wreck Beach Sunset",
     coords = LatLng(0.0, 0.0),
     placesName = "Wreck Beach",
-    score = 4.5
+    score = 4.5,
+    localRating = 0.0
 )
 
 // AsyncImage does not load network images in previews, so the image area renders empty.

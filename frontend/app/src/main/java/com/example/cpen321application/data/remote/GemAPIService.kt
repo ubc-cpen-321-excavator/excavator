@@ -77,6 +77,6 @@ data class NewGemRequestBody(
 )
 
 data class NewLocalRatingRequest(
-    val score: Double
+    val stars: Double
 )
 

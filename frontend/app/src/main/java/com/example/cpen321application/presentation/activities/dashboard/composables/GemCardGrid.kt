@@ -62,7 +62,7 @@ private val previewGems = listOf(
     "Museum of Anthropology",
     "Pacific Spirit Park Trail"
 ).map { title ->
-    Gem(title = title, coords = LatLng(0.0, 0.0), placesName = title, score = 4.0)
+    Gem(title = title, coords = LatLng(0.0, 0.0), placesName = title, score = 4.0, localRating = 0.0)
 }
 
 @Preview(showBackground = true)
@@ -89,7 +89,7 @@ fun GemCardGridFavoritesPreview() {
 @Composable
 fun GemCardGridErrorPreview() {
     GemCardGrid(
-        gemState = UiState(errorMessage = "Network unavailable"),
+        gemState = UiState(errorMessage = "Network unavailable", data = previewGems),
         context = LocalContext.current,
         title = "Latest Gems:"
     )

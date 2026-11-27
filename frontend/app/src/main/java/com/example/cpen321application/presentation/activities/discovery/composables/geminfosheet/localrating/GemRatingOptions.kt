@@ -11,8 +11,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun GemRatingOptions(
     modifier: Modifier = Modifier,
-    onRatingSubmit: () -> Unit,
-    onRatingCancel: () -> Unit
+    rating: Float,
+    onRatingSubmit: (Float) -> Unit,
+    onRatingCancel: () -> Unit,
 ){
 
     Row (modifier = modifier){
@@ -22,7 +23,7 @@ fun GemRatingOptions(
         }
 
         RatingSubmitButton(Modifier.padding(16.dp)) {
-            onRatingSubmit()
+            onRatingSubmit(rating)
         }
 
     }

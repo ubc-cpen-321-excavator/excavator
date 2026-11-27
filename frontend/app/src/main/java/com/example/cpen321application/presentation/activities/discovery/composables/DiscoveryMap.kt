@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.cpen321application.data.remote.NewLocalRatingRequest
 import com.example.cpen321application.presentation.activities.discovery.GemRequest
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.BUILDING_LEVEL_ZOOM
 import com.example.cpen321application.presentation.activities.discovery.composables.constants.Constants.Companion.CAMERA_INIT_ZOOM_FACTOR
@@ -53,6 +54,8 @@ fun DiscoveryMap(
     var showNewGemSheet by remember {mutableStateOf(false)}
     var selectedGem by remember {mutableStateOf(PLACEHOLDER_SELECTED_GEM)}
 
+    var updatedGem by remember {mutableStateOf(false)}
+
     // Has the camera already been auto-positioned (on the user, or on a requested gem)?
     // Starts true when we were opened for a specific gem, so the user's fix never
     // overrides it. rememberSaveable so rotation doesn't re-center the map.
@@ -85,13 +88,17 @@ fun DiscoveryMap(
 
         LifecycleStartEffect(Unit) {
             viewModel.getFavoriteGems()
+            viewModel.getGems()
             onStopOrDispose {  }
         }
 
         GemInfoSheetContent(
             gem = selectedGem,
-            {showGemInfoSheet = it},
-            showGemInfoSheet,
+            onShowChange = {
+                showGemInfoSheet = it
+                viewModel.getGems()
+                           },
+            showBottomSheet = showGemInfoSheet,
             isFavorite = selectedGem in favoriteGemState.data,
             onFavoritesAdded = {viewModel.addFavoriteGem(it)},
             onFavoritesRemoved = {
@@ -99,8 +106,12 @@ fun DiscoveryMap(
                 // TODO: Change this for M3 since the server will send the deleted gem in the gem response by then
                 viewModel.getFavoriteGems()
             },
-            onRatingSubmitted = {
-
+            onRatingSubmitted = { rating ->
+                viewModel.updateGemRating(
+                    gemID = selectedGem.placesName.removePrefix("places/"),
+                    newLocalRatingRequest = NewLocalRatingRequest(rating.toDouble()),
+                )
+                updatedGem = true
             }
         )
 

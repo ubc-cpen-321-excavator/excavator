@@ -5,16 +5,13 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -43,9 +40,9 @@ fun roundToHalfStar(rating: Float?): Float =
 @Composable
 fun LocalRating(
     modifier: Modifier = Modifier,
-    initialRating: Float? = null,
+    initialRating: Float,
     starSize: Dp = 40.dp,
-    onRatingSubmit: () -> Unit,
+    onRatingSubmit: (Float) -> Unit,
 ) {
     var rating by remember { mutableFloatStateOf(roundToHalfStar(initialRating)) }
     var editingRating by remember {mutableStateOf(false)}
@@ -65,7 +62,7 @@ fun LocalRating(
                         val starWidthPx = size.width / STAR_COUNT.toFloat()
 
                         fun ratingAt(x: Float): Float =
-                            (ceil(x / starWidthPx * 2f) / 2f).coerceIn(0f, STAR_COUNT.toFloat())
+                            (ceil(x / starWidthPx * 2f) / 2f).coerceIn(0.5f, STAR_COUNT.toFloat())
 
                         val down = awaitFirstDown()
                         rating = ratingAt(down.position.x)
@@ -106,8 +103,15 @@ fun LocalRating(
     if (editingRating) {
         GemRatingOptions(
             modifier = modifier,
-            onRatingSubmit = onRatingSubmit,
-            onRatingCancel = {editingRating = false}
+            onRatingSubmit = {
+                onRatingSubmit(it)
+                editingRating = false
+            },
+            rating = rating,
+            onRatingCancel = {
+                rating = initialRating
+                editingRating = false
+            }
         )
     }
 
