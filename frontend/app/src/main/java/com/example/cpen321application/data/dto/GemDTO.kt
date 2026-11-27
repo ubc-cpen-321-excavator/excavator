@@ -13,7 +13,6 @@ data class GemDTO(
     val quality: Double?=null, val reviewCount: Int?=null,
     val ratingCount: Int?=null, val ratingAverage: Double?=null
 )
-
 data class GemCandidate (
     val name: String, val displayName: String,
     val type: String, val address: String?,

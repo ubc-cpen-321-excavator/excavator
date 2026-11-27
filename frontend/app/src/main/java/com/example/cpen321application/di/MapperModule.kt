@@ -2,14 +2,17 @@ package com.example.cpen321application.di
 
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.dto.GemDTO
+import com.example.cpen321application.data.dto.NewGemRatingDTO
 import com.example.cpen321application.data.mappers.comments.CommentListMapper
 import com.example.cpen321application.data.mappers.comments.CommentMapper
 import com.example.cpen321application.data.mappers.gems.GemListMapper
 import com.example.cpen321application.data.mappers.gems.GemMapper
 import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.data.mappers.gems.GemCandidateListMapper
+import com.example.cpen321application.data.mappers.gems.NewGemRatingMapper
 import com.example.cpen321application.domain.models.Comment
 import com.example.cpen321application.domain.models.Gem
+import com.example.cpen321application.domain.models.NewGemRating
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,6 +40,11 @@ annotation class InjectCommentListMapper
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class InjectGemCandidatesMapper
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class InjectNewGemRatingMapper
+
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -75,6 +83,13 @@ object MapperModule {
     @Singleton
     fun providesGemCandidatesMapper(): Mapper<List<GemCandidate>, List<GemCandidate>> {
         return GemCandidateListMapper()
+    }
+
+    @InjectNewGemRatingMapper
+    @Provides
+    @Singleton
+    fun provideNewGemRatingMapper(@InjectGemMapper gemMapper: Mapper<Gem,GemDTO>): Mapper<NewGemRating, NewGemRatingDTO> {
+        return NewGemRatingMapper(gemMapper)
     }
 
 

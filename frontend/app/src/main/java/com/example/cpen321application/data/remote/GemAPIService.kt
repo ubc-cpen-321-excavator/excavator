@@ -2,7 +2,9 @@ package com.example.cpen321application.data.remote
 
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.dto.GemDTO
+import com.example.cpen321application.data.dto.NewGemRatingDTO
 import com.example.cpen321application.data.remote.Constants.Companion.GEM_BASE_ENDPOINT
+import com.example.cpen321application.data.remote.Constants.Companion.GEM_RATING_ENDPOINT
 import com.example.cpen321application.data.remote.Constants.Companion.NEARBY_GEMS_ENDPOINT
 import com.example.cpen321application.data.remote.Constants.Companion.NEARBY_PLACES_ENDPOINT
 import com.example.cpen321application.data.remote.Constants.Companion.NEWEST_GEMS_ENDPOINT
@@ -14,6 +16,7 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -56,6 +59,14 @@ interface GemAPIService {
         @Path(value="placeId", encoded = true) placeId: String
     ) : Response<Unit>
 
+    @PUT(GEM_RATING_ENDPOINT)
+    @Headers("Content-Type: application/json")
+    suspend fun putRating(
+        @Path(value="pk",encoded = true) pk: String,
+        @Body body: NewLocalRatingRequest
+    ) : Response<NewGemRatingDTO>
+
+
 }
 
 data class FavGemRequestBody(val gem: String)
@@ -63,5 +74,9 @@ data class NewGemRequestBody(
     val name: String,
     val latitude: Double,
     val longitude: Double
+)
+
+data class NewLocalRatingRequest(
+    val stars: Double
 )
 
