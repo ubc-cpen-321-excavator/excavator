@@ -13,6 +13,8 @@ import com.example.cpen321application.presentation.activities.signin.SignInActiv
 
 // Keys shared by the sender (here) and whichever activity reads the data
 object GemExtras {
+    const val RATING = "gem_rating"
+    const val RATING_COUNT = "gem_rating_count"
     const val TITLE = "gem_title"
     const val LATITUDE = "gem_coords_latitude"
     const val LONGITUDE = "gem_coords_longitude"
@@ -50,6 +52,7 @@ fun navigateToDiscovery(context: Context, gem: Gem? = null) {
             putDouble(GemExtras.LONGITUDE, it.coords.longitude)
             putString(GemExtras.PLACES_NAME, it.placesName)
             putDouble(GemExtras.SCORE, it.score)
+            putDouble(GemExtras.RATING,it.localRating)
         }
     }
     navigateTo(context, NavDestination.DISCOVERY, extras)

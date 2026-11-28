@@ -131,6 +131,6 @@ dependencies {
     implementation(libs.coil.network.okhttp)
 
     // Source: https://mvnrepository.com/artifact/com.squareup.okhttp3/logging-interceptor
-    implementation("com.squareup.okhttp3:logging-interceptor:5.1.0")
+    implementation(libs.logging.interceptor)
 
 }

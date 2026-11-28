@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.dto.GemDTO
 import com.example.cpen321application.data.mappers.Mapper
+import com.example.cpen321application.data.remote.NewLocalRatingRequest
 import com.example.cpen321application.data.remote.websocket.DashboardLiveUpdatesClient
 import com.example.cpen321application.data.remote.websocket.models.FeedEvent
 import com.example.cpen321application.data.repositories.Resource
@@ -18,6 +19,7 @@ import com.example.cpen321application.domain.usecases.gem.GetNewestGemsUseCase
 import com.example.cpen321application.domain.usecases.gem.favorites.AddFavoriteGemUseCase
 import com.example.cpen321application.domain.usecases.gem.favorites.DeleteFavoriteGemUseCase
 import com.example.cpen321application.domain.usecases.gem.favorites.GetFavoriteGemsUseCase
+import com.example.cpen321application.domain.usecases.gem.ratings.UpdateGemRatingUseCase
 import com.example.cpen321application.utils.location.Coordinates
 import com.example.cpen321application.utils.location.LocationUtil
 import com.example.cpen321application.utils.permissions.LocationAccess
@@ -46,7 +48,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// TODO: Update this viewmodel to use the new Resource class
 
 @HiltViewModel
 class GemViewModel @Inject constructor(
@@ -61,26 +62,31 @@ class GemViewModel @Inject constructor(
     private val addFavoriteGemUseCase: AddFavoriteGemUseCase,
     private val deleteFavoriteGemUseCase: DeleteFavoriteGemUseCase,
 
+    private val updateGemRatingUseCase: UpdateGemRatingUseCase,
+
     private val liveUpdatesClient: DashboardLiveUpdatesClient,
     @param:InjectGemMapper private val mapper: Mapper<Gem, GemDTO>
 ) : BaseViewModel() {
 
-    private val _uiState = MutableStateFlow<UiState<Gem>>(UiState())
+    private val _uiState = MutableStateFlow<UiState<List<Gem>>>(UiState(emptyList()))
 
-    private val _gemCandidates = MutableStateFlow<UiState<GemCandidate>>(UiState())
+    private val _gemCandidates = MutableStateFlow<UiState<List<GemCandidate>>>(UiState(emptyList()))
 
-    private val _favoriteGems = MutableStateFlow<UiState<Gem>>(UiState())
+    private val _favoriteGems = MutableStateFlow<UiState<List<Gem>>>(UiState(emptyList()))
 
-    private val _newestGems = MutableStateFlow<UiState<Gem>>(UiState())
+    private val _newestGems = MutableStateFlow<UiState<List<Gem>>>(UiState(emptyList()))
 
     /** True once the first HTTP load of the newest gems has landed. Live updates wait for it. */
     private val _newestLoaded = MutableStateFlow(false)
 
-    val uiState: StateFlow<UiState<Gem>> = _uiState.asStateFlow()
-    val gemCandidate: StateFlow<UiState<GemCandidate>> = _gemCandidates.asStateFlow()
+    private val _latestRating = MutableStateFlow<UiState<Double>>(UiState(0.0))
 
-    val favoriteGems: StateFlow<UiState<Gem>> = _favoriteGems.asStateFlow()
-    val newestGems: StateFlow<UiState<Gem>> = _newestGems.asStateFlow()
+    val uiStateCollection = _uiState.asStateFlow()
+    val gemCandidate = _gemCandidates.asStateFlow()
+    val favoriteGems = _favoriteGems.asStateFlow()
+    val newestGems = _newestGems.asStateFlow()
+
+    val latestRating = _latestRating.asStateFlow()
 
     private val _access = MutableStateFlow(locationUtil.currentAccess())
 
@@ -271,6 +277,41 @@ class GemViewModel @Inject constructor(
             )
             // Re-sync only after the DELETE has finished, so the list is never stale
             getFavoriteGems()
+        }
+    }
+
+    fun updateGemRating(gemID: String, newLocalRatingRequest: NewLocalRatingRequest) {
+        launch {
+            when (val result = updateGemRatingUseCase(UpdateGemRatingUseCase.Params(
+                    pk = gemID,
+                    gemRatingRequest = newLocalRatingRequest)
+            )) {
+                is Resource.Error -> {
+                    _latestRating.value = getErrorState(
+                        errorMessage = result.message,
+                        uiState = _latestRating.value
+                    )
+                }
+
+                else -> {
+                    result.data?.collect { newGemRating ->
+                        _latestRating.value = _latestRating.value.copy(
+                            data = newGemRating.stars,
+                            errorMessage = null
+                        )
+
+                        _uiState.value = _uiState.value.copy(
+                            errorMessage = null,
+                            data = _uiState.value.data.map {
+                                if (it.sameGemAs(newGemRating.gem)) {
+                                    newGemRating.gem
+                                }
+                                it
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
 

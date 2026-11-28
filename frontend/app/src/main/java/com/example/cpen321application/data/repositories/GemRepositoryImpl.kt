@@ -1,15 +1,20 @@
 package com.example.cpen321application.data.repositories
 
+import android.R.attr.rating
 import com.example.cpen321application.data.dto.GemCandidate
 import com.example.cpen321application.data.dto.GemDTO
+import com.example.cpen321application.data.dto.NewGemRatingDTO
 import com.example.cpen321application.data.mappers.Mapper
 import com.example.cpen321application.data.remote.FavGemRequestBody
 import com.example.cpen321application.data.remote.GemAPIService
 import com.example.cpen321application.data.remote.NewGemRequestBody
+import com.example.cpen321application.data.remote.NewLocalRatingRequest
 import com.example.cpen321application.di.InjectGemCandidatesMapper
 import com.example.cpen321application.di.InjectGemListMapper
 import com.example.cpen321application.di.InjectGemMapper
+import com.example.cpen321application.di.InjectNewGemRatingMapper
 import com.example.cpen321application.domain.models.Gem
+import com.example.cpen321application.domain.models.NewGemRating
 import com.example.cpen321application.domain.repositories.GemRepository
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +24,8 @@ class GemRepositoryImpl @Inject constructor(
     private val service: GemAPIService,
     @param:InjectGemMapper private val mapper: Mapper<Gem, GemDTO>,
     @param:InjectGemListMapper private val listMapper: Mapper<List<Gem>, List<GemDTO>>,
-    @param:InjectGemCandidatesMapper private val candidatesMapper: Mapper<List<GemCandidate>, List<GemCandidate>>
+    @param:InjectGemCandidatesMapper private val candidatesMapper: Mapper<List<GemCandidate>, List<GemCandidate>>,
+    @param:InjectNewGemRatingMapper private val gemRatingMapper: Mapper<NewGemRating, NewGemRatingDTO>
 ): GemRepository, BaseRemoteRepo() {
 
     override suspend fun getNearbyGems(coords: LatLng): Resource<Flow<List<Gem>>> {
@@ -33,7 +39,7 @@ class GemRepositoryImpl @Inject constructor(
     override suspend fun getNewestGems(numGems: UInt?): Resource<Flow<List<Gem>>> {
 
         return safeApiCall(listMapper) {
-            service.getNewestGems()
+            service.getNewestGems() // TODO: Add numGems and coordinates here so we get numGems gems AROUND the user
         }
 
     }
@@ -76,6 +82,15 @@ class GemRepositoryImpl @Inject constructor(
             service.deleteFavoriteGem(placesID)
         }
 
+    }
+
+    override suspend fun updateRating(pk: String, newRating: NewLocalRatingRequest) : Resource<Flow<NewGemRating>> {
+        return safeApiCall (gemRatingMapper) {
+            service.putRating(
+                pk = pk,
+                body = newRating
+            )
+        }
     }
 
 

@@ -2,7 +2,6 @@ package com.example.cpen321application.presentation.activities.discovery.composa
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -15,6 +14,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cpen321application.domain.models.Gem
@@ -23,12 +23,12 @@ import com.example.cpen321application.presentation.activities.discovery.composab
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.favorite.FavoriteButton
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.gemscore.GemScoreBar
 import com.example.cpen321application.presentation.activities.discovery.composables.geminfosheet.localrating.LocalRating
-import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet: Boolean, isFavorite:Boolean = false,
-                        onFavoritesAdded: (String)->Unit, onFavoritesRemoved: (String)->Unit) {
+                        onFavoritesAdded: (String)->Unit, onFavoritesRemoved: (String)->Unit,
+                        onRatingSubmitted: (Float)->Unit) {
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false,
@@ -44,10 +44,11 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         gem.title.replaceFirstChar { if (it.isLowerCase()) it.titlecase(LocalLocale.current.platformLocale) else it.toString() },
-                        modifier = Modifier.padding(16.dp),
+                        // Title takes only the space left over, so long names wrap
+                        // instead of squeezing the favorite button
+                        modifier = Modifier.weight(1f).padding(16.dp),
                         fontSize = 20.sp
                     )
-                    Spacer(modifier=Modifier.weight(1f))
                     FavoriteButton (isFavorite) {
                         if (it) onFavoritesRemoved(
                             gem.placesName.removePrefix("places/")
@@ -57,7 +58,6 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                     }
                 }
 
-                // TODO: replace dummy values with the gem's real score once the data is available
                 GemScoreBar(
                     score = gem.score,
                     maxScore = 100.0,
@@ -67,10 +67,11 @@ fun GemInfoSheetContent(gem: Gem, onShowChange: (Boolean)->Unit, showBottomSheet
                 )
 
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text(text = "Personal rating", fontSize = 14.sp)
+                    Text(text = "Rating", fontSize = 14.sp)
                     LocalRating(
-                        initialRating = null,
-                        onRatingSelected = { rating -> /* TODO: API call by Filip */ }
+                        initialRating = gem.localRating.toFloat(),
+                        onRatingSubmit = {onRatingSubmitted(it)},
+                        numRatings = gem.numRatings
                     )
                 }
 
