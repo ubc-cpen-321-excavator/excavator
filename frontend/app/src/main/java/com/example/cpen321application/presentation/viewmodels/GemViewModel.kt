@@ -266,9 +266,17 @@ class GemViewModel @Inject constructor(
 
     fun deleteFavoriteGem(placesID: String) {
         launch {
+            // Drop it locally right away so the UI does not wait on the network
+            _favoriteGems.value = _favoriteGems.value.copy(
+                data = _favoriteGems.value.data.filterNot {
+                    it.placesName.removePrefix("places/") == placesID
+                }
+            )
             deleteFavoriteGemUseCase(
                 DeleteFavoriteGemUseCase.Params(placesID)
             )
+            // Re-sync only after the DELETE has finished, so the list is never stale
+            getFavoriteGems()
         }
     }
 

@@ -10,8 +10,9 @@ import java.net.URL
 data class ApiGem(val name: String, val title: String)
 
 /**
- * Calls the app's backend as the signed-in user. The tests only use it to set up and clean up data
- * around what they do through the UI, never to check results.
+ * Calls the app's backend as the signed-in user. The tests use it to set up and clean up data around
+ * what they do through the UI, and the favorites feature test also uses [favorites] to check that what
+ * the UI shows is what the server stored.
  */
 class BackendClient(private val token: String) {
 
@@ -21,6 +22,12 @@ class BackendClient(private val token: String) {
     fun newestGems(): List<ApiGem> {
         val gems = JSONArray(request("GET", "/gem/newest", setOf(HttpURLConnection.HTTP_OK)))
         return (0 until gems.length()).map { toApiGem(gems.getJSONObject(it)) }
+    }
+
+    /** The names of the user's favorite gems, as the server stores them (GET /user/favorites). */
+    fun favorites(): List<String> {
+        val gems = JSONArray(request("GET", "/user/favorites", setOf(HttpURLConnection.HTTP_OK)))
+        return (0 until gems.length()).map { gems.getJSONObject(it).getString("name") }
     }
 
     /** Removes a gem from the user's favorites; does nothing if it is not one. */

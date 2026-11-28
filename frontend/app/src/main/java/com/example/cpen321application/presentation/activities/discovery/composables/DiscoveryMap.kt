@@ -94,6 +94,12 @@ fun DiscoveryMap(
 
         GemInfoSheetContent(
             gem = selectedGem,
+            {showGemInfoSheet = it},
+            showGemInfoSheet,
+            // Match by place id: the score in the favorites list can differ from the map's copy
+            isFavorite = favoriteGemState.data.any { it.placesName == selectedGem.placesName },
+            onFavoritesAdded = {viewModel.addFavoriteGem(it)},
+            onFavoritesRemoved = {viewModel.deleteFavoriteGem(it)}
             onShowChange = {
                 showGemInfoSheet = it
                 viewModel.getGems()

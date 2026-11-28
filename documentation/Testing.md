@@ -12,6 +12,7 @@
 | 2026-11-18 | 2.1, 2.4 | Added a test of two users rating a gem at once (`PUT /gem/:pk/rating`, found in peer review); updated the rating test locations and the uncovered line in `ratingService.ts`. |
 | 2026-11-18 | 2.1.2, 2.3, 2.4, 2.5, 3.2 | Re-ran every backend test on the current code: new coverage screenshots and numbers, uncovered lines updated after `gemService.ts` was split into five files, two new mocked tests of `GET /gem/:pk/photo` for Google failing while it looks up or searches for the photo (those lines were not covered before), and new non-functional requirement logs. |
 | 2026-11-18 | 4.1, 4.2 | Replaced the template with the front-end end-to-end tests: where they are, how to run them, and the expected behaviours of Add a Gem, Make comments, Mark a Gem as favorite and Remove a favorite. |
+| 2026-11-25 | 4.1, 4.2 | Added `FavoritesFeatureE2ETest`, which tests the whole Favorites feature front to end in one run and checks the server and that each change lasts after reopening the gem and relaunching the app. |
 
 ---
 
@@ -161,8 +162,9 @@ Run them with `./scripts/run-backend-nfr-tests.sh`, or `npm test -- tests/nfr/` 
 | [`AddGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/AddGemE2ETest.kt) | Use Case 1: Add a Gem. |
 | [`CommentOnGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/CommentOnGemE2ETest.kt) | Use Case 5: Make comments. |
 | [`FavoriteGemE2ETest.kt`](../frontend/app/src/androidTest/e2e/FavoriteGemE2ETest.kt) | Mark a Gem as favorite, and Remove a favorite. |
+| [`FavoritesFeatureE2ETest.kt`](../frontend/app/src/androidTest/e2e/FavoritesFeatureE2ETest.kt) | The whole Favorites feature in one run: Mark a Gem as favorite, View favorites and Remove a favorite, checking the screen, the server and that each change lasts. |
 | [`E2ETestBase.kt`](../frontend/app/src/androidTest/e2e/E2ETestBase.kt) | Setup shared by every test (location on, location permission granted, app opened on the Dashboard) and the UI helpers (waiting for elements, opening and expanding a gem's info sheet, reading the star's colour). |
-| [`BackendClient.kt`](../frontend/app/src/androidTest/e2e/BackendClient.kt) | Calls the backend as the signed-in user. Only used to set up and clean up the favorites tests, never to check a result. |
+| [`BackendClient.kt`](../frontend/app/src/androidTest/e2e/BackendClient.kt) | Calls the backend as the signed-in user. Used to set up and clean up the favorites tests, and by the Favorites feature test to check that the server stored what the UI shows (`GET /user/favorites`). |
 
 `frontend/app/build.gradle.kts` adds `src/androidTest/e2e` to the `androidTest` source set. The tests use the Compose UI test framework with UI Automator, and find elements by the test tags in `TestTags`.
 
@@ -183,7 +185,7 @@ The script runs each test in its own instrumentation process, prints a pass/fail
 
 - *Add a Gem*: the device needs a location fix with at least one place within 200 m that is not a gem yet. Gems can't be deleted, so each run leaves one new gem behind.
 - *Make comments*: the Dashboard must list at least one gem. Comments can't be deleted, so each run leaves one comment starting with "UI test comment".
-- *Favorites*: the Dashboard must list at least one gem. The newest gem is removed from the user's favorites through the backend before and after each test, so its star starts grey and no favorite is left behind.
+- *Favorites* (both files): the Dashboard must list at least one gem. The newest gem is removed from the user's favorites through the backend before and after each test, so its star starts grey and no favorite is left behind.
 
 ### 4.2. Tests
 
@@ -250,4 +252,25 @@ The script runs each test in its own instrumentation process, prints a pass/fail
 
   - **Test Logs:**
   - ![remove favorite gems test logs](images/removeFavoriteE2ETest.png)
+
+
+- **Feature: Favorites, front to end (Mark a Gem as favorite, View favorites, Remove a favorite)**
+
+  - **Test:** `FavoritesFeatureE2ETest.favoritesFeatureFrontToEnd`
+  - **What it adds to the two tests above:** the three favorites use cases run one after the other on the same gem. After each change the test also checks the server (`GET /user/favorites`), that the change is still there when the gem is opened again, and that it is still there after the whole app is closed and opened again (every screen is created again, so what it shows comes from the backend).
+  - **Expected Behaviors:**
+
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The User opens a gem that is not a favorite. | Before the test, get the newest gem from the backend (`GET /gem/newest`), remove it from the user's favorites (`DELETE /user/favorites/:placeId`) and check that `GET /user/favorites` no longer lists it.<br>Open the app on the Dashboard.<br>Scroll the "Latest Gems:" grid to the gem's card and tap it.<br>Check that the gem's info sheet opens, and fully expand it.<br>Check that the star is grey. |
+    | 2. The User taps "favorite" on the gem. | Tap the star.<br>Check that the star turns yellow.<br>Check that `GET /user/favorites` lists the gem. |
+    | 3. The gem stays a favorite. | Close the info sheet with the Back button.<br>Tap "Dashboard" in the navigation bar, tap the gem's card again and fully expand its info sheet.<br>Check that the star is still yellow. |
+    | 4. The User opens their favorites and sees the gem. | Close the info sheet.<br>Tap "Favorites" in the navigation bar.<br>Check that "Your favorites:" is displayed.<br>Check that the gem's card, with the ★ badge, is displayed. |
+    | 5. The favorite is still there the next time the User opens the app. | Close every screen of the app and open it again on the Dashboard.<br>Tap "Favorites" and check that the gem's card, with the ★ badge, is displayed. |
+    | 6. The User opens the gem and removes it from their favorites. | Tap "Dashboard", tap the gem's card and fully expand its info sheet.<br>Check that the star is yellow.<br>Tap the star.<br>Check that the star turns grey.<br>Check that `GET /user/favorites` no longer lists the gem. |
+    | 7. The gem stays removed. | Close the info sheet, tap "Dashboard", tap the gem's card again and fully expand its info sheet.<br>Check that the star is still grey. |
+    | 8. The gem is no longer in the User's favorites. | Close the info sheet.<br>Tap "Favorites" and check that "Your favorites:" is displayed and the gem's card is not.<br>Close every screen of the app and open it again on the Dashboard.<br>Tap "Favorites" and check that the gem's card is still not displayed.<br>After the test, remove the gem from the user's favorites through the backend (does nothing if it is not one). |
+
+  - **Test Logs:**
+  - *To be added after the first run on a device.*
 
